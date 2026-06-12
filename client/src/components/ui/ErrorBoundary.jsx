@@ -1,0 +1,50 @@
+import React from 'react';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+            <span className="text-2xl">!</span>
+          </div>
+          <h2 className="text-lg font-semibold text-ink mb-2">Something went wrong</h2>
+          <p className="text-sm text-ink-mute mb-4 max-w-md">
+            {this.props.fallbackMessage || 'An unexpected error occurred. Please try refreshing the page.'}
+          </p>
+          {this.props.showError && this.state.error && (
+            <pre className="text-xs text-red-600 bg-red-50 p-3 rounded mb-4 max-w-md overflow-auto">
+              {this.state.error.message}
+            </pre>
+          )}
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-dark transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;

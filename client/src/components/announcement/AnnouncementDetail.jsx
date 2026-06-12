@@ -1,0 +1,280 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { announcementsAPI } from '../../services/api';
+import {
+  ArrowLeft,
+  Edit3,
+  Trash2,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Paperclip
+} from 'lucide-react';
+import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
+import toast from 'react-hot-toast';
+
+const AnnouncementDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [announcement, setAnnouncement] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnnouncement = async () => {
+    try {
+      const data = await announcementsAPI.get(id);
+      setAnnouncement(data);
+    } catch (err) {
+      toast.error('Failed to load announcement');
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchAnnouncement();
+  }, [id, navigate]);
+
+  // Refetch on window focus to avoid stale data when navigating back
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchAnnouncement();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [id]);
+
+  useEffect(() => {
+    let ws = null;
+    let reconnectTimeout = null;
+
+    const connectWs = () => {
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'announcement_status' && payload.data.id === parseInt(id)) {
+            setAnnouncement(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                status: payload.data.status,
+                sent_at: payload.data.sent_at || prev.sent_at,
+                delivery: payload.data.delivery && payload.data.delivery.length > 0 
+                  ? payload.data.delivery 
+                  : prev.delivery
+              };
+            });
+          }
+        } catch (e) {
+          console.error('Failed parsing WS message in detail:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimeout = setTimeout(connectWs, 5000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    connectWs();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this announcement permanently?')) return;
+    try {
+      await announcementsAPI.delete(id);
+      toast.success('Announcement deleted');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Delete failed');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'sent':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary"><CheckCircle className="w-3 h-3 mr-1" /> Delivered</span>;
+      case 'partial':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-yellow/15 text-ink"><AlertTriangle className="w-3 h-3 mr-1" /> Partial</span>;
+      case 'failed':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-tomato/15 text-accent-tomato"><AlertTriangle className="w-3 h-3 mr-1" /> Failed</span>;
+      case 'scheduled':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-indigo/15 text-accent-indigo"><Clock className="w-3 h-3 mr-1" /> Scheduled</span>;
+      case 'draft':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-hairline-strong/15 text-ink-mute"><Clock className="w-3 h-3 mr-1" /> Draft</span>;
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-hairline-strong/15 text-ink-mute">{status}</span>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!announcement) return null;
+
+  const canEdit = announcement.status === 'draft' || announcement.status === 'scheduled';
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Link to="/dashboard" className="inline-flex items-center text-xs text-ink-mute hover:text-ink mb-2">
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to Dashboard
+          </Link>
+          <h1 className="text-display-md tracking-tight font-sans text-ink">{announcement.title}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <Link
+              to={`/announcement/edit/${announcement.id}`}
+              className="flex items-center px-3 py-1.5 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1.5" /> {announcement.status === 'scheduled' ? 'Edit Schedule' : 'Edit Draft'}
+            </Link>
+          )}
+          <button
+            onClick={handleDelete}
+            className="flex items-center px-3 py-1.5 border border-accent-tomato/20 rounded-sm text-xs font-medium text-accent-tomato hover:bg-accent-tomato/5 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Meta info card */}
+      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Status</p>
+            <div className="mt-1.5">{getStatusBadge(announcement.status)}</div>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Category</p>
+            <p className="text-sm font-medium text-ink mt-1 capitalize">{announcement.category.replace('_', ' ')}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Course</p>
+            <p className="text-sm font-medium text-ink mt-1">{announcement.c_id || 'General'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Created By</p>
+            <p className="text-sm font-medium text-ink mt-1">{announcement.created_by_name || 'Unknown'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Created</p>
+            <p className="text-sm font-medium text-ink mt-1">{new Date(announcement.created_at).toLocaleString()}</p>
+          </div>
+          {announcement.sent_at && (
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Sent At</p>
+              <p className="text-sm font-medium text-ink mt-1">{new Date(announcement.sent_at).toLocaleString()}</p>
+            </div>
+          )}
+          {announcement.scheduled_at && (
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-ink-mute tracking-wider">Scheduled</p>
+              <p className="text-sm font-medium text-ink mt-1">{new Date(announcement.scheduled_at).toLocaleString()}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-3">Message Content</h3>
+        <div className="bg-[#1c1c1c] text-white rounded-lg p-4 font-sans text-sm leading-relaxed">
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
+        </div>
+      </div>
+
+      {/* Delivery Status */}
+      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-4">Delivery Status</h3>
+        {announcement.delivery && announcement.delivery.length > 0 ? (
+          <div className="space-y-3">
+            {announcement.delivery.map((d, i) => (
+              <div key={i} className="flex items-center justify-between p-3 border border-hairline rounded-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-sm bg-canvas-soft flex items-center justify-center border border-hairline">
+                    {d.platform_type === 'whatsapp' 
+                      ? <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} /> 
+                      : <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />
+                    }
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">{d.platform_name}</p>
+                    <p className="text-xs text-ink-mute font-mono">{d.chat_id || d.platform_id}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    d.platform_status === 'sent'
+                      ? 'bg-primary/15 text-primary'
+                      : d.platform_status === 'failed'
+                        ? 'bg-accent-tomato/15 text-accent-tomato'
+                        : 'bg-hairline/50 text-ink-mute'
+                  }`}>
+                    {d.platform_status}
+                  </span>
+                  {d.error_message && (
+                    <p className="text-[10px] text-accent-tomato mt-1 max-w-[200px] truncate">{d.error_message}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-mute">No platforms targeted for this announcement.</p>
+        )}
+      </div>
+
+      {/* Attachments */}
+      {announcement.files && announcement.files.length > 0 && (
+        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-4">Attachments</h3>
+          <div className="space-y-2">
+            {announcement.files.map((f, i) => (
+              <div key={f.id || i} className="flex items-center gap-3 p-3 border border-hairline rounded-sm">
+                <Paperclip className="w-4 h-4 text-ink-mute" />
+                <span className="text-sm text-ink">{f.original_name}</span>
+                <span className="text-xs text-ink-mute">({(f.file_size / 1024).toFixed(1)} KB)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-3 pt-2">
+        {canEdit && (
+          <Link
+            to={`/announcement/edit/${announcement.id}`}
+            className="flex items-center px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors"
+          >
+            <Edit3 className="w-4 h-4 mr-2" /> {announcement.status === 'scheduled' ? 'Edit Schedule' : 'Edit & Broadcast'}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AnnouncementDetail;

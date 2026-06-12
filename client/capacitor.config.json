@@ -1,0 +1,19 @@
+{
+  "appId": "com.crannouncement.dashboard",
+  "appName": "CR Announcement",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "localhost:*",
+      "10.0.2.2:*"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#ffffff"
+    }
+  }
+}
