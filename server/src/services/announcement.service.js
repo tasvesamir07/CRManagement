@@ -467,6 +467,7 @@ async function markAnnouncementFailed(id) {
 }
 
 async function deleteAnnouncement(id) {
+    await db.query('DELETE FROM announcement_platforms WHERE announcement_id = $1', [id]);
     const result = await db.query('DELETE FROM announcements WHERE id = $1 RETURNING *', [id]);
     return result.rows[0];
 }
