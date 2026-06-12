@@ -110,7 +110,10 @@ async function initWhatsApp() {
                 sock = null;
 
                 if (shouldReconnect) {
-                    const delay = hasEverBeenConnected ? 5000 : 30000;
+                    let delay = 5000;
+                    if (!hasEverBeenConnected && statusCode !== 408) {
+                        delay = 30000;
+                    }
                     console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
                     setTimeout(initWhatsApp, delay);
                 } else {
@@ -134,20 +137,34 @@ async function requestPairingCode(phoneNumber) {
     if (isMockMode) {
         throw new Error('WhatsApp engine is in mock mode. The WhatsApp service failed to initialize and cannot pair. Check server logs for details.');
     }
-    if (!sock) {
-        throw new Error('WhatsApp client not initialized. Please wait and try again.');
-    }
-    if (connectionStatus === 'CONNECTED') {
-        throw new Error('WhatsApp is already connected. No pairing needed.');
-    }
 
     const cleanPhone = phoneNumber.replace(/\D/g, '');
     if (!cleanPhone) {
         throw new Error('Invalid phone number format. Please provide a valid phone number.');
     }
 
-    const code = await sock.requestPairingCode(cleanPhone);
-    return { code };
+    if (connectionStatus === 'CONNECTED') {
+        throw new Error('WhatsApp is already connected. No pairing needed.');
+    }
+
+    if (!sock) {
+        initWhatsApp();
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            if (sock) break;
+        }
+        if (!sock) {
+            throw new Error('WhatsApp client failed to initialize after waiting. Please try again.');
+        }
+    }
+
+    try {
+        const code = await sock.requestPairingCode(cleanPhone);
+        return { code };
+    } catch (err) {
+        console.error('Pairing code request failed:', err.message);
+        throw new Error('Failed to request pairing code: ' + err.message);
+    }
 }
 
 async function sendMessageToGroup(chatId, message, filePath = null) {
