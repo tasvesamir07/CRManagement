@@ -29,7 +29,9 @@ export function useWebSocket({ onMessage, enabled = true } = {}) {
       if (!available) return;
 
       const connectWs = () => {
-        const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+        const token = localStorage.getItem('cr_token');
+        const baseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+        const wsUrl = token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 

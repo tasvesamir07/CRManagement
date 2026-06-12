@@ -3,6 +3,9 @@ const fs = require("fs");
 const path = require("path");
 
 let isMockMode = false;
+let botInstance = null;
+let botReady = false;
+let pendingSends = [];
 
 const APPSTATE_PATH = path.join(__dirname, '../../../appstate.json');
 
@@ -22,10 +25,43 @@ function initMessenger() {
     }
 }
 
+function resetBot() {
+    botInstance = null;
+    botReady = false;
+}
+
+async function getBot() {
+    if (botInstance) return botInstance;
+
+    const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+    botInstance = await createMessengerBot(
+        { appState: appStateData },
+        { listenEvents: false }
+    );
+
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            resetBot();
+            reject(new Error('Messenger bot login timed out after 30s'));
+        }, 30000);
+
+        botInstance.on("ready", () => {
+            clearTimeout(timeout);
+            botReady = true;
+            resolve(botInstance);
+        });
+
+        botInstance.on("error", (err) => {
+            clearTimeout(timeout);
+            resetBot();
+            reject(err);
+        });
+    });
+}
+
 async function sendMessageToGroup(chatId, message, filePath = null) {
     console.log(`Sending Messenger announcement to thread: ${chatId}`);
 
-    // Normalize filePath to an array of objects
     let files = [];
     if (filePath) {
         const rawFiles = Array.isArray(filePath) ? filePath : [filePath];
@@ -43,48 +79,34 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         files.forEach((f, index) => {
             console.log(`[MOCK MESSENGER] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
         return { success: true, messageId: `mock-msg-id-${Date.now()}` };
     }
 
-    // Load appState and send message
     try {
-        const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
-        const bot = await createMessengerBot(
-            { appState: appStateData },
-            { listenEvents: false }
-        );
+        const bot = await getBot();
 
         return new Promise((resolve, reject) => {
-            bot.on("ready", async () => {
-                try {
-                    // Send message (and attachments if present)
-                    const msgPayload = {
-                        body: message
-                    };
+            const sendTimeout = setTimeout(() => {
+                reject(new Error('Messenger send timed out after 30s'));
+            }, 30000);
 
-                    if (files.length > 0 && fs.existsSync(files[0].path)) {
-                        msgPayload.attachment = fs.createReadStream(files[0].path);
-                    }
+            const msgPayload = { body: message };
 
-                    // Send it
-                    bot.api.sendMessage(msgPayload, chatId, (err, messageInfo) => {
-                        if (err) {
-                            console.error("FCA sendMessage failed:", err);
-                            reject(err);
-                        } else {
-                            resolve({ success: true, messageId: messageInfo?.messageID || 'fca-msg-id' });
-                        }
-                    });
-                } catch (sendErr) {
-                    reject(sendErr);
+            if (files.length > 0 && fs.existsSync(files[0].path)) {
+                msgPayload.attachment = fs.createReadStream(files[0].path);
+            }
+
+            bot.api.sendMessage(msgPayload, chatId, (err, messageInfo) => {
+                clearTimeout(sendTimeout);
+                if (err) {
+                    console.error("FCA sendMessage failed:", err);
+                    resetBot();
+                    reject(err);
+                } else {
+                    resolve({ success: true, messageId: messageInfo?.messageID || 'fca-msg-id' });
                 }
-            });
-
-            bot.on("error", (err) => {
-                console.error("FCA bot error:", err);
-                reject(err);
             });
         });
     } catch (err) {

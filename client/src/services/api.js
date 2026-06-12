@@ -312,4 +312,11 @@ export const adminAPI_ext = {
     }
 };
 
+export const logsAPI = {
+    list: async (params = {}) => {
+        const res = await api.get('/logs', { params });
+        return res.data;
+    }
+};
+
 export default api;

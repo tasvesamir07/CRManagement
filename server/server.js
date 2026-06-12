@@ -26,11 +26,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const http = require('http');
 const WebSocket = require('ws');
+const url = require('url');
 const nodeCron = require('node-cron');
 
 // Import services & configs
 const logger = require('./src/config/logger');
 const db = require('./src/config/database');
+const authService = require('./src/services/auth.service');
 const whatsappService = require('./src/services/whatsapp.service');
 const telegramService = require('./src/services/telegram.service');
 const messengerService = require('./src/services/messenger.service');
@@ -121,6 +123,7 @@ const adminRoutes = require('./src/routes/admin.routes');
 const analyticsRoutes = require('./src/routes/analytics.routes');
 const templatesRoutes = require('./src/routes/templates.routes');
 const bulkRoutes = require('./src/routes/bulk.routes');
+const logsRoutes = require('./src/routes/logs.routes');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
@@ -133,6 +136,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/bulk', bulkRoutes);
+app.use('/api/logs', logsRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, _next) => {
@@ -150,23 +154,42 @@ let wss = null;
 const clients = new Set();
 
 if (!isVercel) {
-    wss = new WebSocket.Server({ server });
+    wss = new WebSocket.Server({
+        server,
+        verifyClient: (info, cb) => {
+            const query = url.parse(info.req.url, true).query;
+            const token = query.token;
 
-    wss.on('connection', (ws) => {
-        logger.info('WebSocket client connected');
+            if (!token) {
+                cb(false, 401, 'Unauthorized: no token provided');
+                return;
+            }
+
+            try {
+                info.req.user = authService.verifyToken(token);
+                cb(true);
+            } catch {
+                cb(false, 401, 'Unauthorized: invalid or expired token');
+            }
+        }
+    });
+
+    wss.on('connection', (ws, req) => {
+        logger.info({ userId: req.user?.id }, 'WebSocket client connected');
         clients.add(ws);
-        
+        ws.userId = req.user?.id;
+
         // Immediately send current WhatsApp status upon connection
         ws.send(JSON.stringify({
             type: 'whatsapp_status',
             data: whatsappService.getStatus()
         }));
-        
+
         ws.on('close', () => {
             logger.info('WebSocket client disconnected');
             clients.delete(ws);
         });
-        
+
         ws.on('error', (err) => {
             logger.error({ err }, 'WebSocket client error');
         });

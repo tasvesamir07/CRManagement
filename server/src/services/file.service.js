@@ -185,11 +185,13 @@ async function deleteFile(fileId) {
 // Daily Cron cleanup function
 async function cleanupExpiredFiles() {
     console.log('⏰ Starting expired files cleanup job...');
-    const result = await db.query('SELECT * FROM expired_files');
+    const result = await db.query(
+        "SELECT * FROM files WHERE expires_at <= NOW() AND is_deleted = false"
+    );
     const expired = result.rows;
-    
+
     console.log(`Found ${expired.length} expired files to delete.`);
-    
+
     let count = 0;
     for (const file of expired) {
         try {
@@ -199,7 +201,7 @@ async function cleanupExpiredFiles() {
             console.error(`Error deleting file ID ${file.id} (${file.original_name}):`, err.message);
         }
     }
-    
+
     console.log(`✅ Cleanup completed. Deleted ${count}/${expired.length} files.`);
     return { found: expired.length, deleted: count };
 }
@@ -221,7 +223,7 @@ async function getStorageUsage() {
             const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
             usedBytes = parseInt(result.rows[0].used_bytes, 10);
         }
-        limitBytes = parseInt(process.env.STORAGE_LIMIT_BYTES || '1073741824', 10); // default to 1GB for Supabase
+        limitBytes = parseInt(process.env.SUPABASE_STORAGE_LIMIT_BYTES || '1073741824', 10); // default to 1GB for Supabase
     } else {
         const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
         usedBytes = parseInt(result.rows[0].used_bytes, 10);

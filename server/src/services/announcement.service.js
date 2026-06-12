@@ -5,6 +5,7 @@ const telegramService = require('./telegram.service');
 const messengerService = require('./messenger.service');
 const path = require('path');
 const fs = require('fs');
+const auditService = require('./audit.service');
 
 let wsBroadcaster = null;
 
@@ -108,11 +109,17 @@ async function sendAnnouncement(id, _hostUrl = '') {
         } else {
             try {
                 const { url } = await fileService.getFileUrl(f.id);
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 30000);
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeout);
                 const tempPath = path.join(fileService.uploadsDir, `temp-${f.storage_path}`);
-                fs.writeFileSync(tempPath, buffer);
+                const writeStream = fs.createWriteStream(tempPath);
+                await new Promise((resolve, reject) => {
+                    response.body.pipe(writeStream);
+                    writeStream.on('finish', resolve);
+                    writeStream.on('error', reject);
+                });
                 localFilePath = tempPath;
             } catch (e) {
                 console.error(`Failed to download Supabase file ${f.id} for sending:`, e.message);
@@ -193,6 +200,20 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 ['sent', id, p.platform_id]
             );
             overallSuccessCount++;
+
+            // Log successful delivery to audit logs
+            await auditService.log(
+                announcement.created_by,
+                'announcement.delivery_sent',
+                'announcement',
+                id,
+                {
+                    platform_id: p.platform_id,
+                    platform_name: p.platform_name,
+                    platform_type: p.platform_type,
+                    chat_id: p.chat_id
+                }
+            );
         } catch (err) {
             console.error(`Failed delivery to platform ID ${p.platform_id}:`, err.message);
             await db.query(
@@ -200,6 +221,21 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 ['failed', err.message, id, p.platform_id]
             );
             overallFailureCount++;
+
+            // Log delivery failure to audit logs
+            await auditService.log(
+                announcement.created_by,
+                'announcement.delivery_failed',
+                'announcement',
+                id,
+                {
+                    platform_id: p.platform_id,
+                    platform_name: p.platform_name,
+                    platform_type: p.platform_type,
+                    chat_id: p.chat_id,
+                    error: err.message
+                }
+            );
         }
     }
 
@@ -227,6 +263,19 @@ async function sendAnnouncement(id, _hostUrl = '') {
     const finalResult = await db.query(
         'UPDATE announcements SET status = $1, sent_at = NOW() WHERE id = $2 RETURNING *',
         [finalStatus, id]
+    );
+
+    // Log the overall broadcast completion status
+    await auditService.log(
+        announcement.created_by,
+        'announcement.broadcast_completed',
+        'announcement',
+        id,
+        {
+            status: finalStatus,
+            success_count: overallSuccessCount,
+            failure_count: overallFailureCount
+        }
     );
 
     // Fetch the updated delivery list to broadcast final status

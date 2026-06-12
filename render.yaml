@@ -77,3 +77,22 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+  # ──────────────────────────────────────────────
+  # WhatsApp Relay — Baileys persistent connection
+  # ──────────────────────────────────────────────
+  - type: web
+    name: announcement-relay
+    runtime: node
+    rootDir: relay
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3003
+      - key: WHATSAPP_RELAY_SECRET
+        generateValue: true
+    disk:
+      name: baileys-auth
+      mountPath: /app/.baileys_auth
+      sizeGB: 1

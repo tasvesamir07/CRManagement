@@ -14,7 +14,8 @@ import {
   User,
   Shield,
   Sun,
-  Moon
+  Moon,
+  ClipboardList
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -39,6 +40,7 @@ const DashboardLayout = () => {
   const navigation = user?.role === 'admin'
     ? [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'System Logs', href: '/logs', icon: ClipboardList },
       ]
     : [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -46,6 +48,7 @@ const DashboardLayout = () => {
         { name: 'Courses', href: '/courses', icon: BookOpen },
         { name: 'Schedules & Rooms', href: '/routines', icon: Calendar },
         { name: 'Broadcasting Targets', href: '/platforms', icon: Radio },
+        { name: 'Delivery Logs', href: '/logs', icon: ClipboardList },
       ];
 
   const bottomLinks = [
