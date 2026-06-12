@@ -22,6 +22,7 @@ let connectionStatus = 'DISCONNECTED';
 let latestQr = '';
 let wsBroadcaster = null;
 let isMockMode = isVercel;
+let hasEverBeenConnected = false;
 const pairingResolve = null;
 
 const AUTH_FOLDER = path.join(__dirname, '../../../.baileys_auth');
@@ -69,10 +70,12 @@ async function initWhatsApp() {
             version,
             logger,
             printQRInTerminal: false,
-            markOnlineOnConnect: false,
+            markOnlineOnConnect: true,
             syncFullHistory: false,
             browser: ['CR Announcement', 'Chrome', '1.0.0'],
-            generateHighQualityLinkPreview: false
+            generateHighQualityLinkPreview: false,
+            keepAliveIntervalMs: 15000,
+            connectTimeoutMs: 60000
         });
 
         sock.ev.on('creds.update', saveCreds);
@@ -90,6 +93,7 @@ async function initWhatsApp() {
                 console.log('✅ WhatsApp client is ready and connected!');
                 connectionStatus = 'CONNECTED';
                 latestQr = '';
+                hasEverBeenConnected = true;
                 broadcastStatus();
                 if (pairingResolve) {
                     pairingResolve({ code: '' });
@@ -106,10 +110,11 @@ async function initWhatsApp() {
                 sock = null;
 
                 if (shouldReconnect) {
-                    console.log('WhatsApp disconnected. Reconnecting in 5s...');
-                    setTimeout(initWhatsApp, 5000);
+                    const delay = hasEverBeenConnected ? 5000 : 30000;
+                    console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
+                    setTimeout(initWhatsApp, delay);
                 } else {
-                    console.log('WhatsApp logged out. Please re-link your device.');
+                    console.log(`WhatsApp logged out (reason=${statusCode}). Please re-link your device.`);
                     isMockMode = false;
                 }
             }
