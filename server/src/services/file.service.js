@@ -303,5 +303,7 @@ module.exports = {
     deleteFile,
     cleanupExpiredFiles,
     getStorageUsage,
+    checkDuplicate,
+    listFiles,
     uploadsDir
 };
