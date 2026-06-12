@@ -4,13 +4,14 @@ const pino = require('pino');
 
 const isVercel = !!process.env.VERCEL;
 
-let makeWASocket, DisconnectReason, fetchLatestBaileysVersion;
+let makeWASocket, DisconnectReason, fetchLatestBaileysVersion, Browsers;
 if (!isVercel) {
     try {
         const baileys = require('@whiskeysockets/baileys');
         makeWASocket = baileys.makeWASocket;
         DisconnectReason = baileys.DisconnectReason;
         fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
+        Browsers = baileys.Browsers;
     } catch (err) {
         console.error('Failed to load @whiskeysockets/baileys:', err.message);
     }
@@ -121,7 +122,7 @@ async function initWhatsApp() {
             printQRInTerminal: false,
             markOnlineOnConnect: true,
             syncFullHistory: false,
-            browser: ['Chrome (Linux)', '', ''],
+            browser: Browsers ? Browsers.ubuntu('Chrome') : ['Chrome (Linux)', '', ''],
             generateHighQualityLinkPreview: false,
             keepAliveIntervalMs: 15000,
             connectTimeoutMs: 60000
@@ -196,7 +197,7 @@ async function requestPairingCode(phoneNumber) {
         throw new Error('WhatsApp engine is in mock mode. The WhatsApp service failed to initialize and cannot pair. Check server logs for details.');
     }
 
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
     if (!cleanPhone) {
         throw new Error('Invalid phone number format. Please provide a valid phone number.');
     }
@@ -224,9 +225,15 @@ async function requestPairingCode(phoneNumber) {
         throw new Error(`WhatsApp connection not ready (status: ${connectionStatus}). Please wait for QR code and try again.`);
     }
 
+    // Crucial: Wait a few seconds for the websocket to fully stabilize and connect to Meta
+    console.log(`Waiting for socket stabilization before requesting code for: ${cleanPhone}...`);
+    await new Promise(r => setTimeout(r, 3000));
+
     try {
         const code = await sock.requestPairingCode(cleanPhone);
-        return { code };
+        // Format code with a dash to make it easy to read (e.g., ABCD-EFGH)
+        const formattedCode = code?.match(/.{1,4}/g)?.join("-") || code;
+        return { code: formattedCode };
     } catch (err) {
         console.error('Pairing code request failed:', err.message);
         throw new Error('Failed to request pairing code: ' + err.message);
