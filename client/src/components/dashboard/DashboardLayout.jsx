@@ -41,7 +41,6 @@ const DashboardLayout = () => {
   const navigation = user?.role === 'admin'
     ? [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'Uploaded Files', href: '/files', icon: FileUp },
         { name: 'System Logs', href: '/logs', icon: ClipboardList },
       ]
     : [
