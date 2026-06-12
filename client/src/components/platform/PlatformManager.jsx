@@ -60,7 +60,6 @@ const PlatformManager = () => {
 
   // WhatsApp countdown and local QR states
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [countdown, setCountdown] = useState(50);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Generate QR Code data URL when raw QR changes
@@ -72,22 +71,6 @@ const PlatformManager = () => {
     } else {
       setQrCodeUrl('');
     }
-  }, [waQr, waStatus]);
-
-  // Countdown timer for QR refresh
-  useEffect(() => {
-    let interval = null;
-    if (waStatus === 'QR_READY') {
-      setCountdown(50);
-      interval = setInterval(() => {
-        setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    } else {
-      setCountdown(50);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
   }, [waQr, waStatus]);
 
   const handleRestartWhatsApp = async () => {
@@ -344,9 +327,13 @@ const PlatformManager = () => {
                     className="w-[200px] h-[200px] block"
                   />
                 </div>
-                <p className={`text-xs font-semibold ${countdown < 30 ? 'text-accent-tomato' : 'text-primary'}`}>
-                  {countdown > 0 ? `Refreshes in ${countdown}s...` : 'Refreshing...'}
-                </p>
+                <div className="flex items-center justify-center gap-2 text-xs text-primary font-semibold">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span>QR code is active. Updates automatically.</span>
+                </div>
                 <p className="text-[11px] text-ink-mute">Open WhatsApp → Linked Devices → Link a Device, then scan this QR code.</p>
               </div>
             ) : waStatus === 'CONNECTING' ? (
