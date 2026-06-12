@@ -707,31 +707,37 @@ const PlatformManager = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {platforms.map((p) => (
-                  <div key={p.id} className={`p-4 border rounded-sm transition-all flex flex-col justify-between ${
-                    p.is_active ? 'border-hairline hover:border-hairline-strong' : 'border-hairline-cool bg-canvas-soft/50'
-                  }`}>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${
-                            p.service_available === false ? 'bg-accent-yellow' : p.is_active ? 'bg-primary' : 'bg-ink-mute'
-                          }`} />
-                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                            p.platform_type === 'whatsapp' ? 'bg-primary/15 text-primary-deep' : 'bg-accent-violet/15 text-accent-violet'
-                          }`}>
-                            {p.platform_type}
-                          </span>
-                          {p.service_available === false ? (
-                            <span className="text-[10px] font-medium text-accent-yellow" title="Service not configured">
-                              No Token
+                {platforms.map((p) => {
+                  const isOnline = p.platform_type === 'whatsapp' 
+                    ? waStatus === 'CONNECTED' 
+                    : tgStatus === 'CONNECTED';
+                  const isConfigured = p.service_available !== false;
+
+                  return (
+                    <div key={p.id} className={`p-4 border rounded-sm transition-all flex flex-col justify-between ${
+                      p.is_active ? 'border-hairline hover:border-hairline-strong' : 'border-hairline-cool bg-canvas-soft/50'
+                    }`}>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${
+                              !isConfigured ? 'bg-accent-yellow' : isOnline ? 'bg-primary' : 'bg-ink-mute'
+                            }`} />
+                            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                              p.platform_type === 'whatsapp' ? 'bg-primary/15 text-primary-deep' : 'bg-accent-violet/15 text-accent-violet'
+                            }`}>
+                              {p.platform_type}
                             </span>
-                          ) : p.is_active ? (
-                            <span className="text-[10px] font-medium text-primary">Active</span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-ink-mute">Offline</span>
-                          )}
-                        </div>
+                            {!isConfigured ? (
+                              <span className="text-[10px] font-medium text-accent-yellow" title="Service not configured">
+                                No Token
+                              </span>
+                            ) : isOnline ? (
+                              <span className="text-[10px] font-medium text-primary">Active</span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-ink-mute">Offline</span>
+                            )}
+                          </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleEdit(p)}
@@ -757,7 +763,8 @@ const PlatformManager = () => {
                       <LinkIcon className="w-3.5 h-3.5 text-hairline-strong" />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

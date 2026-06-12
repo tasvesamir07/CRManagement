@@ -18,7 +18,8 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
       onToggle('clear');
     } else {
       platforms.forEach(p => {
-        if (!selectedPlatforms.includes(p.id)) {
+        const off = p.service_available === false || p.is_active === false;
+        if (!off && !selectedPlatforms.includes(p.id)) {
           onToggle(p.id);
         }
       });
@@ -35,8 +36,18 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
       </div>
       {platforms.map(p => {
         const isSelected = selectedPlatforms.includes(p.id);
-        const isUnavailable = (p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED') ||
-          (p.platform_type === 'telegram' && p.service_available === false);
+        const engineUnavailable = p.service_available === false || p.is_active === false;
+        const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
+        const isUnavailable = engineUnavailable;
+        let badgeText = '';
+        let badgeClass = '';
+        if (engineUnavailable) {
+          badgeText = 'Offline';
+          badgeClass = 'text-accent-yellow';
+        } else if (needsPairing) {
+          badgeText = 'Needs Pairing';
+          badgeClass = 'text-ink-mute';
+        }
         return (
           <div key={p.id}
             className={`flex items-center justify-between p-3 border rounded-sm transition-all cursor-pointer ${isSelected
@@ -55,8 +66,8 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
                 <p className="text-[10px] text-ink-mute font-mono truncate">{p.chat_id}</p>
               </div>
             </div>
-            {isUnavailable && (
-              <span className="text-[10px] font-medium text-accent-yellow shrink-0">Offline</span>
+            {badgeText && (
+              <span className={`text-[10px] font-medium ${badgeClass} shrink-0`}>{badgeText}</span>
             )}
           </div>
         );
