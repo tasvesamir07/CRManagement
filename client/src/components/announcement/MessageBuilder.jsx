@@ -145,7 +145,7 @@ export default function MessageBuilder({
       if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
       const sectionNames = sections.map(sec => sec.name).filter(Boolean);
       if (sectionNames.length > 0) {
-        msg += `*Section ${sectionNames.join(', ')}*\n`;
+        msg += `👥 *Section ${sectionNames.join(', ')}*\n`;
       }
       const eventDate = selectedDate ? new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]) : new Date();
       const day = String(eventDate.getDate()).padStart(2, '0');
@@ -235,7 +235,7 @@ export default function MessageBuilder({
     const isSingleSection = sections.length === 1 && hasSections;
 
     if (isSingleSection && firstSection.name) {
-      msg += `*Section ${firstSection.name}*\n`;
+      msg += `👥 *Section ${firstSection.name}*\n`;
     }
 
     if (selectedDate) {
@@ -249,7 +249,7 @@ export default function MessageBuilder({
 
     if (hasSections) {
       sections.forEach(sec => {
-        if (!isSingleSection && sec.name) msg += `\n*Section ${sec.name}*\n`;
+        if (!isSingleSection && sec.name) msg += `\n👥 *Section ${sec.name}*\n`;
         if (sec.timeOption === 'none') {
           // Omit time line
         } else if (sec.timeOption === 'custom') {
@@ -460,13 +460,13 @@ export default function MessageBuilder({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
-                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
                       <StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
                       <BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
                       <AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important
                     </DropdownMenuItem>
                   </DropdownMenuContent>
