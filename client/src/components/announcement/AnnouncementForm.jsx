@@ -1391,13 +1391,22 @@ const AnnouncementForm = () => {
             <div className="flex border border-hairline rounded bg-canvas-soft p-0.5">
               <button type="button" onClick={() => setPreviewTab('whatsapp')} className={`px-3 py-1 text-xs font-medium rounded-sm transition-all duration-150 cursor-pointer ${previewTab === 'whatsapp' ? 'bg-canvas text-ink font-semibold shadow-sm' : 'text-ink-mute hover:text-ink'}`}>WhatsApp</button>
               <button type="button" onClick={() => setPreviewTab('telegram')} className={`px-3 py-1 text-xs font-medium rounded-sm transition-all duration-150 cursor-pointer ${previewTab === 'telegram' ? 'bg-canvas text-ink font-semibold shadow-sm' : 'text-ink-mute hover:text-ink'}`}>Telegram</button>
+              <button type="button" onClick={() => setPreviewTab('messenger')} className={`px-3 py-1 text-xs font-medium rounded-sm transition-all duration-150 cursor-pointer ${previewTab === 'messenger' ? 'bg-canvas text-ink font-semibold shadow-sm' : 'text-ink-mute hover:text-ink'}`}>Messenger</button>
             </div>
           </div>
 
           <div className="bg-[#1c1c1c] text-white rounded-[24px] p-4 border-[6px] border-[#252525] shadow-xl w-full flex flex-col justify-between overflow-hidden min-h-[500px]">
             <div className="flex justify-between items-center text-[10px] text-zinc-500 px-2 pb-2"><span>9:41 AM</span><div className="flex gap-1"><span>📶</span><span>🔋</span></div></div>
-            <div className={`flex-1 rounded-[16px] p-3 overflow-y-auto flex flex-col justify-end ${previewTab === 'whatsapp' ? 'bg-[#0b141a]' : 'bg-[#182533]'}`}>
-              <div className={`rounded-lg p-3 max-w-[85%] text-xs font-sans relative flex flex-col ${previewTab === 'whatsapp' ? 'bg-[#005c4b] text-white self-end rounded-tr-none shadow-sm' : 'bg-[#182533] text-white self-start rounded-tl-none border border-slate-700 shadow-sm'}`}>
+            <div className={`flex-1 rounded-[16px] p-3 overflow-y-auto flex flex-col justify-end ${
+              previewTab === 'whatsapp' ? 'bg-[#0b141a]' : previewTab === 'telegram' ? 'bg-[#182533]' : 'bg-[#121212]'
+            }`}>
+              <div className={`rounded-lg p-3 max-w-[85%] text-xs font-sans relative flex flex-col ${
+                previewTab === 'whatsapp' 
+                  ? 'bg-[#005c4b] text-white self-end rounded-tr-none shadow-sm' 
+                  : previewTab === 'telegram'
+                  ? 'bg-[#182533] text-white self-start rounded-tl-none border border-slate-700 shadow-sm'
+                  : 'bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white self-end rounded-br-none shadow-md'
+              }`}>
                 {uploadedFiles.length > 0 && (
                   <div className="mb-2 space-y-1.5">
                     {uploadedFiles.map((file, idx) => (
@@ -1416,8 +1425,10 @@ const AnnouncementForm = () => {
                   <span>9:41 AM</span>
                   {previewTab === 'whatsapp' ? (
                     <span className="text-[#53bdeb] font-bold">✓✓</span>
-                  ) : (
+                  ) : previewTab === 'telegram' ? (
                     <span className="text-[#5288c1] font-bold">✓</span>
+                  ) : (
+                    <span className="text-white/80 font-bold">✓</span>
                   )}
                 </div>
               </div>
