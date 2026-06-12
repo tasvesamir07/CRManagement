@@ -23,6 +23,7 @@ skills-lock.json
 *.tsbuildinfo
 .vite/
 *.png
+!client/public/*.png
 *.md
 
 .vercel

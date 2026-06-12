@@ -11,7 +11,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'screenshot-desktop.png', 'screenshot-mobile.png'],
       manifest: {
         name: 'CR Announcement Dashboard',
         short_name: 'CR Announce',
@@ -21,9 +21,27 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        id: '/',
+        categories: ['education', 'productivity', 'utilities'],
         icons: [
-          { src: '/favicon.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: '/favicon.svg', sizes: '512x512', type: 'image/svg+xml' }
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' }
+        ],
+        screenshots: [
+          {
+            src: '/screenshot-desktop.png',
+            sizes: '1024x830',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Desktop App View'
+          },
+          {
+            src: '/screenshot-mobile.png',
+            sizes: '456x847',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Mobile App View'
+          }
         ]
       },
       workbox: {
