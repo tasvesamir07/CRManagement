@@ -32,10 +32,12 @@ const upload = multer({
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf', 'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'text/plain', 'text/csv'
         ];
         if (!allowed.includes(file.mimetype)) {
-            const err = new Error(`File type ${file.mimetype} is not allowed. Allowed: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, TXT, CSV`);
+            const err = new Error(`File type ${file.mimetype} is not allowed. Allowed: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, PPT, PPTX, TXT, CSV`);
             err.code = 'LIMIT_UNEXPECTED_FILE_TYPE';
             return cb(err, false);
         }

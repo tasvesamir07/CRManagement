@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -126,11 +126,23 @@ const CRDashboard = ({ navigate }) => {
     }
   };
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
     fetchWhatsAppStatus();
+    fetchData();
     const interval = setInterval(fetchWhatsAppStatus, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Refetch when filters or page change (skip initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    fetchData();
+  }, [page, statusFilter, courseFilter, dateFrom, dateTo]);
 
   const handleWsMessage = useCallback((payload) => {
     if (payload.type === 'whatsapp_status') {
