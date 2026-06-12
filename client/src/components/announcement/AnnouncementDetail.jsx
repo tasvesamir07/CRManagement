@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { announcementsAPI } from '../../services/api';
+import { announcementsAPI, filesAPI } from '../../services/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   ArrowLeft,
@@ -13,7 +13,8 @@ import {
   Paperclip,
   Clipboard,
   HelpCircle,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
@@ -175,6 +176,20 @@ const AnnouncementDetail = () => {
       navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Delete failed');
+    }
+  };
+
+  const handleDownload = async (file) => {
+    try {
+      const { url } = await filesAPI.getDownloadUrl(file.id);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.original_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      toast.error('Download failed');
     }
   };
 
@@ -340,10 +355,20 @@ const AnnouncementDetail = () => {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-4">Attachments</h3>
           <div className="space-y-2">
             {announcement.files.map((f, i) => (
-              <div key={f.id || i} className="flex items-center gap-3 p-3 border border-hairline rounded-sm">
-                <Paperclip className="w-4 h-4 text-ink-mute" />
-                <span className="text-sm text-ink">{f.original_name}</span>
-                <span className="text-xs text-ink-mute">({(f.file_size / 1024).toFixed(1)} KB)</span>
+              <div key={f.id || i} className="flex items-center justify-between p-3 border border-hairline rounded-sm">
+                <div className="flex items-center gap-3">
+                  <Paperclip className="w-4 h-4 text-ink-mute" />
+                  <span className="text-sm text-ink">{f.original_name}</span>
+                  <span className="text-xs text-ink-mute">({(f.file_size / 1024).toFixed(1)} KB)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDownload(f)}
+                  className="p-1.5 text-ink-mute hover:text-primary hover:bg-primary/10 rounded-sm transition-colors cursor-pointer"
+                  title="Download File"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>

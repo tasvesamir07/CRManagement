@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { coursesAPI, platformsAPI, filesAPI, announcementsAPI, templatesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -70,6 +70,8 @@ TITLE_PRESETS.push({ value: 'Custom', label: '✏️ Custom (Type below)...' });
 const AnnouncementForm = () => {
   const navigate = useNavigate();
   const { id: editId } = useParams();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const fileInputRef = useRef(null);
   const isEditMode = !!editId;
 
@@ -97,6 +99,13 @@ const AnnouncementForm = () => {
   const [category, setCategory] = useState(() => getInitialValue('category', 'quiz'));
   const [selectedCourseId, setSelectedCourseId] = useState(() => getInitialValue('selectedCourseId', ''));
   const [fileCaption, setFileCaption] = useState(() => getInitialValue('fileCaption', ''));
+
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [libFiles, setLibFiles] = useState([]);
+  const [libLoading, setLibLoading] = useState(false);
+  const [libSearch, setLibSearch] = useState('');
+  const [libPage, setLibPage] = useState(1);
+  const [libSelectedIds, setLibSelectedIds] = useState([]);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => getInitialValue('selectedDate', ''));
 
@@ -178,6 +187,51 @@ const AnnouncementForm = () => {
   const [previewTab, setPreviewTab] = useState('whatsapp');
   const [makeupStatus, setMakeupStatus] = useState(() => getInitialValue('makeupStatus', 'later'));
   const [customMakeupText, setCustomMakeupText] = useState(() => getInitialValue('customMakeupText', ''));
+
+  useEffect(() => {
+    const fileIdsParam = searchParams.get('file_ids');
+    if (fileIdsParam) {
+      const ids = fileIdsParam.split(',').map(id => parseInt(id, 10)).filter(Boolean);
+      if (ids.length > 0) {
+        const fetchFilesMetadata = async () => {
+          try {
+            const loadedFiles = [];
+            for (const id of ids) {
+              const res = await filesAPI.getDownloadUrl(id);
+              if (res && res.file) {
+                loadedFiles.push(res.file);
+              }
+            }
+            if (loadedFiles.length > 0) {
+              setUploadedFiles(prev => {
+                const existingIds = new Set(prev.map(f => f.id));
+                const uniqueNew = loadedFiles.filter(f => !existingIds.has(f.id));
+                return [...prev, ...uniqueNew];
+              });
+              toast.success(`${loadedFiles.length} file(s) attached from library!`);
+            }
+          } catch (e) {
+            console.error('Failed to load preselected files from URL:', e);
+            toast.error('Failed to load preselected files from library');
+          }
+        };
+        fetchFilesMetadata();
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (location.state?.selectedFiles) {
+      setUploadedFiles(prev => {
+        const existingIds = new Set(prev.map(f => f.id));
+        const uniqueNew = location.state.selectedFiles.filter(f => !existingIds.has(f.id));
+        return [...prev, ...uniqueNew];
+      });
+      toast.success(`${location.state.selectedFiles.length} file(s) attached!`);
+      // Clear location state to prevent re-adding on refresh/back-navigation
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const showTopics = category !== 'class_cancel' && category !== 'notice' && !!selectedCourseId;
   const isDateRestored = useRef(false);
@@ -371,6 +425,38 @@ const AnnouncementForm = () => {
     try { const usage = await filesAPI.getStorageUsage(); setStorageUsage(usage); } catch (e) { console.error(e); }
   };
 
+  const handleOpenLibrary = () => {
+    setLibSelectedIds([]);
+    setLibSearch('');
+    setLibPage(1);
+    setShowLibraryModal(true);
+  };
+
+  const handleAttachFromLibrary = () => {
+    const selectedFiles = libFiles.filter(f => libSelectedIds.includes(f.id));
+    const newFiles = selectedFiles.filter(sf => !uploadedFiles.some(uf => uf.id === sf.id));
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    setShowLibraryModal(false);
+    setLibSelectedIds([]);
+    toast.success(`${newFiles.length} file(s) attached!`);
+  };
+
+  useEffect(() => {
+    if (!showLibraryModal) return;
+    const fetchLibFiles = async () => {
+      setLibLoading(true);
+      try {
+        const res = await filesAPI.list({ page: libPage, limit: 30, search: libSearch });
+        setLibFiles(res.files || []);
+      } catch (err) {
+        toast.error('Failed to load library files');
+      } finally {
+        setLibLoading(false);
+      }
+    };
+    fetchLibFiles();
+  }, [showLibraryModal, libSearch, libPage]);
+
   const handlePlatformToggle = (id) => {
     if (id === 'clear') { setSelectedPlatforms([]); return; }
     setSelectedPlatforms(prev => {
@@ -405,15 +491,9 @@ const AnnouncementForm = () => {
     setUploading(false);
   };
 
-  const removeAttachment = async (index) => {
-    const file = uploadedFiles[index];
-    if (!file) return;
-    try {
-      await filesAPI.delete(file.id);
-      setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-      toast.success('Attachment removed.');
-      fetchStorageUsage();
-    } catch (e) { toast.error('Delete failed: ' + (e.response?.data?.error || e.message)); }
+  const removeAttachment = (index) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    toast.success('Attachment detached.');
   };
 
   const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(e.type === 'dragenter' || e.type === 'dragover'); };
@@ -973,7 +1053,7 @@ const AnnouncementForm = () => {
             </>
           )}
 
-          <FileUploader fileInputRef={fileInputRef} uploadedFiles={uploadedFiles} uploading={uploading} uploadProgress={uploadProgress} dragActive={dragActive} onDrag={handleDrag} onDrop={handleDrop} onFileChange={handleFileChange} onRemove={removeAttachment} />
+          <FileUploader fileInputRef={fileInputRef} uploadedFiles={uploadedFiles} uploading={uploading} uploadProgress={uploadProgress} dragActive={dragActive} onDrag={handleDrag} onDrop={handleDrop} onFileChange={handleFileChange} onRemove={removeAttachment} onChooseFromLibrary={handleOpenLibrary} />
 
           {uploadedFiles.length > 0 && (
             <div className="pt-2 bg-canvas/30 rounded-sm p-3 border border-hairline/60">
@@ -1055,6 +1135,95 @@ const AnnouncementForm = () => {
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowConfirmModal(false)} className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer">Cancel</button>
               <button type="button" onClick={handleSendBroadcast} disabled={submitting} className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50 flex items-center"><Send className="w-4 h-4 mr-1.5" />{submitting ? 'Sending...' : 'Yes, Broadcast Now'}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showLibraryModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-canvas border border-hairline rounded-lg shadow-xl max-w-2xl w-full flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-hairline flex items-center justify-between">
+              <h3 className="text-md font-semibold text-ink font-sans">Choose from Uploaded Files</h3>
+              <button type="button" onClick={() => setShowLibraryModal(false)} className="text-ink-mute hover:text-ink cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="p-4 border-b border-hairline">
+              <input
+                type="text"
+                placeholder="Search uploaded files..."
+                value={libSearch}
+                onChange={(e) => { setLibSearch(e.target.value); setLibPage(1); }}
+                className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/60 focus:outline-none focus:border-primary"
+              />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 min-h-[250px] space-y-2">
+              {libLoading ? (
+                <div className="flex justify-center items-center h-full py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>
+              ) : libFiles.length === 0 ? (
+                <div className="text-center py-12 text-ink-mute text-sm">No files found.</div>
+              ) : (
+                <div className="space-y-2">
+                  {libFiles.map(file => {
+                    const isSelected = libSelectedIds.includes(file.id);
+                    const isAlreadyAttached = uploadedFiles.some(f => f.id === file.id);
+                    return (
+                      <div
+                        key={file.id}
+                        onClick={() => {
+                          if (isAlreadyAttached) return;
+                          setLibSelectedIds(prev =>
+                            prev.includes(file.id) ? prev.filter(id => id !== file.id) : [...prev, file.id]
+                          );
+                        }}
+                        className={`flex items-center justify-between p-3 border rounded-sm cursor-pointer transition-colors ${
+                          isAlreadyAttached 
+                            ? 'bg-canvas-soft border-hairline opacity-60 cursor-not-allowed'
+                            : isSelected 
+                              ? 'border-primary bg-primary/5' 
+                              : 'border-hairline hover:bg-canvas-soft'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            disabled={isAlreadyAttached}
+                            checked={isAlreadyAttached || isSelected}
+                            onChange={() => {}} 
+                            className="accent-primary w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-ink truncate">{file.original_name}</p>
+                            <p className="text-xs text-ink-mute">
+                              {(file.file_size / 1024).toFixed(1)} KB • {new Date(file.uploaded_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        {isAlreadyAttached && (
+                          <span className="text-[10px] font-bold text-ink-mute bg-hairline px-2 py-0.5 rounded-full">Already Attached</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-hairline flex items-center justify-between bg-canvas-soft">
+              <span className="text-xs text-ink-mute">{libSelectedIds.length} file(s) selected</span>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowLibraryModal(false)} className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft cursor-pointer">Cancel</button>
+                <button
+                  type="button"
+                  onClick={handleAttachFromLibrary}
+                  disabled={libSelectedIds.length === 0}
+                  className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer disabled:opacity-50"
+                >
+                  Attach Selected
+                </button>
+              </div>
             </div>
           </div>
         </div>,

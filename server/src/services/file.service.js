@@ -127,7 +127,7 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
 
 async function checkDuplicate(filename) {
     const result = await db.query(
-        'SELECT id, original_name, file_type, file_size, created_at, uploaded_by FROM files WHERE original_name = $1 AND is_deleted = false',
+        'SELECT id, original_name, file_type, file_size, uploaded_at, uploaded_by FROM files WHERE original_name = $1 AND is_deleted = false',
         [filename]
     );
     return result.rows[0] || null;

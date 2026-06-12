@@ -4,10 +4,22 @@ import { UploadCloud, Paperclip, X } from 'lucide-react';
 export default function FileUploader({
   fileInputRef, uploadedFiles, uploading, uploadProgress,
   dragActive, onDrag, onDrop, onFileChange, onRemove,
+  onChooseFromLibrary
 }) {
   return (
     <div className="space-y-3">
-      <label className="text-xs font-medium text-ink-mute uppercase tracking-wider">Attachments</label>
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold text-ink-mute uppercase tracking-wider">Attachments</label>
+        {onChooseFromLibrary && (
+          <button
+            type="button"
+            onClick={onChooseFromLibrary}
+            className="text-xs font-semibold text-primary hover:text-primary-deep cursor-pointer border-none bg-transparent"
+          >
+            📂 Choose from Library
+          </button>
+        )}
+      </div>
       <div
         className={`border-2 border-dashed rounded-sm p-6 text-center transition-colors cursor-pointer ${dragActive ? 'border-primary bg-primary/5' : 'border-hairline-strong hover:border-primary/50'}`}
         onDragEnter={onDrag} onDragLeave={onDrag} onDragOver={onDrag} onDrop={onDrop}

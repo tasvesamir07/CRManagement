@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { filesAPI } from '../../services/api';
-import { Search, Download, Trash2, Upload, File, Image, FileText, FileArchive, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, Download, Trash2, Upload, File, Image, FileText, FileArchive, ChevronLeft, ChevronRight, RefreshCw, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TYPE_ICONS = {
@@ -33,12 +34,52 @@ const formatDate = (dateStr) => {
 };
 
 const FilesManager = () => {
+  const navigate = useNavigate();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 50 });
   const [deleting, setDeleting] = useState(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFileIds, setSelectedFileIds] = useState(new Set());
+  const fileInputRef = useRef(null);
+
+  const handleToggleSelect = (id) => {
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (files.length === 0) return;
+    const allSelected = files.every(f => selectedFileIds.has(f.id));
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        files.forEach(f => next.delete(f.id));
+      } else {
+        files.forEach(f => next.add(f.id));
+      }
+      return next;
+    });
+  };
+
+  const handleShareFiles = (ids) => {
+    if (!ids || ids.length === 0) return;
+    navigate(`/announcement/new?file_ids=${ids.join(',')}`);
+  };
+
+  useEffect(() => {
+    setSelectedFileIds(new Set());
+  }, [page, search]);
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
@@ -57,6 +98,44 @@ const FilesManager = () => {
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setPage(1);
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File size exceeds the 50MB limit.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const dupCheck = await filesAPI.checkDuplicate(file.name);
+      let overwrite = false;
+      if (dupCheck.duplicate) {
+        if (!window.confirm(`A file named "${file.name}" already exists. Do you want to overwrite it?`)) {
+          setUploading(false);
+          return;
+        }
+        overwrite = true;
+      }
+
+      const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
+      await uploadFn(file, (pe) => {
+        setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
+      });
+
+      toast.success('File uploaded successfully!');
+      fetchFiles();
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleDownload = async (file) => {
@@ -89,18 +168,52 @@ const FilesManager = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-xl font-bold text-ink">Uploaded Files</h1>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
+        <div>
+          <h1 className="text-xl font-bold text-ink font-sans">Uploaded Files</h1>
+          <p className="text-xs text-ink-mute mt-1.5 font-sans">Manage uploaded assets and files used across broadcast channels.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
+            <input
+              type="text"
+              placeholder="Search files..."
+              value={search}
+              onChange={handleSearch}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/60 focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          {selectedFileIds.size > 0 && (
+            <button
+              onClick={() => handleShareFiles([...selectedFileIds])}
+              className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-colors duration-150 cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              Share Selected ({selectedFileIds.size})
+            </button>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            {uploading ? 'Uploading...' : 'Upload File'}
+          </button>
           <input
-            type="text"
-            placeholder="Search files..."
-            value={search}
-            onChange={handleSearch}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/60 focus:outline-none focus:border-primary transition-colors"
+            ref={fileInputRef}
+            type="file"
+            onChange={handleUpload}
+            className="hidden"
           />
         </div>
       </div>
+
+      {uploading && (
+        <div className="w-full bg-hairline rounded-full h-1.5 overflow-hidden animate-pulse">
+          <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+        </div>
+      )}
 
       {/* Files Table */}
       <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
@@ -120,6 +233,14 @@ const FilesManager = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-hairline bg-canvas-soft">
+                    <th className="px-4 py-3 text-left w-10">
+                      <input
+                        type="checkbox"
+                        checked={files.length > 0 && files.every(f => selectedFileIds.has(f.id))}
+                        onChange={handleToggleSelectAll}
+                        className="accent-primary w-4 h-4 cursor-pointer rounded-sm"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-ink-mute uppercase tracking-wider">Name</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-ink-mute uppercase tracking-wider hidden sm:table-cell">Type</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-ink-mute uppercase tracking-wider hidden md:table-cell">Size</th>
@@ -132,8 +253,17 @@ const FilesManager = () => {
                   {files.map((file) => {
                     const Icon = getFileIcon(file.file_type);
                     const isDeleting = deleting.has(file.id);
+                    const isSelected = selectedFileIds.has(file.id);
                     return (
-                      <tr key={file.id} className="hover:bg-canvas-soft transition-colors">
+                      <tr key={file.id} className={`hover:bg-canvas-soft transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
+                        <td className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(file.id)}
+                            className="accent-primary w-4 h-4 cursor-pointer rounded-sm"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center shrink-0">
@@ -148,6 +278,13 @@ const FilesManager = () => {
                         <td className="px-4 py-3 text-ink-mute hidden lg:table-cell">{formatDate(file.uploaded_at)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleShareFiles([file.id])}
+                              className="p-1.5 text-ink-mute hover:text-emerald-600 hover:bg-emerald-50 rounded-sm transition-colors cursor-pointer"
+                              title="Share in Announcement"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleDownload(file)}
                               className="p-1.5 text-ink-mute hover:text-primary hover:bg-primary/10 rounded-sm transition-colors cursor-pointer"
