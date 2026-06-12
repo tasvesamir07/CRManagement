@@ -288,11 +288,31 @@ async function getChats() {
 
     try {
         const chats = await sock.groupFetchAllParticipating();
-        const groups = Object.values(chats).map(group => ({
-            id: group.id,
-            name: group.subject || group.id,
-            isGroup: true
-        }));
+        const chatValues = Object.values(chats);
+
+        // Build a mapping of parent community JID to its subject/name
+        const communityNames = {};
+        for (const chat of chatValues) {
+            if (chat.isCommunity) {
+                communityNames[chat.id] = chat.subject || chat.id;
+            }
+        }
+
+        const groups = chatValues
+            .filter(group => !group.isCommunity) // Filter out the parent community groups since they cannot receive messages
+            .map(group => {
+                let name = group.subject || group.id;
+                if (group.isCommunityAnnounce) {
+                    const parentName = communityNames[group.linkedParent] || 'Community';
+                    name = `${parentName} Announcements`;
+                }
+                return {
+                    id: group.id,
+                    name: name,
+                    isGroup: true
+                };
+            });
+
         return groups;
     } catch (err) {
         console.error('Error fetching WhatsApp chats:', err.message);
