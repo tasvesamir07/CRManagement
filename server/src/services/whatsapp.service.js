@@ -158,7 +158,14 @@ async function requestPairingCode(phoneNumber) {
         if (!sock) {
             throw new Error('WhatsApp client failed to initialize. Please try again.');
         }
-        await new Promise(r => setTimeout(r, 2000));
+    }
+
+    for (let i = 0; i < 45; i++) {
+        if (connectionStatus === 'QR_READY' || connectionStatus === 'CONNECTED') break;
+        await new Promise(r => setTimeout(r, 1000));
+    }
+    if (connectionStatus !== 'QR_READY' && connectionStatus !== 'CONNECTED') {
+        throw new Error(`WhatsApp connection not ready (status: ${connectionStatus}). Please wait for QR code and try again.`);
     }
 
     try {
