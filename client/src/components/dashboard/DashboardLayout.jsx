@@ -172,7 +172,7 @@ const DashboardLayout = () => {
                   to={item.href}
                   className={`group flex items-center px-3.5 py-2.5 text-sm font-medium rounded-sm transition-all duration-150 ${
                     isActive
-                      ? 'bg-ink text-on-dark font-medium shadow-sm'
+                      ? 'bg-ink dark:bg-primary/15 text-on-dark dark:text-primary font-medium shadow-sm'
                       : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
                   }`}
                 >
@@ -191,7 +191,7 @@ const DashboardLayout = () => {
                   to={item.href}
                   className={`group flex items-center px-3.5 py-2.5 text-sm font-medium rounded-sm transition-all duration-150 ${
                     isActive
-                      ? 'bg-ink text-on-dark font-medium shadow-sm'
+                      ? 'bg-ink dark:bg-primary/15 text-on-dark dark:text-primary font-medium shadow-sm'
                       : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
                   }`}
                 >

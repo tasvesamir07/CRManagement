@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { routinesAPI, coursesAPI } from '../../services/api';
-import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Clock } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Clock, Download } from 'lucide-react';
 import { TimePicker } from '../ui/time-picker';
+import { toPng } from 'html-to-image';
 
 const DAYS_OF_WEEK = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -234,6 +235,34 @@ const RoutineManager = () => {
     }
   };
 
+  const handleDownloadImage = () => {
+    const node = document.getElementById('routine-table-container');
+    if (!node) return;
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    toPng(node, {
+      filter: (el) => {
+        return !el.classList?.contains('no-export');
+      },
+      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+      style: {
+        borderRadius: '0px',
+      }
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        const fileName = `routine-${semesterTitle.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'schedule'}.png`;
+        link.download = fileName;
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch((err) => {
+        console.error('Failed to export image:', err);
+        alert('Failed to export routine as image. Please try again.');
+      });
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -398,131 +427,142 @@ const RoutineManager = () => {
           Loading schedules...
         </div>
       ) : (
-        <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-6 space-y-6 overflow-hidden">
-          {/* Printable/Display Routine Header */}
-          <div className="text-center space-y-1 pb-5 border-b border-hairline-cool">
-            <input
-              type="text"
-              value={semesterTitle}
-              onChange={(e) => setSemesterTitle(e.target.value)}
-              className="text-center font-bold text-2xl text-zinc-800 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-full max-w-lg font-sans"
-              placeholder="Semester Title (e.g. Summer – 2026 (v3))"
-            />
-            <div className="flex justify-center gap-2">
+        <div className="space-y-4">
+          <div className="flex justify-end gap-3 no-export">
+            <button
+              onClick={handleDownloadImage}
+              className="flex items-center justify-center px-4.5 py-2 text-xs font-semibold text-ink border border-hairline rounded-sm hover:bg-canvas-soft transition-all duration-150 cursor-pointer shadow-sm bg-canvas"
+            >
+              <Download className="w-3.5 h-3.5 mr-2 text-primary" /> Download Routine (PNG)
+            </button>
+          </div>
+          
+          <div id="routine-table-container" className="bg-canvas border border-hairline rounded-lg shadow-sm p-6 space-y-6 overflow-hidden">
+            {/* Printable/Display Routine Header */}
+            <div className="text-center space-y-1 pb-5 border-b border-hairline-cool">
               <input
                 type="text"
-                value={sectionGroup}
-                onChange={(e) => setSectionGroup(e.target.value)}
-                className="text-center font-medium text-lg text-zinc-700 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-48"
-                placeholder="Sections (e.g. CS – A & H)"
+                value={semesterTitle}
+                onChange={(e) => setSemesterTitle(e.target.value)}
+                className="text-center font-bold text-2xl text-zinc-800 dark:text-zinc-100 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-full max-w-lg font-sans"
+                placeholder="Semester Title (e.g. Summer – 2026 (v3))"
+              />
+              <div className="flex justify-center gap-2">
+                <input
+                  type="text"
+                  value={sectionGroup}
+                  onChange={(e) => setSectionGroup(e.target.value)}
+                  className="text-center font-medium text-lg text-zinc-700 dark:text-zinc-300 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-48"
+                  placeholder="Sections (e.g. CS – A & H)"
+                />
+              </div>
+              <input
+                type="text"
+                value={batchCode}
+                onChange={(e) => setBatchCode(e.target.value)}
+                className="text-center text-sm text-zinc-500 dark:text-zinc-400 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-48 block mx-auto font-semibold"
+                placeholder="Batch Code (e.g. SWE 41)"
+              />
+              <input
+                type="text"
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                className="text-center text-xs text-zinc-500 dark:text-zinc-400 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-64 block mx-auto italic"
+                placeholder="Effective Date (e.g. Effective from 6, June 2026)"
               />
             </div>
-            <input
-              type="text"
-              value={batchCode}
-              onChange={(e) => setBatchCode(e.target.value)}
-              className="text-center text-sm text-zinc-500 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-48 block mx-auto font-semibold"
-              placeholder="Batch Code (e.g. SWE 41)"
-            />
-            <input
-              type="text"
-              value={effectiveDate}
-              onChange={(e) => setEffectiveDate(e.target.value)}
-              className="text-center text-xs text-zinc-500 bg-transparent border-b border-transparent hover:border-hairline focus:border-primary focus:outline-none w-64 block mx-auto italic"
-              placeholder="Effective Date (e.g. Effective from 6, June 2026)"
-            />
-          </div>
 
-          {/* Calendar Grid Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse border border-zinc-300">
-              <thead>
-                <tr className="bg-[#1e4620] text-white">
-                  <th className="border border-zinc-300 py-3 px-4 text-xs font-semibold text-center w-36 bg-[#1e4620] text-white font-sans uppercase">
-                    ↓Time / Day →
-                  </th>
-                  {getActiveDays().map(day => (
-                    <th key={day} className="border border-zinc-300 py-3 px-4 text-sm font-semibold text-center font-sans bg-[#1e4620] text-white">
-                      {day}
+            {/* Calendar Grid Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse border border-zinc-300 dark:border-zinc-700">
+                <thead>
+                  <tr className="bg-[#1e4620] dark:bg-emerald-950 text-white dark:text-emerald-100">
+                    <th className="border border-zinc-300 dark:border-zinc-700 py-3 px-4 text-xs font-semibold text-center w-36 bg-[#1e4620] dark:bg-emerald-950 text-white font-sans uppercase">
+                      ↓Time / Day →
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {getSortedSlots().map((slot, sIdx) => (
-                  <tr key={sIdx} className="h-28">
-                    {/* Row Header (Time Slot) */}
-                    <td className="border border-zinc-300 bg-zinc-100 py-2 px-3 text-center text-xs font-bold text-zinc-700 w-36 font-mono">
-                      {formatTimeRange(slot.start, slot.end)}
-                    </td>
-                    
-                    {/* Day Cells */}
-                    {getActiveDays().map((day, dIdx) => {
-                      const cellRoutines = getCellRoutines(slot, day);
-                      const isEmpty = cellRoutines.length === 0;
-                      const isDraggedOver = dragOverCell === `${day}-${slot.start}`;
-                      
-                      return (
-                        <td 
-                          key={dIdx} 
-                          onDragOver={(e) => handleDragOver(e, day, slot)}
-                          onDragEnter={(e) => handleDragEnter(e, day, slot)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, day, slot)}
-                          className={`border border-zinc-300 p-2 text-center text-xs align-middle transition-colors relative group min-w-[120px] ${
-                            isEmpty ? 'bg-zinc-50' : 'bg-[#e2e8f0]'
-                          } ${
-                            isDraggedOver ? 'bg-primary/20 border-dashed border-2 border-primary' : ''
-                          }`}
-                        >
-                          {!isEmpty ? (
-                            <div className="space-y-2">
-                              {cellRoutines.map((r) => {
-                                // Find course code and teacher details
-                                const matchedCourse = courses.find(c => c.course_id === r.c_id);
-                                const initials = matchedCourse ? matchedCourse.teacher_initials : '';
-                                
-                                return (
-                                  <div 
-                                    key={r.id} 
-                                    draggable={true}
-                                    onDragStart={(e) => handleDragStart(e, r)}
-                                    className="bg-canvas border border-hairline p-2 rounded shadow-sm relative pr-12 hover:bg-canvas-soft transition-colors cursor-grab active:cursor-grabbing text-left"
-                                  >
-                                    <div className="font-bold text-ink text-sm leading-tight">
-                                      {r.c_id}{r.section ? ` ${r.section}` : ''} {initials ? `(${initials})` : ''}
-                                    </div>
-                                    <div className="text-xs text-ink-mute mt-1 font-medium">
-                                      {r.room_number}
-                                    </div>
-                                    <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                      <button
-                                        onClick={() => handleEdit(r)}
-                                        className="text-ink-mute hover:text-primary hover:bg-hairline-cool p-0.5 rounded cursor-pointer"
-                                        title="Edit Entry"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(r.id)}
-                                        className="text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 p-0.5 rounded cursor-pointer"
-                                        title="Delete Entry"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : null}
-                        </td>
-                      );
-                    })}
+                    {getActiveDays().map(day => (
+                      <th key={day} className="border border-zinc-300 dark:border-zinc-700 py-3 px-4 text-sm font-semibold text-center font-sans bg-[#1e4620] dark:bg-emerald-950 text-white">
+                        {day}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {getSortedSlots().map((slot, sIdx) => (
+                    <tr key={sIdx} className="h-28">
+                      {/* Row Header (Time Slot) */}
+                      <td className="border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 py-2 px-3 text-center text-xs font-bold text-zinc-700 dark:text-zinc-300 w-36 font-mono">
+                        {formatTimeRange(slot.start, slot.end)}
+                      </td>
+                      
+                      {/* Day Cells */}
+                      {getActiveDays().map((day, dIdx) => {
+                        const cellRoutines = getCellRoutines(slot, day);
+                        const isEmpty = cellRoutines.length === 0;
+                        const isDraggedOver = dragOverCell === `${day}-${slot.start}`;
+                        
+                        return (
+                          <td 
+                            key={dIdx} 
+                            onDragOver={(e) => handleDragOver(e, day, slot)}
+                            onDragEnter={(e) => handleDragEnter(e, day, slot)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, day, slot)}
+                            className={`border border-zinc-300 dark:border-zinc-700 p-2 text-center text-xs align-middle transition-colors relative group min-w-[120px] ${
+                              isEmpty ? 'bg-zinc-50 dark:bg-zinc-900/30' : 'bg-[#e2e8f0] dark:bg-zinc-800/60'
+                            } ${
+                              isDraggedOver ? 'bg-primary/20 border-dashed border-2 border-primary' : ''
+                            }`}
+                          >
+                            {!isEmpty ? (
+                              <div className="space-y-2">
+                                {cellRoutines.map((r) => {
+                                  // Find course code and teacher details
+                                  const matchedCourse = courses.find(c => c.course_id === r.c_id);
+                                  const initials = matchedCourse ? matchedCourse.teacher_initials : '';
+                                  
+                                  return (
+                                    <div 
+                                      key={r.id} 
+                                      draggable={true}
+                                      onDragStart={(e) => handleDragStart(e, r)}
+                                      className="bg-canvas dark:bg-zinc-900 border border-hairline dark:border-zinc-700 p-2 rounded shadow-sm relative pr-12 hover:bg-canvas-soft dark:hover:bg-zinc-850 transition-colors cursor-grab active:cursor-grabbing text-left"
+                                    >
+                                      <div className="font-bold text-ink dark:text-zinc-100 text-sm leading-tight">
+                                        {r.c_id}{r.section ? ` ${r.section}` : ''} {initials ? `(${initials})` : ''}
+                                      </div>
+                                      <div className="text-xs text-ink-mute dark:text-zinc-400 mt-1 font-medium">
+                                        {r.room_number}
+                                      </div>
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 no-export">
+                                        <button
+                                          onClick={() => handleEdit(r)}
+                                          className="text-ink-mute dark:text-zinc-400 hover:text-primary dark:hover:text-primary hover:bg-hairline-cool dark:hover:bg-zinc-800 p-0.5 rounded cursor-pointer"
+                                          title="Edit Entry"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDelete(r.id)}
+                                          className="text-ink-mute dark:text-zinc-400 hover:text-accent-tomato dark:hover:text-red-400 hover:bg-accent-tomato/10 p-0.5 rounded cursor-pointer"
+                                          title="Delete Entry"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
