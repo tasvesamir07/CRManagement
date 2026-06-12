@@ -23,7 +23,8 @@ import {
   ArrowLeft,
   ChevronDown,
   Calendar,
-  Clipboard
+  Clipboard,
+  GripVertical
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 
@@ -117,6 +118,45 @@ const AnnouncementForm = () => {
   });
   const [currentNote, setCurrentNote] = useState('');
   const [noteType, setNoteType] = useState('note');
+  const [draggedTopicIdx, setDraggedTopicIdx] = useState(null);
+  const [draggedNoteIdx, setDraggedNoteIdx] = useState(null);
+
+  const handleTopicDragStart = (e, idx) => {
+    setDraggedTopicIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleTopicDragOver = (e) => {
+    e.preventDefault();
+  };
+  const handleTopicDrop = (e, targetIdx) => {
+    e.preventDefault();
+    if (draggedTopicIdx === null || draggedTopicIdx === targetIdx) return;
+    const items = [...topics];
+    const draggedItem = items[draggedTopicIdx];
+    items.splice(draggedTopicIdx, 1);
+    items.splice(targetIdx, 0, draggedItem);
+    setTopics(items);
+    setDraggedTopicIdx(null);
+  };
+
+  const handleNoteDragStart = (e, idx) => {
+    setDraggedNoteIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleNoteDragOver = (e) => {
+    e.preventDefault();
+  };
+  const handleNoteDrop = (e, targetIdx) => {
+    e.preventDefault();
+    if (draggedNoteIdx === null || draggedNoteIdx === targetIdx) return;
+    const items = [...notes];
+    const draggedItem = items[draggedNoteIdx];
+    items.splice(draggedNoteIdx, 1);
+    items.splice(targetIdx, 0, draggedItem);
+    setNotes(items);
+    setDraggedNoteIdx(null);
+  };
+
   const [closingText, setClosingText] = useState(() => getInitialValue('closingText', 'Please be prepared and attend on time. Good luck! 🍀📖'));
 
   const [selectedPlatforms, setSelectedPlatforms] = useState(() => getInitialValue('selectedPlatforms', []));
@@ -160,6 +200,8 @@ const AnnouncementForm = () => {
           if (sec.name) msg += ` · Section ${sec.name}:\n`;
           if (sec.timeOption === 'none') {
             // Omit time line
+          } else if (sec.timeOption === 'custom') {
+            if (sec.startTime) msg += `   ⏰ *Time:* ${sec.startTime}\n`;
           } else if (sec.timeOption === 'tbd') {
             msg += '   ⏰ *Time:* Will announce later\n';
           } else {
@@ -196,12 +238,14 @@ const AnnouncementForm = () => {
       msg += `📅 *Date:* ${day}/${month}/${year} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd');
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
     if (hasSections) {
       sections.forEach(sec => {
         if (sec.name) msg += `\n*Section ${sec.name}*\n`;
         if (sec.timeOption === 'none') {
           // Omit time line
+        } else if (sec.timeOption === 'custom') {
+          if (sec.startTime) msg += `⏰ *Time:* ${sec.startTime}\n`;
         } else if (sec.timeOption === 'tbd') {
           msg += '⏰ *Time:* Will announce later\n';
         } else {
@@ -238,21 +282,21 @@ const AnnouncementForm = () => {
     }, {});
 
     if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
-      const label = groupedNotes.instruction.length > 1 ? '*Instructions:*' : '*Instruction:*';
+      const label = groupedNotes.instruction.length > 1 ? '📋 *Instructions:*' : '📋 *Instruction:*';
       msg += `\n${label}\n`;
       groupedNotes.instruction.forEach(text => {
         msg += ` · *${text}*\n`;
       });
     }
     if (groupedNotes.important && groupedNotes.important.length > 0) {
-      const label = '*Important:*';
+      const label = '⚠️ *Important:*';
       msg += `\n${label}\n`;
       groupedNotes.important.forEach(text => {
         msg += ` · *${text}*\n`;
       });
     }
     if (groupedNotes.note && groupedNotes.note.length > 0) {
-      const label = groupedNotes.note.length > 1 ? '*Notes:*' : '*Note:*';
+      const label = groupedNotes.note.length > 1 ? '📝 *Notes:*' : '📝 *Note:*';
       msg += `\n${label}\n`;
       groupedNotes.note.forEach(text => {
         msg += ` · *${text}*\n`;
@@ -602,47 +646,6 @@ const AnnouncementForm = () => {
                 </div>
               </div>
 
-              <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-5">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={(category === 'syllabus' || category === 'suggestion') ? "md:col-span-2" : ""}>
-                    <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
-                    <div className="custom-select-wrapper">
-                      <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150">
-                        <option value="">General Notice (No Course)</option>
-                        {courses.map(c => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
-                    </div>
-                  </div>
-                  {(category !== 'syllabus' && category !== 'suggestion') && (
-                    <div><label className="block text-[11px] font-medium text-ink-mute mb-1">Event Date</label><DatePicker value={selectedDate} onChange={(val) => setSelectedDate(val)} placeholder="Select Event Date" /></div>
-                  )}
-                </div>
-              </div>
-
-              {category === 'class_cancel' && (
-                <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-3">
-                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Make-up / Rescheduling Option</label>
-                  <div className="custom-select-wrapper">
-                    <select value={makeupStatus} onChange={(e) => setMakeupStatus(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150">
-                      <option value="later">⏰ Make-up time will be shared later</option>
-                      <option value="rescheduled">📅 Rescheduled to new time/room slot</option>
-                      <option value="online">📍 Held Online instead (at same/new time)</option>
-                      <option value="none">❌ Just Cancelled (No make-up)</option>
-                      <option value="custom">✏️ Custom Rescheduling Details...</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
-                  </div>
-                  {makeupStatus === 'custom' && (
-                    <div className="mt-2.5">
-                      <label className="block text-[11px] font-semibold text-ink-mute mb-1">Custom Make-up / Rescheduling Text *</label>
-                      <input type="text" required value={customMakeupText} onChange={(e) => setCustomMakeupText(e.target.value)} placeholder="e.g. Makeup class on Friday at 3:00 PM in Room 602." className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150" />
-                    </div>
-                  )}
-                </div>
-              )}
-
               {(category !== 'class_cancel' && category !== 'syllabus' && category !== 'suggestion' || (category === 'class_cancel' && (makeupStatus === 'rescheduled' || makeupStatus === 'online'))) && (
                 <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
                   <div className="flex items-center justify-between border-b border-hairline-cool pb-2">
@@ -663,19 +666,25 @@ const AnnouncementForm = () => {
                             <select value={sec.timeOption || 'select'} onChange={(e) => {
                               const opt = e.target.value;
                               handleSectionChange(idx, 'timeOption', opt);
-                              if (opt !== 'select') {
+                              if (opt !== 'select' && opt !== 'custom') {
                                 handleSectionChange(idx, 'startTime', '');
                                 handleSectionChange(idx, 'endTime', '');
                               }
                             }} className="custom-select block w-full pl-2 pr-7 h-9 py-1.5 border border-hairline bg-canvas rounded-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-ink hover:border-hairline-strong transition-all duration-150">
                               <option value="select">⏱️ Set Time</option>
+                              <option value="custom">✏️ Custom Text</option>
                               <option value="tbd">⏳ Not Decided</option>
                               <option value="none">❌ No Time</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-ink-mute"><ChevronDown className="h-3.5 w-3.5" /></div>
                           </div>
                         </div>
-                        {(!sec.timeOption || sec.timeOption === 'select') ? (
+                        {sec.timeOption === 'custom' ? (
+                          <div className="w-full md:w-[36%]">
+                            <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Custom Time Text</label></div>
+                            <input type="text" value={sec.startTime || ''} onChange={(e) => handleSectionChange(idx, 'startTime', e.target.value)} placeholder="e.g. 11:30 AM (Tentative)" className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
+                          </div>
+                        ) : (!sec.timeOption || sec.timeOption === 'select') ? (
                           <>
                             <div className="w-full md:w-[18%]">
                               <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Start Time</label></div>
@@ -725,6 +734,47 @@ const AnnouncementForm = () => {
                 </div>
               )}
 
+              <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-5">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={(category === 'syllabus' || category === 'suggestion') ? "md:col-span-2" : ""}>
+                    <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
+                    <div className="custom-select-wrapper">
+                      <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150">
+                        <option value="">General Notice (No Course)</option>
+                        {courses.map(c => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
+                    </div>
+                  </div>
+                  {(category !== 'syllabus' && category !== 'suggestion') && (
+                    <div><label className="block text-[11px] font-medium text-ink-mute mb-1">Event Date</label><DatePicker value={selectedDate} onChange={(val) => setSelectedDate(val)} placeholder="Select Event Date" /></div>
+                  )}
+                </div>
+              </div>
+
+              {category === 'class_cancel' && (
+                <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-3">
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Make-up / Rescheduling Option</label>
+                  <div className="custom-select-wrapper">
+                    <select value={makeupStatus} onChange={(e) => setMakeupStatus(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150">
+                      <option value="later">⏰ Make-up time will be shared later</option>
+                      <option value="rescheduled">📅 Rescheduled to new time/room slot</option>
+                      <option value="online">📍 Held Online instead (at same/new time)</option>
+                      <option value="none">❌ Just Cancelled (No make-up)</option>
+                      <option value="custom">✏️ Custom Rescheduling Details...</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
+                  </div>
+                  {makeupStatus === 'custom' && (
+                    <div className="mt-2.5">
+                      <label className="block text-[11px] font-semibold text-ink-mute mb-1">Custom Make-up / Rescheduling Text *</label>
+                      <input type="text" required value={customMakeupText} onChange={(e) => setCustomMakeupText(e.target.value)} placeholder="e.g. Makeup class on Friday at 3:00 PM in Room 602." className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150" />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {showTopics && (
                 <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><ListPlus className="w-4 h-4 mr-1.5 text-primary" /> {category === 'syllabus' ? 'Syllabus Details' : category === 'suggestion' ? 'Suggestions' : 'Topics / Syllabus'}</h4>
@@ -733,11 +783,19 @@ const AnnouncementForm = () => {
                     <button type="button" onClick={addTopic} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors">Add</button>
                   </div>
                   {topics.length > 0 && (
-                    <div className="space-y-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
                       {topics.map((t, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs text-ink-secondary py-1 px-2 hover:bg-canvas-soft rounded-sm">
-                          <span className="truncate"> • {t}</span>
-                          <button type="button" onClick={() => removeTopic(i)} className="text-ink-mute hover:text-accent-tomato"><X className="w-3.5 h-3.5" /></button>
+                        <div key={i}
+                          draggable
+                          onDragStart={(e) => handleTopicDragStart(e, i)}
+                          onDragOver={handleTopicDragOver}
+                          onDrop={(e) => handleTopicDrop(e, i)}
+                          className="flex items-center justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move select-none">
+                          <span className="truncate flex items-center gap-1.5">
+                            <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0" />
+                            <span className="truncate">• {t}</span>
+                          </span>
+                          <button type="button" onClick={() => removeTopic(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                         </div>
                       ))}
                     </div>
@@ -757,20 +815,30 @@ const AnnouncementForm = () => {
                   <button type="button" onClick={addNote} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors">Add</button>
                 </div>
                 {notes.length > 0 && (
-                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
                     {notes.map((n, i) => {
                       const isObj = typeof n === 'object' && n !== null;
                       const text = isObj ? n.text : n;
                       const type = isObj ? n.type : 'note';
                       const typeLabel = type === 'instruction' ? 'Instruction' : type === 'important' ? 'Important' : 'Note';
                       const badgeColor = type === 'instruction' ? 'bg-primary/10 text-primary' : type === 'important' ? 'bg-accent-tomato/10 text-accent-tomato' : 'bg-accent-violet/10 text-accent-violet';
+                      const BadgeIcon = type === 'instruction' ? BookOpen : type === 'important' ? AlertTriangle : StickyNote;
                       return (
-                        <div key={i} className="flex items-center justify-between text-xs text-ink-secondary py-1 px-2 hover:bg-canvas-soft rounded-sm">
+                        <div key={i}
+                          draggable
+                          onDragStart={(e) => handleNoteDragStart(e, i)}
+                          onDragOver={handleNoteDragOver}
+                          onDrop={(e) => handleNoteDrop(e, i)}
+                          className="flex items-center justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move select-none">
                           <span className="truncate flex items-center gap-1.5">
-                            <span className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor}`}>{typeLabel}</span>
+                            <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0" />
+                            <span className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1`}>
+                              <BadgeIcon className="w-2.5 h-2.5" />
+                              {typeLabel}
+                            </span>
                             <span className="truncate">{text}</span>
                           </span>
-                          <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato"><X className="w-3.5 h-3.5" /></button>
+                          <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                         </div>
                       );
                     })}

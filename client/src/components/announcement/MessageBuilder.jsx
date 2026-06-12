@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, GripVertical, BookOpen, StickyNote, AlertTriangle } from 'lucide-react';
 
 const PRESET_DEFS = {
   'Quiz - 1': { category: 'quiz', topicLabel: 'Quiz Topics:' },
@@ -66,6 +66,45 @@ export default function MessageBuilder({
   showTopics, currentCourseRoutines,
 }) {
   const [noteType, setNoteType] = React.useState('note');
+  const [draggedTopicIdx, setDraggedTopicIdx] = React.useState(null);
+  const [draggedNoteIdx, setDraggedNoteIdx] = React.useState(null);
+
+  const handleTopicDragStart = (e, idx) => {
+    setDraggedTopicIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleTopicDragOver = (e) => {
+    e.preventDefault();
+  };
+  const handleTopicDrop = (e, targetIdx) => {
+    e.preventDefault();
+    if (draggedTopicIdx === null || draggedTopicIdx === targetIdx) return;
+    const items = [...topics];
+    const draggedItem = items[draggedTopicIdx];
+    items.splice(draggedTopicIdx, 1);
+    items.splice(targetIdx, 0, draggedItem);
+    setTopics(items);
+    setDraggedTopicIdx(null);
+  };
+
+  const handleNoteDragStart = (e, idx) => {
+    setDraggedNoteIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleNoteDragOver = (e) => {
+    e.preventDefault();
+  };
+  const handleNoteDrop = (e, targetIdx) => {
+    e.preventDefault();
+    if (draggedNoteIdx === null || draggedNoteIdx === targetIdx) return;
+    const items = [...notes];
+    const draggedItem = items[draggedNoteIdx];
+    items.splice(draggedNoteIdx, 1);
+    items.splice(targetIdx, 0, draggedItem);
+    setNotes(items);
+    setDraggedNoteIdx(null);
+  };
+
   const handlePresetChange = (presetValue) => {
     setTitlePreset(presetValue);
     if (presetValue !== 'Custom') {
@@ -121,6 +160,8 @@ export default function MessageBuilder({
           if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
           if (sec.timeOption === 'none') {
             // Omit time line
+          } else if (sec.timeOption === 'custom') {
+            if (sec.startTime) msg += `   ⏰ *Time:* ${sec.startTime}\n`;
           } else if (sec.timeOption === 'tbd') {
             msg += '   ⏰ *Time:* Will announce later\n';
           } else {
@@ -137,6 +178,8 @@ export default function MessageBuilder({
           if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
           if (sec.timeOption === 'none') {
             // Omit time line
+          } else if (sec.timeOption === 'custom') {
+            if (sec.startTime) msg += `   ⏰ *Time:* ${sec.startTime}\n`;
           } else if (sec.timeOption === 'tbd') {
             msg += '   ⏰ *Time:* Will announce later\n';
           } else {
@@ -173,12 +216,14 @@ export default function MessageBuilder({
       msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd');
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
     if (hasSections) {
       sections.forEach(sec => {
         if (sections.length > 1 && sec.name) msg += `\n*Section ${sec.name}*\n`;
         if (sec.timeOption === 'none') {
           // Omit time line
+        } else if (sec.timeOption === 'custom') {
+          if (sec.startTime) msg += `⏰ *Time:* ${sec.startTime}\n`;
         } else if (sec.timeOption === 'tbd') {
           msg += '⏰ *Time:* Will announce later\n';
         } else {
@@ -208,21 +253,21 @@ export default function MessageBuilder({
     }, {});
 
     if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
-      const label = groupedNotes.instruction.length > 1 ? '*Instructions:*' : '*Instruction:*';
+      const label = groupedNotes.instruction.length > 1 ? '📋 *Instructions:*' : '📋 *Instruction:*';
       msg += `\n${label}\n`;
       groupedNotes.instruction.forEach(text => {
         msg += ` · *${text}*\n`;
       });
     }
     if (groupedNotes.important && groupedNotes.important.length > 0) {
-      const label = '*Important:*';
+      const label = '⚠️ *Important:*';
       msg += `\n${label}\n`;
       groupedNotes.important.forEach(text => {
         msg += ` · *${text}*\n`;
       });
     }
     if (groupedNotes.note && groupedNotes.note.length > 0) {
-      const label = groupedNotes.note.length > 1 ? '*Notes:*' : '*Note:*';
+      const label = groupedNotes.note.length > 1 ? '📝 *Notes:*' : '📝 *Note:*';
       msg += `\n${label}\n`;
       groupedNotes.note.forEach(text => {
         msg += ` · *${text}*\n`;
@@ -276,16 +321,20 @@ export default function MessageBuilder({
             <select value={sec.timeOption || 'select'} onChange={(e) => {
               const opt = e.target.value;
               updateSection(i, 'timeOption', opt);
-              if (opt !== 'select') {
+              if (opt !== 'select' && opt !== 'custom') {
                 updateSection(i, 'startTime', '');
                 updateSection(i, 'endTime', '');
               }
             }} className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary">
               <option value="select">⏱️ Set Time</option>
+              <option value="custom">✏️ Custom Text</option>
               <option value="tbd">⏳ Not Decided</option>
               <option value="none">❌ No Time</option>
             </select>
-            {(!sec.timeOption || sec.timeOption === 'select') ? (
+            {sec.timeOption === 'custom' ? (
+              <input type="text" placeholder="Custom time text" value={sec.startTime} onChange={e => updateSection(i, 'startTime', e.target.value)}
+                className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[200px]" />
+            ) : (!sec.timeOption || sec.timeOption === 'select') ? (
               <>
                 <input type="time" value={sec.startTime} onChange={e => updateSection(i, 'startTime', e.target.value)}
                   className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[100px]" />
@@ -324,7 +373,13 @@ export default function MessageBuilder({
           </div>
           <div className="flex flex-wrap gap-2">
             {topics.map((t, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-ink text-xs rounded-sm">
+              <span key={i}
+                draggable
+                onDragStart={(e) => handleTopicDragStart(e, i)}
+                onDragOver={handleTopicDragOver}
+                onDrop={(e) => handleTopicDrop(e, i)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-ink text-xs rounded-sm cursor-move select-none hover:bg-primary/15 transition-colors border border-transparent hover:border-primary/20">
+                <GripVertical className="w-3 h-3 text-primary/70 flex-shrink-0" />
                 {t}
                 <button type="button" onClick={() => removeTopic(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
               </span>
@@ -354,8 +409,16 @@ export default function MessageBuilder({
             const type = isObj ? n.type : 'note';
             const typeLabel = type === 'instruction' ? 'Instruction' : type === 'important' ? 'Important' : 'Note';
             const badgeColor = type === 'instruction' ? 'bg-primary/10 text-primary' : type === 'important' ? 'bg-accent-tomato/10 text-accent-tomato' : 'bg-accent-violet/10 text-accent-violet';
+            const BadgeIcon = type === 'instruction' ? BookOpen : type === 'important' ? AlertTriangle : StickyNote;
             return (
-              <span key={i} className={`inline-flex items-center gap-1 px-2 py-1 ${badgeColor} text-xs rounded-sm`}>
+              <span key={i}
+                draggable
+                onDragStart={(e) => handleNoteDragStart(e, i)}
+                onDragOver={handleNoteDragOver}
+                onDrop={(e) => handleNoteDrop(e, i)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${badgeColor} text-xs rounded-sm cursor-move select-none border border-transparent hover:brightness-95 transition-all`}>
+                <GripVertical className="w-3 h-3 opacity-70 flex-shrink-0" />
+                <BadgeIcon className="w-3 h-3 shrink-0" />
                 <span className="font-bold text-[10px] uppercase mr-0.5">{typeLabel}:</span>
                 {text}
                 <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
