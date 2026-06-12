@@ -58,10 +58,9 @@ const CRDashboard = ({ navigate }) => {
   const [platforms, setPlatforms] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [waStatus, setWaStatus] = useState('DISCONNECTED');
-  const [deletingId, setDeletingId] = useState(null);
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -91,7 +90,7 @@ const CRDashboard = ({ navigate }) => {
       const announcementsData = await announcementsAPI.list({
         page,
         limit: 10,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         status: statusFilter || undefined,
         course_id: courseFilter || undefined,
         date_from: dateFrom || undefined,
@@ -118,36 +117,22 @@ const CRDashboard = ({ navigate }) => {
     }
   };
 
-  const fetchWhatsAppStatus = async () => {
-    try {
-      const res = await platformsAPI.getWhatsAppStatus();
-      setWaStatus(res.status);
-    } catch (e) {
-    }
-  };
-
-  const isInitialMount = useRef(true);
-
+  // Debounce search input
   useEffect(() => {
-    fetchWhatsAppStatus();
-    fetchData();
-    const interval = setInterval(fetchWhatsAppStatus, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Refetch when filters or page change (skip initial mount)
+  // Fetch data on filters, search, or page changes
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
     fetchData();
-  }, [page, statusFilter, courseFilter, dateFrom, dateTo]);
+  }, [page, statusFilter, courseFilter, dateFrom, dateTo, debouncedSearch]);
 
   const handleWsMessage = useCallback((payload) => {
-    if (payload.type === 'whatsapp_status') {
-      setWaStatus(payload.data.status);
-    } else if (payload.type === 'announcement_status') {
+    if (payload.type === 'announcement_status') {
       setAnnouncements(prev => prev.map(ann => {
         if (ann.id === payload.data.id) {
           return {
@@ -166,20 +151,6 @@ const CRDashboard = ({ navigate }) => {
   }, []);
 
   useWebSocket({ onMessage: handleWsMessage });
-
-  // Refetch when filters or page change
-  useEffect(() => {
-    fetchData();
-  }, [page, statusFilter, courseFilter, dateFrom, dateTo]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchData();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   const handleEditClick = (ann, e) => {
     e.stopPropagation();
@@ -206,20 +177,7 @@ const CRDashboard = ({ navigate }) => {
     }
   };
 
-  const handleDeletePlatform = async (id) => {
-    if (!window.confirm('Remove this channel from your broadcast targets?')) {
-      return;
-    }
-    setDeletingId(id);
-    try {
-      await platformsAPI.delete(id);
-      fetchData();
-    } catch (e) {
-      toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
-    } finally {
-      setDeletingId(null);
-    }
-  };
+
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -323,8 +281,7 @@ const CRDashboard = ({ navigate }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
+      <div className="w-full bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-hairline-cool pb-4">
             <h2 className="text-lg font-medium text-ink">Recent Broadcasts</h2>
             <Link to="/announcement/new" className="text-xs font-medium text-on-primary bg-primary hover:bg-primary-deep px-3 py-1.5 rounded-sm transition-colors cursor-pointer">
@@ -528,86 +485,6 @@ const CRDashboard = ({ navigate }) => {
             </div>
           )}
         </div>
-
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-6">
-          <div className="border-b border-hairline-cool pb-4">
-            <h2 className="text-lg font-medium text-ink">Active Target Channels</h2>
-          </div>
-
-          {platforms.length === 0 ? (
-            <div className="text-center py-6 text-ink-mute text-sm">
-              <Radio className="w-10 h-10 text-hairline-strong mx-auto stroke-[1] mb-2" />
-              No communication channels linked.
-              <Link to="/platforms" className="block text-xs font-semibold text-primary hover:underline mt-2">
-                Setup Telegram / WhatsApp
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {platforms.map((p) => (
-                <div key={p.id} className={`flex items-center justify-between p-3 border rounded-sm transition-all ${
-                  p.is_active && p.service_available !== false ? 'border-hairline hover:bg-canvas-soft' : 'border-hairline-cool bg-canvas-soft/50'
-                }`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      <div className={`w-8 h-8 rounded-sm flex items-center justify-center border ${
-                        p.is_active && p.service_available !== false ? 'border-hairline bg-canvas-soft' : 'border-hairline-cool bg-canvas'
-                      }`}>
-                        {p.platform_type === 'whatsapp'
-                          ? <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} />
-                          : <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />
-                        }
-                      </div>
-                      <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-canvas rounded-full ${
-                        p.service_available === false ? 'bg-accent-yellow' : p.is_active ? 'bg-primary' : 'bg-ink-mute'
-                      }`} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className={`text-sm font-medium truncate max-w-[110px] ${
-                          p.is_active && p.service_available !== false ? 'text-ink' : 'text-ink-mute'
-                        }`}>{p.platform_name}</h4>
-                        {p.service_available === false ? (
-                          <span className="text-[10px] font-medium text-accent-yellow shrink-0">No Token</span>
-                        ) : p.is_active ? (
-                          <span className="text-[10px] font-medium text-primary shrink-0">Active</span>
-                        ) : (
-                          <span className="text-[10px] font-medium text-ink-mute shrink-0">Offline</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-ink-mute font-mono truncate max-w-[150px]">{p.chat_id}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeletePlatform(p.id)}
-                    disabled={deletingId === p.id}
-                    className="p-1.5 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer disabled:opacity-50 shrink-0"
-                    title="Remove Channel"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="bg-canvas-soft p-4 border border-hairline rounded-sm space-y-2">
-            <h4 className="text-xs font-medium uppercase tracking-wider text-ink-mute">WhatsApp Integration Status</h4>
-            <div className="flex items-center justify-between text-sm mt-1">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${waStatus === 'CONNECTED' ? 'bg-primary' : waStatus === 'QR_READY' ? 'bg-accent-yellow' : 'bg-ink-mute'}`}></span>
-                <span className="text-ink">{waStatus === 'CONNECTED' ? 'Connected' : waStatus === 'QR_READY' ? 'QR Ready' : waStatus === 'CONNECTING' ? 'Connecting...' : 'Disconnected'}</span>
-              </div>
-              <Link 
-                to="/platforms" 
-                className="text-xs font-semibold text-primary hover:underline flex items-center"
-              >
-                Configure <ExternalLink className="w-3 h-3 ml-1" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
