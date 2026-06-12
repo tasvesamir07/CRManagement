@@ -252,7 +252,7 @@ if (isRelayMode) {
         try {
             const { state, saveCreds } = await useDbAuthState();
 
-            sock = makeWASocket({
+            const socketConfig = {
                 auth: state,
                 logger,
                 printQRInTerminal: false,
@@ -262,7 +262,20 @@ if (isRelayMode) {
                 generateHighQualityLinkPreview: false,
                 keepAliveIntervalMs: 15000,
                 connectTimeoutMs: 60000
-            });
+            };
+
+            const proxyUrl = process.env.PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+            if (proxyUrl) {
+                console.log(`[WhatsApp] Using proxy for connection: ${proxyUrl.replace(/:[^:@]+@/, ':***@')}`);
+                try {
+                    const { HttpsProxyAgent } = require('https-proxy-agent');
+                    socketConfig.agent = new HttpsProxyAgent(proxyUrl);
+                } catch (err) {
+                    console.error('Failed to initialize HttpsProxyAgent:', err.message);
+                }
+            }
+
+            sock = makeWASocket(socketConfig);
 
             sock.ev.on('creds.update', (update) => {
                 const wasQrReady = connectionStatus === 'QR_READY';

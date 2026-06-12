@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { routinesAPI, coursesAPI } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
+import { routinesAPI, coursesAPI, filesAPI } from '../../services/api';
 import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Clock, Download } from 'lucide-react';
 import { TimePicker } from '../ui/time-picker';
 import { toCanvas } from 'html-to-image';
@@ -9,9 +10,11 @@ const DAYS_OF_WEEK = [
 ];
 
 const RoutineManager = () => {
+  const navigate = useNavigate();
   const [routines, setRoutines] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sharingRoutine, setSharingRoutine] = useState(false);
 
   // Form States
   const [showForm, setShowForm] = useState(false);
@@ -269,6 +272,48 @@ const RoutineManager = () => {
     }
   };
 
+  const handleShareToNotice = async () => {
+    const node = document.getElementById('routine-table-container');
+    if (!node) return;
+
+    setSharingRoutine(true);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const origOverflow = node.style.overflow;
+    node.style.overflow = 'visible';
+
+    try {
+      const canvas = await toCanvas(node, {
+        filter: (el) => !el.classList?.contains('no-export'),
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        style: { borderRadius: '0px' },
+      });
+      
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Canvas toBlob failed');
+      
+      const fileName = `routine-${semesterTitle.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'schedule'}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+      
+      const uploadedFileRecord = await filesAPI.upload(file);
+      
+      navigate('/announcement/new', {
+        state: {
+          preFillTitle: `Updated Class Routine - ${semesterTitle}`,
+          preFillBody: `📢 *Updated Class Routine Notice*\n\nClass routine for *${semesterTitle}* (${sectionGroup}) Swe ${batchCode} has been updated. Please check the attached routine schedule image for details.\n\n_Effective from: ${effectiveDate}_\n\nAdjust your plans accordingly. Thank you! 📅`,
+          preFillCategory: 'notice',
+          preAttachedFiles: [uploadedFileRecord]
+        }
+      });
+      
+    } catch (err) {
+      console.error('Failed to share routine notice:', err);
+      alert('Failed to generate or upload routine image. ' + (err.response?.data?.error || err.message));
+    } finally {
+      node.style.overflow = origOverflow;
+      setSharingRoutine(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -435,6 +480,22 @@ const RoutineManager = () => {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-end gap-3 no-export">
+            <button
+              disabled={sharingRoutine}
+              onClick={handleShareToNotice}
+              className="flex items-center justify-center px-4.5 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-all duration-150 cursor-pointer shadow-sm disabled:opacity-50 border-none"
+            >
+              {sharingRoutine ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-on-primary mr-2"></div>
+                  Sharing Routine...
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-3.5 h-3.5 mr-2" /> Share to Notice
+                </>
+              )}
+            </button>
             <button
               onClick={handleDownloadImage}
               className="flex items-center justify-center px-4.5 py-2 text-xs font-semibold text-ink border border-hairline rounded-sm hover:bg-canvas-soft transition-all duration-150 cursor-pointer shadow-sm bg-canvas"

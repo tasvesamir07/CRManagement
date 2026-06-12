@@ -29,7 +29,8 @@ import {
   FolderClosed,
   Eye,
   File,
-  Download
+  Download,
+  Sparkles
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 
@@ -71,6 +72,19 @@ const TITLE_PRESETS = Object.entries(PRESET_DEFS).map(([value, def]) => {
 });
 TITLE_PRESETS.push({ value: 'Custom', label: '✏️ Custom (Type below)...' });
 
+const formatMessageToHtml = (text) => {
+  if (!text) return '';
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  escaped = escaped.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/_([^_]+)_/g, '<em>$1</em>');
+  escaped = escaped.replace(/~([^~]+)~/g, '<del>$1</del>');
+  escaped = escaped.replace(/\n/g, '<br/>');
+  return escaped;
+};
+
 const AnnouncementForm = () => {
   const navigate = useNavigate();
   const { id: editId } = useParams();
@@ -103,13 +117,20 @@ const AnnouncementForm = () => {
   const [category, setCategory] = useState(() => getInitialValue('category', 'quiz'));
   const [selectedCourseId, setSelectedCourseId] = useState(() => getInitialValue('selectedCourseId', ''));
   const [fileCaption, setFileCaption] = useState(() => getInitialValue('fileCaption', ''));
+  const [customText, setCustomText] = useState(() => getInitialValue('customText', ''));
 
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiDrafting, setAiDrafting] = useState(false);
+  const [generatedDraft, setGeneratedDraft] = useState('');
 
   // Lightbox Preview states
   const [previewFile, setPreviewFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewTextContent, setPreviewTextContent] = useState('');
+  const [previewTextError, setPreviewTextError] = useState(false);
 
   const handlePreview = async (file) => {
     setPreviewFile(file);
@@ -125,6 +146,33 @@ const AnnouncementForm = () => {
       setPreviewLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!previewFile || !previewUrl) {
+      setPreviewTextContent('');
+      setPreviewTextError(false);
+      return;
+    }
+    const isText = (previewFile.file_type && previewFile.file_type.startsWith('text/')) ||
+                   previewFile.original_name.toLowerCase().endsWith('.csv') ||
+                   previewFile.original_name.toLowerCase().endsWith('.txt');
+    if (isText) {
+      setPreviewTextContent('');
+      setPreviewTextError(false);
+      fetch(previewUrl)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch text content');
+          return res.text();
+        })
+        .then(text => {
+          setPreviewTextContent(text);
+        })
+        .catch(err => {
+          console.error('[Preview] Text fetch failed:', err);
+          setPreviewTextError(true);
+        });
+    }
+  }, [previewFile, previewUrl]);
 
   const formatSize = (bytes) => {
     if (!bytes) return '—';
@@ -276,6 +324,7 @@ const AnnouncementForm = () => {
   const isSectionsRestored = useRef(false);
 
   const compiledMessage = (() => {
+    if (broadcastMode === 'custom') return customText;
     if (broadcastMode === 'share_file') return fileCaption;
     const course = courses.find(c => c.id === parseInt(selectedCourseId));
     let msg = title.trim() ? `📢 *${title}*\n\n` : '📢 *Title*\n\n';
@@ -442,7 +491,7 @@ const AnnouncementForm = () => {
   })();
 
   const buildPayload = () => {
-    const finalCategory = broadcastMode === 'share_file' ? 'share_file' : category;
+    const finalCategory = broadcastMode === 'share_file' ? 'share_file' : (broadcastMode === 'custom' ? 'custom' : category);
     const finalTitle = broadcastMode === 'share_file'
       ? (uploadedFiles[0] ? uploadedFiles[0].original_name : 'Shared File(s)')
       : (title.trim() || (uploadedFiles[0] ? uploadedFiles[0].original_name : 'Shared File(s)'));
@@ -451,7 +500,7 @@ const AnnouncementForm = () => {
       content: broadcastMode === 'share_file' ? (fileCaption.trim() || 'Shared File(s)') : compiledMessage,
       category: finalCategory,
       course_id: (broadcastMode === 'share_file' || !selectedCourseId) ? null : parseInt(selectedCourseId),
-      custom_room: broadcastMode === 'share_file' ? null : (sections[0]?.room || null),
+      custom_room: (broadcastMode === 'share_file' || broadcastMode === 'custom') ? null : (sections[0]?.room || null),
       custom_time: null,
       file_id: uploadedFiles[0] ? uploadedFiles[0].id : null,
       file_ids: uploadedFiles.map(f => f.id),
@@ -586,6 +635,24 @@ const AnnouncementForm = () => {
     setSelectedTemplate(templateId);
   };
 
+  const handleGenerateAIDraft = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error('Please enter what you want to announce.');
+      return;
+    }
+    setAiDrafting(true);
+    setGeneratedDraft('');
+    try {
+      const res = await announcementsAPI.draftAI(aiPrompt.trim(), category);
+      setGeneratedDraft(res.draft);
+      toast.success('Notice draft generated!');
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || 'Generation failed');
+    } finally {
+      setAiDrafting(false);
+    }
+  };
+
   const addSectionField = () => setSections(prev => [...prev, { name: '', startTime: '', endTime: '', room: '', mode: makeupStatus === 'online' ? 'Online' : 'Offline', timeOption: 'select' }]);
   const removeSectionField = (i) => { if (sections.length > 1) setSections(prev => prev.filter((_, idx) => idx !== i)); };
   const handleSectionChange = (i, field, val) => setSections(prev => { const u = [...prev]; u[i] = { ...u[i], [field]: val }; return u; });
@@ -605,15 +672,27 @@ const AnnouncementForm = () => {
   };
 
   const validateForm = () => {
-    if (broadcastMode === 'share_file') { if (uploadedFiles.length === 0) { toast.error('Please upload at least one file.'); return false; } }
-    else if (!title.trim() && uploadedFiles.length === 0) { toast.error('Please provide a title or upload a file.'); return false; }
+    if (broadcastMode === 'share_file') {
+      if (uploadedFiles.length === 0) { toast.error('Please upload at least one file.'); return false; }
+    } else if (broadcastMode === 'custom') {
+      if (!title.trim()) { toast.error('Please provide a notice title.'); return false; }
+      if (!customText.trim()) { toast.error('Please write the notice body.'); return false; }
+    } else {
+      if (!title.trim() && uploadedFiles.length === 0) { toast.error('Please provide a title or upload a file.'); return false; }
+    }
     if (selectedPlatforms.length === 0) { toast.error('Please select at least one channel.'); return false; }
     return true;
   };
 
   const handleSaveDraft = async () => {
-    if (broadcastMode !== 'share_file' && !title.trim() && uploadedFiles.length === 0) { toast.error('Please provide a title or upload a file.'); return; }
-    if (broadcastMode === 'share_file' && uploadedFiles.length === 0) { toast.error('Please upload at least one file.'); return; }
+    if (broadcastMode === 'share_file') {
+      if (uploadedFiles.length === 0) { toast.error('Please upload at least one file.'); return; }
+    } else if (broadcastMode === 'custom') {
+      if (!title.trim()) { toast.error('Please provide a notice title.'); return; }
+      if (!customText.trim()) { toast.error('Please write the notice body.'); return; }
+    } else {
+      if (!title.trim() && uploadedFiles.length === 0) { toast.error('Please provide a title or upload a file.'); return; }
+    }
     setSubmitting(true);
     try {
       const payload = buildPayload();
@@ -681,9 +760,27 @@ const AnnouncementForm = () => {
   }, [title, titlePreset, broadcastMode]);
 
   useEffect(() => {
-    const draft = { broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption };
+    const draft = { broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption, customText };
     sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
-  }, [broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption]);
+  }, [broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption, customText]);
+
+  useEffect(() => {
+    if (!isEditMode && location.state) {
+      if (location.state.preFillTitle) {
+        setTitle(location.state.preFillTitle);
+      }
+      if (location.state.preFillBody) {
+        setCustomText(location.state.preFillBody);
+        setBroadcastMode('custom');
+      }
+      if (location.state.preFillCategory) {
+        setCategory(location.state.preFillCategory);
+      }
+      if (location.state.preAttachedFiles) {
+        setUploadedFiles(location.state.preAttachedFiles);
+      }
+    }
+  }, [location.state, isEditMode]);
 
   useEffect(() => { if (!showTopics) setTopics([]); }, [showTopics]);
 
@@ -767,6 +864,20 @@ const AnnouncementForm = () => {
     coursesAPI.get(parseInt(selectedCourseId)).then(fc => setCurrentCourseRoutines(fc.routines || [])).catch(() => {});
   }, [selectedCourseId]);
 
+  // Auto-fill platforms from course defaults when course is selected
+  useEffect(() => {
+    if (!selectedCourseId || isEditMode) return;
+    coursesAPI.get(parseInt(selectedCourseId)).then(fc => {
+      if (fc.default_platform_ids && fc.default_platform_ids.length > 0) {
+        // Filter to only include platforms that are currently available
+        const availableDefaults = fc.default_platform_ids.filter(id => platforms.some(p => p.id === id));
+        if (availableDefaults.length > 0) {
+          setSelectedPlatforms(availableDefaults);
+        }
+      }
+    }).catch(() => {});
+  }, [selectedCourseId, platforms, isEditMode]);
+
   useEffect(() => {
     if (selectedDate) { const d = new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]); setSelectedDay(d.toLocaleDateString('en-US', { weekday: 'long' })); }
     else setSelectedDay('');
@@ -833,8 +944,9 @@ const AnnouncementForm = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <form onSubmit={(e) => { e.preventDefault(); handleConfirmBroadcast(); }} className="lg:col-span-7 bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-6">
-          <div className="flex gap-4 p-1 bg-canvas-soft border border-hairline rounded-sm w-fit mb-6">
-            <button type="button" onClick={() => setBroadcastMode('notice')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'notice' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📢 Announcement Notice</button>
+          <div className="flex gap-2 p-1 bg-canvas-soft border border-hairline rounded-sm w-fit mb-6">
+            <button type="button" onClick={() => setBroadcastMode('notice')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'notice' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📢 Structured Notice</button>
+            <button type="button" onClick={() => setBroadcastMode('custom')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'custom' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>✍️ Custom Text Notice</button>
             <button type="button" onClick={() => setBroadcastMode('share_file')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'share_file' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📎 Share File Only</button>
           </div>
 
@@ -851,6 +963,80 @@ const AnnouncementForm = () => {
             </div>
           )}
 
+          {broadcastMode === 'custom' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Notice Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Makeup Class Announcement"
+                    className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Target Course (Optional)</label>
+                  <div className="custom-select-wrapper">
+                    <select
+                      value={selectedCourseId}
+                      onChange={(e) => setSelectedCourseId(e.target.value)}
+                      className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150"
+                    >
+                      <option value="">General Notice (No Course)</option>
+                      {courses.map(c => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Notice Body *</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAIModal(true)}
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-primary hover:text-primary-deep bg-primary/10 rounded-sm transition-all cursor-pointer border-none"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Draft with AI
+                  </button>
+                </label>
+                <textarea
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  placeholder="Write your notice text here... Use *bold* for emphasis."
+                  rows={8}
+                  className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150 resize-y min-h-[150px] font-sans leading-relaxed"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] font-medium text-ink-mute flex items-center mr-1">Presets:</span>
+                  {[
+                    { label: '📝 Quiz Alert', title: 'Quiz Alert', body: `📝 *Quiz Alert*\n\n📚 *Course:* [Course Name]\n📅 *Date:* [Date]\n⏰ *Time:* [Time]\n📝 *Topics:* [Topics]\n\nPlease be prepared and attend on time. Good luck! 🍀📖` },
+                    { label: '📁 Assignment Deadline', title: 'Assignment Deadline', body: `📁 *Assignment Deadline*\n\n📚 *Course:* [Course Name]\n📅 *Deadline:* [Date & Time]\n📋 *Instructions:* [Details]\n\nPlease submit on time.` },
+                    { label: '📅 Class Rescheduled', title: 'Class Rescheduled', body: `📅 *Class Rescheduled Notice*\n\n📚 *Course:* [Course Name]\n⏰ *New Slot:* [Date, Time & Room]\n\nPlease adjust your schedule accordingly.` },
+                    { label: '❌ Class Cancelled', title: 'Class Cancelled', body: `❌ *Class Cancellation Notice*\n\n📚 *Course:* [Course Name]\n📅 *Date:* [Date]\n\nClass is cancelled for today. Make-up schedule will be shared later.` }
+                  ].map(preset => (
+                    <button
+                      key={preset.title}
+                      type="button"
+                      onClick={() => {
+                        setTitle(preset.title);
+                        setCustomText(preset.body);
+                        toast.success(`Preset "${preset.title}" loaded`);
+                      }}
+                      className="px-2 py-0.5 text-[10px] font-medium rounded-full border border-hairline bg-canvas hover:bg-canvas-soft text-ink-mute hover:text-ink transition-all cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {broadcastMode === 'notice' && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -862,10 +1048,51 @@ const AnnouncementForm = () => {
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
                   </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[
+                      { value: 'Quiz - 1', label: '📝 Quiz' },
+                      { value: 'Class Cancelled', label: '❌ Cancel' },
+                      { value: 'Assignment', label: '📁 Assignment' },
+                      { value: 'Routine Change', label: '📅 Routine' },
+                      { value: 'General Notice', label: '📣 General' }
+                    ].map(btn => (
+                      <button
+                        key={btn.value}
+                        type="button"
+                        onClick={() => handlePresetChange(btn.value)}
+                        className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-all cursor-pointer ${
+                          titlePreset === btn.value
+                            ? 'bg-primary border-primary text-on-primary shadow-sm scale-102 font-semibold'
+                            : 'bg-canvas hover:bg-canvas-soft border-hairline text-ink-mute hover:text-ink'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">{uploadedFiles.length > 0 ? 'Title Text (Optional)' : 'Title Text *'}</label>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Quiz - 4" className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150" />
+                </div>
+              </div>
+
+              <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-5">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={(category === 'syllabus' || category === 'suggestion') ? "md:col-span-2" : ""}>
+                    <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
+                    <div className="custom-select-wrapper">
+                      <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150">
+                        <option value="">General Notice (No Course)</option>
+                        {courses.map(c => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
+                    </div>
+                  </div>
+                  {(category !== 'syllabus' && category !== 'suggestion') && (
+                    <div><label className="block text-[11px] font-medium text-ink-mute mb-1">Event Date</label><DatePicker value={selectedDate} onChange={(val) => setSelectedDate(val)} placeholder="Select Event Date" /></div>
+                  )}
                 </div>
               </div>
 
@@ -956,25 +1183,6 @@ const AnnouncementForm = () => {
                   </div>
                 </div>
               )}
-
-              <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-5">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={(category === 'syllabus' || category === 'suggestion') ? "md:col-span-2" : ""}>
-                    <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
-                    <div className="custom-select-wrapper">
-                      <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150">
-                        <option value="">General Notice (No Course)</option>
-                        {courses.map(c => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
-                    </div>
-                  </div>
-                  {(category !== 'syllabus' && category !== 'suggestion') && (
-                    <div><label className="block text-[11px] font-medium text-ink-mute mb-1">Event Date</label><DatePicker value={selectedDate} onChange={(val) => setSelectedDate(val)} placeholder="Select Event Date" /></div>
-                  )}
-                </div>
-              </div>
 
               {category === 'class_cancel' && (
                 <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-3">
@@ -1156,7 +1364,7 @@ const AnnouncementForm = () => {
           <div className="bg-[#1c1c1c] text-white rounded-[24px] p-4 border-[6px] border-[#252525] shadow-xl w-full flex flex-col justify-between overflow-hidden min-h-[500px]">
             <div className="flex justify-between items-center text-[10px] text-zinc-500 px-2 pb-2"><span>9:41 AM</span><div className="flex gap-1"><span>📶</span><span>🔋</span></div></div>
             <div className={`flex-1 rounded-[16px] p-3 overflow-y-auto flex flex-col justify-end ${previewTab === 'whatsapp' ? 'bg-[#0b141a]' : 'bg-[#182533]'}`}>
-              <div className={`rounded-lg p-3 max-w-[90%] text-xs font-sans text-ink ${previewTab === 'whatsapp' ? 'bg-[#005c4b] text-white self-end rounded-tr-none' : 'bg-[#182533] text-white self-start rounded-tl-none border border-slate-700'}`}>
+              <div className={`rounded-lg p-3 max-w-[85%] text-xs font-sans relative flex flex-col ${previewTab === 'whatsapp' ? 'bg-[#005c4b] text-white self-end rounded-tr-none shadow-sm' : 'bg-[#182533] text-white self-start rounded-tl-none border border-slate-700 shadow-sm'}`}>
                 {uploadedFiles.length > 0 && (
                   <div className="mb-2 space-y-1.5">
                     {uploadedFiles.map((file, idx) => (
@@ -1167,7 +1375,18 @@ const AnnouncementForm = () => {
                     ))}
                   </div>
                 )}
-                <pre className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed break-words">{compiledMessage || 'Your message preview will appear here...'}</pre>
+                {previewTab === 'telegram' && (
+                  <div className="text-[10px] font-semibold text-[#5288c1] mb-1 select-none">CR Announcements</div>
+                )}
+                <div className="pb-4 leading-relaxed break-words text-[11px] font-sans" dangerouslySetInnerHTML={{ __html: formatMessageToHtml(compiledMessage || 'Your message preview will appear here...') }} />
+                <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[9px] text-zinc-300/80 select-none">
+                  <span>9:41 AM</span>
+                  {previewTab === 'whatsapp' ? (
+                    <span className="text-[#53bdeb] font-bold">✓✓</span>
+                  ) : (
+                    <span className="text-[#5288c1] font-bold">✓</span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="w-24 h-1 bg-zinc-600 rounded-full mx-auto mt-3.5"></div>
@@ -1388,6 +1607,65 @@ const AnnouncementForm = () => {
                       className="w-full h-full border-0 rounded"
                     />
                   ) : (
+                    previewFile.file_type?.includes('officedocument') ||
+                    previewFile.file_type?.includes('ms-excel') ||
+                    previewFile.file_type?.includes('ms-powerpoint') ||
+                    previewFile.file_type?.includes('msword') ||
+                    previewFile.original_name.endsWith('.docx') ||
+                    previewFile.original_name.endsWith('.doc') ||
+                    previewFile.original_name.endsWith('.xlsx') ||
+                    previewFile.original_name.endsWith('.xls') ||
+                    previewFile.original_name.endsWith('.pptx') ||
+                    previewFile.original_name.endsWith('.ppt')
+                  ) ? (
+                    (previewUrl.includes('localhost') || previewUrl.includes('127.0.0.1')) ? (
+                      <div className="text-center p-8 max-w-sm">
+                        <File className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                        <p className="text-sm font-semibold text-ink font-sans mb-1">Local Preview Limitation</p>
+                        <p className="text-xs text-ink-mute font-sans mb-4">Office documents (.docx, .xlsx, .pptx) cannot be previewed when running on localhost. Please download the file to view it.</p>
+                        <a
+                          href={previewUrl}
+                          download={previewFile.original_name}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download to View
+                        </a>
+                      </div>
+                    ) : (
+                      <iframe
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
+                        title={previewFile.original_name}
+                        className="w-full h-full border-0 rounded bg-canvas"
+                      />
+                    )
+                  ) : (
+                    previewFile.file_type?.startsWith('text/') ||
+                    previewFile.original_name.toLowerCase().endsWith('.csv') ||
+                    previewFile.original_name.toLowerCase().endsWith('.txt')
+                  ) ? (
+                    previewTextError ? (
+                      <div className="text-center p-8 max-w-sm">
+                        <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
+                        <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
+                        <p className="text-xs text-ink-mute font-sans mb-4">Could not load file content. Please download to view.</p>
+                        <a
+                          href={previewUrl}
+                          download={previewFile.original_name}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download to View
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col bg-canvas border border-hairline rounded overflow-hidden shadow-inner">
+                        <div className="overflow-auto flex-1 font-mono text-[11px] text-ink p-4 bg-canvas-soft select-text whitespace-pre-wrap leading-relaxed max-w-full text-left">
+                          {previewTextContent || 'Loading content...'}
+                        </div>
+                      </div>
+                    )
+                  ) : (
                     <div className="text-center p-8 max-w-sm">
                       <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
                       <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
@@ -1406,6 +1684,125 @@ const AnnouncementForm = () => {
               ) : (
                 <p className="text-sm text-ink-mute font-sans">Failed to load preview.</p>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showAIModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-canvas border border-hairline rounded-lg shadow-xl max-w-lg w-full flex flex-col max-h-[85vh] overflow-hidden">
+            <div className="p-4 border-b border-hairline flex items-center justify-between">
+              <h3 className="text-md font-semibold text-ink flex items-center gap-2 font-sans">
+                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                Draft Notice with Gemini AI
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAIModal(false);
+                  setAiPrompt('');
+                  setGeneratedDraft('');
+                }}
+                className="text-ink-mute hover:text-ink cursor-pointer border-none bg-transparent"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
+                  What would you like to announce?
+                </label>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="e.g. Announce a quiz on Wednesday, June 17th, on chapter 4 of Database Management Systems. It will start at 10 AM in Room 602. Topics are SQL queries."
+                  rows={4}
+                  className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas hover:border-hairline-strong transition-all duration-150 resize-none"
+                />
+              </div>
+
+              {generatedDraft && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider">
+                    Generated Draft Preview
+                  </label>
+                  <div className="p-3 bg-canvas-soft border border-hairline rounded-sm text-sm text-ink font-sans whitespace-pre-wrap leading-relaxed select-text shadow-inner max-h-[220px] overflow-y-auto">
+                    {generatedDraft}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-hairline flex items-center justify-between bg-canvas-soft">
+              <span className="text-xs text-ink-mute">Powered by Gemini 1.5 Flash</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAIModal(false);
+                    setAiPrompt('');
+                    setGeneratedDraft('');
+                  }}
+                  className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft cursor-pointer bg-canvas"
+                >
+                  Cancel
+                </button>
+                {generatedDraft ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleGenerateAIDraft}
+                      disabled={aiDrafting}
+                      className="px-4 py-2 border border-primary text-primary hover:bg-primary/5 rounded-sm text-sm font-medium transition-colors cursor-pointer bg-canvas"
+                    >
+                      {aiDrafting ? 'Regenerating...' : 'Regenerate'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomText(generatedDraft);
+                        const firstLine = generatedDraft.split('\n')[0];
+                        if (firstLine.startsWith('📢')) {
+                          const cleanTitle = firstLine.replace(/📢\s*\**\s*/, '').replace(/\**$/, '').trim();
+                          if (cleanTitle) {
+                            setTitle(cleanTitle);
+                          }
+                        }
+                        setShowAIModal(false);
+                        setAiPrompt('');
+                        setGeneratedDraft('');
+                        toast.success('Draft loaded into editor!');
+                      }}
+                      className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer"
+                    >
+                      Use Draft
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGenerateAIDraft}
+                    disabled={aiDrafting || !aiPrompt.trim()}
+                    className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer disabled:opacity-50 flex items-center gap-1.5 border-none"
+                  >
+                    {aiDrafting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-on-primary"></div>
+                        Generating Notice...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Generate Notice
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>,

@@ -133,6 +133,10 @@ export const coursesAPI = {
     removeMember: async (courseId, userId) => {
         const res = await api.delete(`/courses/${courseId}/members/${userId}`);
         return res.data;
+    },
+    setDefaultPlatforms: async (courseId, platformIds) => {
+        const res = await api.put(`/courses/${courseId}/default-platforms`, { platform_ids: platformIds });
+        return res.data;
     }
 };
 
@@ -156,8 +160,9 @@ export const routinesAPI = {
 };
 
 export const platformsAPI = {
-    list: async () => {
-        const res = await api.get('/platforms');
+    list: async (courseId) => {
+        const params = courseId ? { course_id: courseId } : {};
+        const res = await api.get('/platforms', { params });
         return res.data;
     },
     create: async (platformData) => {
@@ -322,6 +327,10 @@ export const announcementsAPI = {
     },
     schedule: async (id, scheduledAt) => {
         const res = await api.post(`/announcements/${id}/schedule`, { scheduled_at: scheduledAt });
+        return res.data;
+    },
+    draftAI: async (prompt, category = null) => {
+        const res = await api.post('/announcements/draft-ai', { prompt, category });
         return res.data;
     },
     delete: async (id) => {

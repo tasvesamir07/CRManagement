@@ -130,6 +130,66 @@ router.post('/:id/send', authMiddleware, sendLimiter, async (req, res) => {
     }
 });
 
+router.post('/draft-ai', authMiddleware, async (req, res) => {
+    try {
+        const { prompt, category } = req.body;
+        if (!prompt) {
+            return res.status(400).json({ error: 'prompt is required' });
+        }
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            const categoryLabel = category ? category.toUpperCase().replace('_', ' ') : 'GENERAL ANNOUNCEMENT';
+            const fallbackDraft = `📢 *Notice: ${categoryLabel}*\n\n` +
+                `This is a fallback generated draft for: "${prompt}".\n` +
+                `(Configure GEMINI_API_KEY in your .env file to enable live AI notice drafting!)\n\n` +
+                `📅 *Date:* [Date]\n` +
+                `⏰ *Time:* [Time]\n` +
+                `🏫 *Location:* [Room / Venue]\n\n` +
+                `Please be prepared and attend on time. Good luck! 🍀`;
+            return res.json({ draft: fallbackDraft });
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            {
+                                text: `Draft a formal, structured notice based on this request. Prompt: "${prompt}". Category: ${category || 'general'}`
+                            }
+                        ]
+                    }
+                ],
+                systemInstruction: {
+                    parts: [
+                        {
+                            text: "You are an assistant for a Class Representative (CR) drafting announcement messages to students for Telegram and WhatsApp. Make them professional yet friendly. Use markdown format: asterisks (*) for bold titles/fields and bold inline items (e.g. *Time:* 10:00 AM, *Date:* 12/06/2026). Use bullet points and appropriate emojis (e.g., 📢, 📝, 📅, ⏰, 🏫, ⚠️). Keep it concise, clear, and structured so it is easy to read. Do NOT use markdown headers like '#' or '##' since WhatsApp/Telegram do not support them. Output only the message text itself, no explanations."
+                        }
+                    ]
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Gemini API returned error: ${errBody}`);
+        }
+
+        const data = await response.json();
+        const draftText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate draft content.';
+        return res.json({ draft: draftText.trim() });
+    } catch (err) {
+        console.error('Draft announcement AI error:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const deleted = await announcementService.deleteAnnouncement(req.params.id);

@@ -1,9 +1,9 @@
 const db = require('../config/database');
 
-async function createCourse({ course_id, course_name, teacher_name, teacher_initials, created_by }) {
+async function createCourse({ course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids }) {
     const result = await db.query(
-        'INSERT INTO courses (course_id, course_name, teacher_name, teacher_initials, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [course_id, course_name, teacher_name, teacher_initials, created_by]
+        'INSERT INTO courses (course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids || []]
     );
     const newCourse = result.rows[0];
     
@@ -52,10 +52,33 @@ async function getCourseById(id) {
     return course;
 }
 
-async function updateCourse(id, { course_id, course_name, teacher_name, teacher_initials }) {
+async function setDefaultPlatforms(courseId, platformIds, userId, userRole) {
+    // Validate platforms exist and are active
+    if (platformIds && platformIds.length > 0) {
+        const placeholders = platformIds.map((_, i) => `$${i + 1}`).join(',');
+        const query = `SELECT id FROM platforms WHERE id IN (${placeholders}) AND is_active = true`;
+        const result = await db.query(query, platformIds);
+        if (result.rows.length !== platformIds.length) {
+            throw new Error('One or more platforms not found or inactive');
+        }
+    }
+    
+    const courseResult = await db.query(
+        'UPDATE courses SET default_platform_ids = $1 WHERE id = $2 RETURNING *',
+        [platformIds || [], courseId]
+    );
+    
+    if (courseResult.rows.length === 0) {
+        throw new Error('Course not found');
+    }
+    
+    return courseResult.rows[0];
+}
+
+async function updateCourse(id, { course_id, course_name, teacher_name, teacher_initials, default_platform_ids }) {
     const result = await db.query(
-        'UPDATE courses SET course_id=$1, course_name=$2, teacher_name=$3, teacher_initials=$4 WHERE id=$5 RETURNING *',
-        [course_id, course_name, teacher_name, teacher_initials, id]
+        'UPDATE courses SET course_id=$1, course_name=$2, teacher_name=$3, teacher_initials=$4, default_platform_ids=$5 WHERE id=$6 RETURNING *',
+        [course_id, course_name, teacher_name, teacher_initials, default_platform_ids || [], id]
     );
     return result.rows[0];
 }
@@ -103,5 +126,6 @@ module.exports = {
     deleteCourse,
     getMembers,
     assignMember,
-    removeMember
+    removeMember,
+    setDefaultPlatforms
 };

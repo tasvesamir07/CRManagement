@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { platformsAPI } from '../../services/api';
-import { Plus, Trash2, Edit2, Radio, CheckCircle, AlertTriangle, RefreshCw, X, Link as LinkIcon, ChevronDown } from 'lucide-react';
+import { platformsAPI, coursesAPI } from '../../services/api';
+import { Plus, Trash2, Edit2, Radio, CheckCircle, AlertTriangle, RefreshCw, X, Link as LinkIcon, ChevronDown, Flag, FlagOff } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import toast from 'react-hot-toast';
 
 const COUNTRY_CODES = [
   { code: '880', label: 'BD (+880)', flag: '🇧🇩' },
@@ -34,9 +35,12 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
   return cleanCode + cleanNumber;
 };
 
-const PlatformManager = () => {
+  const PlatformManager = () => {
   const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState([]);
+  const [courseDefaults, setCourseDefaults] = useState({}); // courseId -> platformIds[]
+  const [settingDefault, setSettingDefault] = useState(null); // platformId being set as default
   
   // WhatsApp connection states
   const [waStatus, setWaStatus] = useState('DISCONNECTED');
@@ -156,12 +160,38 @@ const PlatformManager = () => {
   const [pChatId, setPChatId] = useState('');
   const [pTopicId, setPTopicId] = useState('');
   const [pDesc, setPDesc] = useState('');
+  const [pCourseId, setPCourseId] = useState(null);
   const [err, setErr] = useState('');
 
   const fetchPlatforms = async () => {
     try {
       const data = await platformsAPI.list();
       setPlatforms(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const data = await coursesAPI.list();
+      setCourses(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchCourseDefaults = async () => {
+    try {
+      // Fetch defaults for all courses
+      const defaults = {};
+      for (const course of courses) {
+        const courseData = await coursesAPI.get(course.id);
+        if (courseData.default_platform_ids) {
+          defaults[course.id] = courseData.default_platform_ids;
+        }
+      }
+      setCourseDefaults(defaults);
     } catch (e) {
       console.error(e);
     }
@@ -201,6 +231,7 @@ const PlatformManager = () => {
   useEffect(() => {
     setLoading(true);
     fetchPlatforms().finally(() => setLoading(false));
+    fetchCourses().then(() => fetchCourseDefaults());
     fetchWhatsAppStatusHttp();
     fetchTelegramStatus();
     fetchMessengerStatus();
@@ -244,6 +275,39 @@ const PlatformManager = () => {
     }
   };
 
+  const handleSetDefault = async (platformId, courseId) => {
+    if (!window.confirm('Set this platform as default for this course?')) {
+      return;
+    }
+    setSettingDefault(platformId);
+    try {
+      // Get current defaults for this course
+      const currentDefaults = courseDefaults[courseId] || [];
+      // Toggle: if already in defaults, remove it; otherwise add it
+      const newDefaults = currentDefaults.includes(platformId)
+        ? currentDefaults.filter(id => id !== platformId)
+        : [...currentDefaults, platformId];
+      
+      await coursesAPI.setDefaultPlatforms(courseId, newDefaults);
+      // Update local state
+      setCourseDefaults(prev => ({ ...prev, [courseId]: newDefaults }));
+      toast.success(currentDefaults.includes(platformId) ? 'Removed from course defaults' : 'Set as course default');
+    } catch (e) {
+      toast.error('Failed to update course defaults');
+    } finally {
+      setSettingDefault(null);
+    }
+  };
+
+  const isDefaultForCourse = (platformId, courseId) => {
+    return courseDefaults[courseId]?.includes(platformId) || false;
+  };
+
+  const getCourseName = (courseId) => {
+    const course = courses.find(c => c.id === courseId);
+    return course ? course.course_name : 'Unknown Course';
+  };
+
   const handleSelectGroup = (group) => {
     setPName(group.name);
     setPChatId(group.id);
@@ -256,6 +320,7 @@ const PlatformManager = () => {
     setEditId(platform.id);
     setPName(platform.platform_name);
     setPType(platform.platform_type);
+    setPCourseId(platform.course_id || null);
     
     // Parse chat_id and topic_id
     if (platform.platform_type === 'telegram' && platform.chat_id.includes('/')) {
@@ -277,6 +342,7 @@ const PlatformManager = () => {
     setPChatId('');
     setPTopicId('');
     setPDesc('');
+    setPCourseId(null);
     setEditId(null);
     setShowForm(false);
     setErr('');
@@ -299,7 +365,8 @@ const PlatformManager = () => {
         platform_name: pName,
         platform_type: pType,
         chat_id: finalChatId,
-        description: pDesc
+        description: pDesc,
+        course_id: pCourseId
       };
 
       if (editId) {
@@ -312,6 +379,7 @@ const PlatformManager = () => {
       setPChatId('');
       setPTopicId('');
       setPDesc('');
+      setPCourseId(null);
       setEditId(null);
       setShowForm(false);
       fetchPlatforms();
@@ -681,6 +749,32 @@ const PlatformManager = () => {
 
                   <div>
                     <label className="block text-[11px] font-semibold uppercase text-ink-mute mb-1">
+                      Course (Optional)
+                    </label>
+                    <div className="custom-select-wrapper">
+                      <select
+                        value={pCourseId || ''}
+                        onChange={(e) => setPCourseId(e.target.value || null)}
+                        className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm bg-canvas text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer"
+                      >
+                        <option value="">No Course Association</option>
+                        {courses.map(course => (
+                          <option key={course.id} value={course.id}>
+                            {course.course_id} - {course.course_name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-ink-mute mt-1">
+                      Associate this platform with a course for default platform selection.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase text-ink-mute mb-1">
                       Channel / Group Name
                     </label>
                     <input
@@ -811,6 +905,16 @@ const PlatformManager = () => {
                             )}
                           </div>
                         <div className="flex items-center gap-1">
+                          {p.course_id && courses.length > 0 && (
+                            <button
+                              onClick={() => handleSetDefault(p.id, p.course_id)}
+                              disabled={settingDefault === p.id}
+                              className={`text-ink-mute hover:text-emerald-600 p-1 rounded hover:bg-emerald-50 transition-colors cursor-pointer ${isDefaultForCourse(p.id, p.course_id) ? 'text-emerald-600' : ''}`}
+                              title={isDefaultForCourse(p.id, p.course_id) ? 'Remove from course defaults' : 'Set as course default'}
+                            >
+                              {isDefaultForCourse(p.id, p.course_id) ? <Flag className="w-4 h-4 fill-current" /> : <FlagOff className="w-4 h-4" />}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleEdit(p)}
                             className="text-ink-mute hover:text-primary p-1 rounded hover:bg-primary/10 transition-colors cursor-pointer"
@@ -829,6 +933,12 @@ const PlatformManager = () => {
                       </div>
                       <h4 className={`text-md font-semibold mt-2.5 truncate ${p.is_active ? 'text-ink' : 'text-ink-mute'}`}>{p.platform_name}</h4>
                       {p.description && <p className="text-xs text-ink-mute mt-1">{p.description}</p>}
+                      {p.course_id && (
+                        <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                          <Flag className="w-3 h-3" />
+                          Default for: {getCourseName(p.course_id)}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-4 pt-2 border-t border-hairline-cool flex items-center justify-between text-[11px] font-mono text-ink-mute">
                       <span className="truncate max-w-[170px]" title={p.chat_id}>{p.chat_id}</span>

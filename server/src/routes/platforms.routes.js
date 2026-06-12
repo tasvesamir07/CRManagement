@@ -15,6 +15,11 @@ router.get('/', authMiddleware, async (req, res) => {
             query += ' AND created_by = $1';
             params.push(req.user.id);
         }
+        // Optional filter by course_id
+        if (req.query.course_id) {
+            query += ` AND course_id = $${params.length + 1}`;
+            params.push(req.query.course_id);
+        }
         query += ' ORDER BY platform_name ASC';
         const result = await db.query(query, params);
         const platforms = result.rows.map(p => ({
@@ -34,15 +39,15 @@ router.get('/', authMiddleware, async (req, res) => {
 // Register new platform
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { platform_name, platform_type, chat_id, description } = req.body;
+        const { platform_name, platform_type, chat_id, description, course_id } = req.body;
         if (!platform_name || !platform_type || !chat_id) {
             return res.status(400).json({ error: 'platform_name, platform_type, and chat_id are required' });
         }
         
         const result = await db.query(
-            'INSERT INTO platforms (platform_name, platform_type, chat_id, description, created_by) \
-             VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [platform_name, platform_type, chat_id, description || '', req.user.id]
+            'INSERT INTO platforms (platform_name, platform_type, chat_id, description, created_by, course_id) \
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [platform_name, platform_type, chat_id, description || '', req.user.id, course_id || null]
         );
         return res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -139,15 +144,15 @@ router.post('/whatsapp/clear-session', authMiddleware, async (req, res) => {
 // Update platform details
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
-        const { platform_name, platform_type, chat_id, description } = req.body;
+        const { platform_name, platform_type, chat_id, description, course_id } = req.body;
         if (!platform_name || !platform_type || !chat_id) {
             return res.status(400).json({ error: 'platform_name, platform_type, and chat_id are required' });
         }
         
         const result = await db.query(
-            'UPDATE platforms SET platform_name = $1, platform_type = $2, chat_id = $3, description = $4, updated_at = NOW() \
-             WHERE id = $5 RETURNING *',
-            [platform_name, platform_type, chat_id, description || '', req.params.id]
+            'UPDATE platforms SET platform_name = $1, platform_type = $2, chat_id = $3, description = $4, course_id = $5, updated_at = NOW() \
+             WHERE id = $6 RETURNING *',
+            [platform_name, platform_type, chat_id, description || '', course_id || null, req.params.id]
         );
         
         if (result.rows.length === 0) {

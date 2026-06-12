@@ -27,7 +27,7 @@ export default function FileUploader({
       >
         <UploadCloud className="w-8 h-8 text-ink-mute mx-auto mb-2" />
         <p className="text-sm text-ink-mute">Drag & drop files here, or click to browse</p>
-        <p className="text-xs text-ink-faint mt-1">Max 50MB per file — JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, TXT, CSV</p>
+        <p className="text-xs text-ink-faint mt-1">Max 50MB per file — JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, TXT, CSV</p>
         <input ref={fileInputRef} type="file" multiple onChange={onFileChange} className="hidden" />
       </div>
 

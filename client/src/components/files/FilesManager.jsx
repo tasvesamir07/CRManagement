@@ -82,6 +82,8 @@ const FilesManager = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewTextContent, setPreviewTextContent] = useState('');
+  const [previewTextError, setPreviewTextError] = useState(false);
 
   // Expiry Modification states
   const [showExpiryModal, setShowExpiryModal] = useState(false);
@@ -150,6 +152,33 @@ const FilesManager = () => {
     }
   };
 
+  useEffect(() => {
+    if (!previewFile || !previewUrl) {
+      setPreviewTextContent('');
+      setPreviewTextError(false);
+      return;
+    }
+    const isText = (previewFile.file_type && previewFile.file_type.startsWith('text/')) ||
+                   previewFile.original_name.toLowerCase().endsWith('.csv') ||
+                   previewFile.original_name.toLowerCase().endsWith('.txt');
+    if (isText) {
+      setPreviewTextContent('');
+      setPreviewTextError(false);
+      fetch(previewUrl)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch text content');
+          return res.text();
+        })
+        .then(text => {
+          setPreviewTextContent(text);
+        })
+        .catch(err => {
+          console.error('[Preview] Text fetch failed:', err);
+          setPreviewTextError(true);
+        });
+    }
+  }, [previewFile, previewUrl]);
+
   const handleUpdateExpiry = async (fileId, newExpiresAt) => {
     try {
       const updatedFile = await filesAPI.updateExpiry(fileId, newExpiresAt);
@@ -194,6 +223,13 @@ const FilesManager = () => {
     try {
       const res = await filesAPI.extractZip(extractFile.id, deleteOriginalZip, currentFolderId);
       toast.success(res.message || 'Successfully extracted ZIP archive');
+      if (deleteOriginalZip) {
+        setSelectedFileIds(prev => {
+          const next = new Set(prev);
+          next.delete(extractFile.id);
+          return next;
+        });
+      }
       setShowExtractModal(false);
       setExtractFile(null);
       fetchFiles();
@@ -383,6 +419,10 @@ const FilesManager = () => {
     }
   }, [currentFolderId, fetchFolders]);
 
+  useEffect(() => {
+    setSelectedFileIds(new Set());
+  }, [currentFolderId, filter, search, page]);
+
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setPage(1);
@@ -514,6 +554,11 @@ const FilesManager = () => {
     try {
       await filesAPI.delete(id);
       setFiles(prev => prev.filter(f => f.id !== id));
+      setSelectedFileIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success('File deleted');
       fetchStorageUsage();
     } catch (e) {
@@ -838,7 +883,7 @@ const FilesManager = () => {
           Drag & drop files here, or <span className="text-primary hover:underline">browse</span>
         </p>
         <p className="text-xs text-ink-mute mt-1 font-sans">
-          Max 50MB per file — JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, PPT, PPTX, TXT, CSV
+          Max 50MB per file — JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, TXT, CSV
         </p>
       </div>
 
@@ -1585,6 +1630,65 @@ const FilesManager = () => {
                       title={previewFile.original_name}
                       className="w-full h-full border-0 rounded"
                     />
+                  ) : (
+                    previewFile.file_type?.includes('officedocument') ||
+                    previewFile.file_type?.includes('ms-excel') ||
+                    previewFile.file_type?.includes('ms-powerpoint') ||
+                    previewFile.file_type?.includes('msword') ||
+                    previewFile.original_name.endsWith('.docx') ||
+                    previewFile.original_name.endsWith('.doc') ||
+                    previewFile.original_name.endsWith('.xlsx') ||
+                    previewFile.original_name.endsWith('.xls') ||
+                    previewFile.original_name.endsWith('.pptx') ||
+                    previewFile.original_name.endsWith('.ppt')
+                  ) ? (
+                    (previewUrl.includes('localhost') || previewUrl.includes('127.0.0.1')) ? (
+                      <div className="text-center p-8 max-w-sm">
+                        <File className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                        <p className="text-sm font-semibold text-ink font-sans mb-1">Local Preview Limitation</p>
+                        <p className="text-xs text-ink-mute font-sans mb-4">Office documents (.docx, .xlsx, .pptx) cannot be previewed when running on localhost. Please download the file to view it.</p>
+                        <a
+                          href={previewUrl}
+                          download={previewFile.original_name}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download to View
+                        </a>
+                      </div>
+                    ) : (
+                      <iframe
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
+                        title={previewFile.original_name}
+                        className="w-full h-full border-0 rounded bg-canvas"
+                      />
+                    )
+                  ) : (
+                    previewFile.file_type?.startsWith('text/') ||
+                    previewFile.original_name.toLowerCase().endsWith('.csv') ||
+                    previewFile.original_name.toLowerCase().endsWith('.txt')
+                  ) ? (
+                    previewTextError ? (
+                      <div className="text-center p-8 max-w-sm">
+                        <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
+                        <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
+                        <p className="text-xs text-ink-mute font-sans mb-4">Could not load file content. Please download to view.</p>
+                        <a
+                          href={previewUrl}
+                          download={previewFile.original_name}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download to View
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col bg-canvas border border-hairline rounded overflow-hidden shadow-inner">
+                        <div className="overflow-auto flex-1 font-mono text-[11px] text-ink p-4 bg-canvas-soft select-text whitespace-pre-wrap leading-relaxed max-w-full text-left">
+                          {previewTextContent || 'Loading content...'}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <div className="text-center p-8 max-w-sm">
                       <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />

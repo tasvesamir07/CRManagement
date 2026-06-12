@@ -34,10 +34,15 @@ const upload = multer({
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.ms-powerpoint',
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain', 'text/csv'
+            'text/plain', 'text/csv',
+            'application/zip',
+            'application/x-zip-compressed',
+            'application/x-zip',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         ];
         if (!allowed.includes(file.mimetype)) {
-            const err = new Error(`File type ${file.mimetype} is not allowed. Allowed: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, PPT, PPTX, TXT, CSV`);
+            const err = new Error(`File type ${file.mimetype} is not allowed. Allowed: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, TXT, CSV`);
             err.code = 'LIMIT_UNEXPECTED_FILE_TYPE';
             return cb(err, false);
         }

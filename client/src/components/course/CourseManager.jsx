@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { coursesAPI } from '../../services/api';
-import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle } from 'lucide-react';
+import { coursesAPI, platformsAPI } from '../../services/api';
+import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Radio, Flag } from 'lucide-react';
 
 const CourseManager = () => {
   const [courses, setCourses] = useState([]);
@@ -266,6 +266,7 @@ const CourseManager = () => {
                   <th className="py-3 px-6">Course Name</th>
                   <th className="py-3 px-6">Instructor</th>
                   <th className="py-3 px-6">Initials</th>
+                  <th className="py-3 px-6">Default Platforms</th>
                   <th className="py-3 px-6">CRs Assigned</th>
                   <th className="py-3 px-6 text-right">Actions</th>
                 </tr>
@@ -281,12 +282,26 @@ const CourseManager = () => {
                         {course.teacher_initials}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary-deep">
-                        {course.member_count || 0} {course.member_count === 1 ? 'CR' : 'CRs'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right">
+                  <td className="py-4 px-6">
+                    {(course.default_platform_ids || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {(course.default_platform_ids || []).map(pid => (
+                          <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary-deep">
+                            <Flag className="w-2.5 h-2.5" />
+                            {pid}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-ink-mute">None</span>
+                    )}
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary-deep">
+                      {course.member_count || 0} {course.member_count === 1 ? 'CR' : 'CRs'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-right">
                       <div className="flex justify-end gap-3">
                         <button
                           onClick={() => handleEdit(course)}

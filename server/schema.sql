@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS courses (
     teacher_name TEXT,
     teacher_initials TEXT,
     created_by INTEGER REFERENCES users(id),
+    default_platform_ids INTEGER[] DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS platforms (
     chat_id TEXT NOT NULL,
     description TEXT,
     created_by INTEGER,
+    course_id INTEGER REFERENCES courses(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -15,7 +15,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { course_id, course_name, teacher_name, teacher_initials } = req.body;
+        const { course_id, course_name, teacher_name, teacher_initials, default_platform_ids } = req.body;
         if (!course_id || !course_name || !teacher_name || !teacher_initials) {
             return res.status(400).json({ error: 'All course fields are required' });
         }
@@ -24,7 +24,8 @@ router.post('/', authMiddleware, async (req, res) => {
             course_name,
             teacher_name,
             teacher_initials,
-            created_by: req.user.id
+            created_by: req.user.id,
+            default_platform_ids
         });
         return res.status(201).json(course);
     } catch (err) {
@@ -46,7 +47,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
-        const { course_id, course_name, teacher_name, teacher_initials } = req.body;
+        const { course_id, course_name, teacher_name, teacher_initials, default_platform_ids } = req.body;
         if (!course_id || !course_name || !teacher_name || !teacher_initials) {
             return res.status(400).json({ error: 'All course fields are required' });
         }
@@ -54,7 +55,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
             course_id,
             course_name,
             teacher_name,
-            teacher_initials
+            teacher_initials,
+            default_platform_ids
         });
         return res.json(course);
     } catch (err) {
@@ -101,6 +103,20 @@ router.delete('/:id/members/:userId', adminMiddleware, async (req, res) => {
         return res.json({ message: 'Member removed successfully' });
     } catch (err) {
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// Set default platforms for a course
+router.put('/:id/default-platforms', authMiddleware, async (req, res) => {
+    try {
+        const { platform_ids } = req.body;
+        if (!Array.isArray(platform_ids)) {
+            return res.status(400).json({ error: 'platform_ids must be an array' });
+        }
+        const course = await courseService.setDefaultPlatforms(req.params.id, platform_ids, req.user.id, req.user.role);
+        return res.json(course);
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
     }
 });
 

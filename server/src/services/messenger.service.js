@@ -10,6 +10,16 @@ let pendingSends = [];
 const APPSTATE_PATH = path.join(__dirname, '../../../appstate.json');
 
 function initMessenger() {
+    const appStateEnv = process.env.MESSENGER_APPSTATE;
+    if (appStateEnv) {
+        console.log('Facebook MESSENGER_APPSTATE env variable detected. Initializing...');
+        try {
+            fs.writeFileSync(APPSTATE_PATH, appStateEnv, 'utf8');
+        } catch (err) {
+            console.error('Failed to write appstate.json from env:', err.message);
+        }
+    }
+
     if (fs.existsSync(APPSTATE_PATH)) {
         console.log('Facebook appstate.json detected. Initializing Messenger bot...');
         try {
@@ -20,7 +30,7 @@ function initMessenger() {
             isMockMode = true;
         }
     } else {
-        console.log('⚠️ appstate.json not found in root. Messenger service will run in Mock Mode.');
+        console.log('⚠️ appstate.json not found in root/env. Messenger service will run in Mock Mode.');
         isMockMode = true;
     }
 }
