@@ -16,9 +16,17 @@ if (supabaseUrl && supabaseKey) {
     console.log('⚠️ Supabase credentials missing. File service will run on local uploads fallback.');
 }
 
-const uploadsDir = path.join(__dirname, '../../../uploads');
+const isVercel = !!process.env.VERCEL;
+const uploadsDir = isVercel
+    ? '/tmp/uploads'
+    : path.join(__dirname, '../../../uploads');
+
 if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    } catch (err) {
+        console.error('Failed to create uploads directory:', err.message);
+    }
 }
 
 // Helper to calculate expiry date (15 days from now)
