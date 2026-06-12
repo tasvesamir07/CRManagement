@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, X, GripVertical, BookOpen, StickyNote, AlertTriangle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const PRESET_DEFS = {
   'Quiz - 1': { category: 'quiz', topicLabel: 'Quiz Topics:' },
@@ -141,18 +142,17 @@ export default function MessageBuilder({
     let msg = title.trim() ? `📢 *${title}*\n\n` : '📢 *Title*\n\n';
 
     if (category === 'class_cancel') {
+      if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
       const sectionNames = sections.map(sec => sec.name).filter(Boolean);
       if (sectionNames.length > 0) {
         msg += `*Section ${sectionNames.join(', ')}*\n`;
       }
-      if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
       const eventDate = selectedDate ? new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]) : new Date();
       const day = String(eventDate.getDate()).padStart(2, '0');
       const month = String(eventDate.getMonth() + 1).padStart(2, '0');
       const year = String(eventDate.getFullYear()).substring(2);
       const dayName = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
-      msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n\n`;
-      msg += '❌ *Status:* Class Cancelled\n\n';
+      msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n\n❌ *Status:* Class Cancelled\n\n`;
       if (makeupStatus === 'later') msg += '📝 *Note:* Make-up class time will be shared later.\n';
       else if (makeupStatus === 'rescheduled') {
         msg += '📝 *Note:* Rescheduled to new slot:\n';
@@ -194,19 +194,50 @@ export default function MessageBuilder({
       } else {
         msg += '📝 *Note:* No make-up class scheduled.\n';
       }
-      notes.forEach(n => {
-        const text = typeof n === 'object' && n !== null ? n.text : n;
-        msg += ` · *${text}*\n`;
-      });
+      const groupedNotes = notes.reduce((acc, item) => {
+        const isObject = typeof item === 'object' && item !== null;
+        const text = isObject ? item.text : item;
+        const type = isObject ? item.type : 'note';
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(text);
+        return acc;
+      }, {});
+
+      if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
+        const label = groupedNotes.instruction.length > 1 ? '📋 *Instructions:*' : '📋 *Instruction:*';
+        msg += `\n${label}\n`;
+        groupedNotes.instruction.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
+      if (groupedNotes.important && groupedNotes.important.length > 0) {
+        const label = '⚠️ *Important:*';
+        msg += `\n${label}\n`;
+        groupedNotes.important.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
+      if (groupedNotes.note && groupedNotes.note.length > 0) {
+        const label = groupedNotes.note.length > 1 ? '📝 *Notes:*' : '📝 *Note:*';
+        msg += `\n${label}\n`;
+        groupedNotes.note.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
       if (closingText) msg += `\n_${closingText}_`;
       return msg;
     }
 
-    const sectionNames = sections.map(sec => sec.name).filter(Boolean);
-    if (sectionNames.length > 0) {
-      msg += `*Section ${sectionNames.join(', ')}*\n`;
-    }
     if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
+
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
+    const firstSection = sections[0];
+    const isSingleSection = sections.length === 1 && hasSections;
+
+    if (isSingleSection && firstSection.name) {
+      msg += `*Section ${firstSection.name}*\n`;
+    }
+
     if (selectedDate) {
       const eventDate = new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]);
       const day = String(eventDate.getDate()).padStart(2, '0');
@@ -216,10 +247,9 @@ export default function MessageBuilder({
       msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
     if (hasSections) {
       sections.forEach(sec => {
-        if (sections.length > 1 && sec.name) msg += `\n*Section ${sec.name}*\n`;
+        if (!isSingleSection && sec.name) msg += `\n*Section ${sec.name}*\n`;
         if (sec.timeOption === 'none') {
           // Omit time line
         } else if (sec.timeOption === 'custom') {
@@ -419,8 +449,29 @@ export default function MessageBuilder({
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${badgeColor} text-xs rounded-sm cursor-move select-none border border-transparent hover:brightness-95 transition-all`}>
                 <GripVertical className="w-3 h-3 opacity-70 flex-shrink-0" />
                 <BadgeIcon className="w-3 h-3 shrink-0" />
-                <span className="font-bold text-[10px] uppercase mr-0.5">{typeLabel}:</span>
-                {text}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="bg-transparent border-none p-0 text-[10px] font-bold uppercase cursor-pointer focus:outline-none hover:underline mr-0.5 flex items-center gap-1"
+                      style={{ color: 'inherit', fontInherit: true }}
+                    >
+                      {typeLabel}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
+                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                      <StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                      <BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                      <AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <span>{text}</span>
                 <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
               </span>
             );

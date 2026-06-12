@@ -32,6 +32,7 @@ import MessageBuilder from './MessageBuilder';
 import PlatformSelector from './PlatformSelector';
 import SchedulePicker from './SchedulePicker';
 import FileUploader from './FileUploader';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const PRESET_DEFS = {
   'Quiz - 1': { category: 'quiz', closing: 'Please be prepared and attend on time. Good luck! 🍀📖', topicLabel: 'Quiz Topics:' },
@@ -187,6 +188,12 @@ const AnnouncementForm = () => {
 
     if (category === 'class_cancel') {
       if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
+      
+      const sectionNames = sections.map(sec => sec.name).filter(Boolean);
+      if (sectionNames.length > 0) {
+        msg += `*Section ${sectionNames.join(', ')}*\n`;
+      }
+      
       const eventDate = selectedDate ? new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]) : new Date();
       const day = String(eventDate.getDate()).padStart(2, '0');
       const month = String(eventDate.getMonth() + 1).padStart(2, '0');
@@ -221,15 +228,50 @@ const AnnouncementForm = () => {
         });
       } else if (makeupStatus === 'custom') msg += `📝 *Note:* ${customMakeupText || 'Custom make-up details'}\n`;
       else msg += '📝 *Note:* No make-up class scheduled.\n';
-      notes.forEach(n => {
-        const text = typeof n === 'object' && n !== null ? n.text : n;
-        msg += ` · *${text}*\n`;
-      });
+      const groupedNotes = notes.reduce((acc, item) => {
+        const isObject = typeof item === 'object' && item !== null;
+        const text = isObject ? item.text : item;
+        const type = isObject ? item.type : 'note';
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(text);
+        return acc;
+      }, {});
+
+      if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
+        const label = groupedNotes.instruction.length > 1 ? '📋 *Instructions:*' : '📋 *Instruction:*';
+        msg += `\n${label}\n`;
+        groupedNotes.instruction.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
+      if (groupedNotes.important && groupedNotes.important.length > 0) {
+        const label = '⚠️ *Important:*';
+        msg += `\n${label}\n`;
+        groupedNotes.important.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
+      if (groupedNotes.note && groupedNotes.note.length > 0) {
+        const label = groupedNotes.note.length > 1 ? '📝 *Notes:*' : '📝 *Note:*';
+        msg += `\n${label}\n`;
+        groupedNotes.note.forEach(text => {
+          msg += ` · *${text}*\n`;
+        });
+      }
       if (closingText) msg += `\n_${closingText}_`;
       return msg;
     }
 
     if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
+
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
+    const firstSection = sections[0];
+    const isSingleSection = sections.length === 1 && hasSections;
+
+    if (isSingleSection && firstSection.name) {
+      msg += `*Section ${firstSection.name}*\n`;
+    }
+
     if (selectedDate) {
       const eventDate = new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]);
       const day = String(eventDate.getDate()).padStart(2, '0');
@@ -238,10 +280,9 @@ const AnnouncementForm = () => {
       msg += `📅 *Date:* ${day}/${month}/${year} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
     if (hasSections) {
       sections.forEach(sec => {
-        if (sec.name) msg += `\n*Section ${sec.name}*\n`;
+        if (!isSingleSection && sec.name) msg += `\n*Section ${sec.name}*\n`;
         if (sec.timeOption === 'none') {
           // Omit time line
         } else if (sec.timeOption === 'custom') {
@@ -832,10 +873,28 @@ const AnnouncementForm = () => {
                           className="flex items-center justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move select-none">
                           <span className="truncate flex items-center gap-1.5">
                             <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0" />
-                            <span className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1`}>
-                              <BadgeIcon className="w-2.5 h-2.5" />
-                              {typeLabel}
-                            </span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none`}
+                                >
+                                  <BadgeIcon className="w-2.5 h-2.5" />
+                                  {typeLabel}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
+                                <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                  <StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                  <BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                             <span className="truncate">{text}</span>
                           </span>
                           <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3.5 h-3.5" /></button>

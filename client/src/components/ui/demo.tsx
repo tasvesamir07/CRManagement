@@ -1,25 +1,35 @@
+import { Button } from "@/components/ui/button";
 import {
-  Calendar,
-  CalendarCell,
-  CalendarGrid,
-  CalendarGridBody,
-  CalendarGridHeader,
-  CalendarHeaderCell,
-  CalendarHeading,
-} from "@/components/ui/calendar"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Ellipsis } from "lucide-react";
 
-export function CalendarDemo() {
+function Component() {
   return (
-    <Calendar aria-label="Appointment date" className="bg-background rounded-lg px-2 py-3 border">
-      <CalendarHeading />
-      <CalendarGrid>
-        <CalendarGridHeader>
-          {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-        </CalendarGridHeader>
-        <CalendarGridBody>
-          {(date) => <CalendarCell date={date} />}
-        </CalendarGridBody>
-      </CalendarGrid>
-    </Calendar>
-  )
+    <div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="rounded-full shadow-none"
+            aria-label="Open edit menu"
+          >
+            <Ellipsis size={16} strokeWidth={2} aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Option 1</DropdownMenuItem>
+          <DropdownMenuItem>Option 2</DropdownMenuItem>
+          <DropdownMenuItem>Option 3</DropdownMenuItem>
+          <DropdownMenuItem>Option 4</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
+
+export { Component };
