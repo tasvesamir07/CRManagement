@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { filesAPI } from '../../services/api';
-import { Search, Download, Trash2, Upload, File, Image, FileText, FileArchive, ChevronLeft, ChevronRight, RefreshCw, Send } from 'lucide-react';
+import { Search, Download, Trash2, Upload, File, Image, FileText, FileArchive, ChevronLeft, ChevronRight, RefreshCw, Send, Check, X, UploadCloud } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TYPE_ICONS = {
@@ -44,6 +44,10 @@ const FilesManager = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
+  const [dragActive, setDragActive] = useState(false);
+  const [queue, setQueue] = useState([]);
+  const [queueTotal, setQueueTotal] = useState(0);
+  const [queueCurrent, setQueueCurrent] = useState(0);
   const fileInputRef = useRef(null);
 
   const handleToggleSelect = (id) => {
@@ -100,8 +104,26 @@ const FilesManager = () => {
     setPage(1);
   };
 
-  const handleUpload = async (e) => {
-    const fileList = e.target.files;
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await processFiles(e.dataTransfer.files);
+    }
+  };
+
+  const processFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
 
     let currentUsage = { usedBytes: 0, limitBytes: 104857600 };
@@ -116,12 +138,31 @@ const FilesManager = () => {
       return;
     }
 
+    const filesArray = Array.from(fileList);
+    setQueueTotal(filesArray.length);
+    setQueueCurrent(1);
     setUploading(true);
+
+    const initialQueue = filesArray.map((file, idx) => ({
+      id: `${file.name}-${idx}-${Date.now()}`,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      status: 'pending'
+    }));
+    setQueue(initialQueue);
+
     let uploadedCount = 0;
 
-    for (const file of Array.from(fileList)) {
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i];
+      setQueueCurrent(i + 1);
+
+      setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading' } : item));
+
       if (file.size > 50 * 1024 * 1024) {
         toast.error(`"${file.name}" exceeds the 50MB limit.`);
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
         continue;
       }
 
@@ -131,6 +172,7 @@ const FilesManager = () => {
         let overwrite = false;
         if (dupCheck.duplicate) {
           if (!window.confirm(`A file named "${file.name}" already exists. Do you want to overwrite it?`)) {
+            setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
             continue;
           }
           overwrite = true;
@@ -138,11 +180,16 @@ const FilesManager = () => {
 
         const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
         await uploadFn(file, (pe) => {
-          setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
+          const pct = Math.round((pe.loaded * 100) / pe.total);
+          setUploadProgress(pct);
+          setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, progress: pct } : item));
         });
+
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'completed', progress: 100 } : item));
         uploadedCount++;
       } catch (err) {
         toast.error(`Upload failed for "${file.name}": ${err.response?.data?.error || err.message}`);
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
       }
     }
 
@@ -150,8 +197,17 @@ const FilesManager = () => {
       toast.success(`Successfully uploaded ${uploadedCount} file(s)!`);
       fetchFiles();
     }
-    setUploading(false);
+    
+    setTimeout(() => {
+      setUploading(false);
+      setQueue([]);
+    }, 4000);
+
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleUpload = async (e) => {
+    await processFiles(e.target.files);
   };
 
   const handleDownload = async (file) => {
@@ -226,11 +282,27 @@ const FilesManager = () => {
         </div>
       </div>
 
-      {uploading && (
-        <div className="w-full bg-hairline rounded-full h-1.5 overflow-hidden animate-pulse">
-          <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-        </div>
-      )}
+      {/* Drag & Drop Zone */}
+      <div
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer bg-canvas-soft flex flex-col items-center justify-center min-h-[120px] ${
+          dragActive 
+            ? 'border-primary bg-primary/5 shadow-inner scale-[1.005]' 
+            : 'border-hairline-strong hover:border-primary/50 hover:bg-canvas-soft/80'
+        }`}
+      >
+        <UploadCloud className={`w-8 h-8 mb-2 transition-colors ${dragActive ? 'text-primary' : 'text-ink-mute/70'}`} />
+        <p className="text-sm font-semibold text-ink font-sans">
+          Drag & drop files here, or <span className="text-primary hover:underline">browse</span>
+        </p>
+        <p className="text-xs text-ink-mute mt-1 font-sans">
+          Max 50MB per file — JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, PPT, PPTX, TXT, CSV
+        </p>
+      </div>
 
       {/* Files Table */}
       <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
@@ -351,6 +423,82 @@ const FilesManager = () => {
           </>
         )}
       </div>
+
+      {/* Upload Queue Overlay */}
+      {uploading && queue.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 bg-canvas/95 backdrop-blur-md border border-hairline shadow-2xl rounded-lg w-80 overflow-hidden font-sans flex flex-col transition-all duration-300">
+          <div className="bg-canvas-soft/80 border-b border-hairline p-3 flex items-center justify-between">
+            <span className="text-xs font-bold text-ink uppercase tracking-wider">
+              Uploading files ({queueCurrent}/{queueTotal})
+            </span>
+            <span className="text-xs text-ink-mute font-bold">
+              {Math.round(queue.reduce((acc, curr) => acc + curr.progress, 0) / queueTotal)}%
+            </span>
+          </div>
+          <div className="max-h-60 overflow-y-auto divide-y divide-hairline p-2 space-y-1">
+            {queue.map((item) => {
+              const radius = 10;
+              const stroke = 2;
+              const normalizedRadius = radius - stroke * 2;
+              const circumference = normalizedRadius * 2 * Math.PI;
+              const strokeDashoffset = circumference - (item.progress / 100) * circumference;
+
+              return (
+                <div key={item.id} className="flex items-center justify-between p-2 text-xs">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {item.status === 'uploading' && (
+                      <svg className="w-5 h-5 shrink-0 -rotate-90">
+                        <circle
+                          stroke="var(--color-hairline)"
+                          fill="transparent"
+                          strokeWidth={stroke}
+                          r={normalizedRadius}
+                          cx={radius}
+                          cy={radius}
+                        />
+                        <circle
+                          stroke="var(--color-primary)"
+                          fill="transparent"
+                          strokeWidth={stroke}
+                          strokeDasharray={circumference + ' ' + circumference}
+                          style={{ strokeDashoffset }}
+                          r={normalizedRadius}
+                          cx={radius}
+                          cy={radius}
+                        />
+                      </svg>
+                    )}
+                    {item.status === 'completed' && (
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      </span>
+                    )}
+                    {item.status === 'failed' && (
+                      <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+                        <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                      </span>
+                    )}
+                    {item.status === 'pending' && (
+                      <span className="w-5 h-5 rounded-full bg-hairline flex items-center justify-center shrink-0 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-ink-mute"></span>
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-ink font-medium truncate">{item.name}</p>
+                      <p className="text-[10px] text-ink-mute">
+                        {(item.size / 1024).toFixed(0)} KB • {item.status}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-ink-mute font-semibold shrink-0 pl-2">
+                    {item.progress}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
