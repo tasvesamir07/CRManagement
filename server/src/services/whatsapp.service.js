@@ -23,6 +23,7 @@ let latestQr = '';
 let wsBroadcaster = null;
 let isMockMode = isVercel;
 let hasEverBeenConnected = false;
+let reconnectTimer = null;
 const pairingResolve = null;
 
 const AUTH_FOLDER = path.join(__dirname, '../../../.baileys_auth');
@@ -115,7 +116,8 @@ async function initWhatsApp() {
                         delay = 30000;
                     }
                     console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
-                    setTimeout(initWhatsApp, delay);
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = setTimeout(initWhatsApp, delay);
                 } else {
                     console.log(`WhatsApp logged out (reason=${statusCode}). Please re-link your device.`);
                     isMockMode = false;
@@ -148,14 +150,15 @@ async function requestPairingCode(phoneNumber) {
     }
 
     if (!sock) {
-        initWhatsApp();
-        for (let i = 0; i < 30; i++) {
-            await new Promise(r => setTimeout(r, 1000));
-            if (sock) break;
+        clearTimeout(reconnectTimer);
+        await initWhatsApp();
+        if (isMockMode) {
+            throw new Error('WhatsApp engine failed to initialize. Check server logs for details.');
         }
         if (!sock) {
-            throw new Error('WhatsApp client failed to initialize after waiting. Please try again.');
+            throw new Error('WhatsApp client failed to initialize. Please try again.');
         }
+        await new Promise(r => setTimeout(r, 2000));
     }
 
     try {
@@ -292,6 +295,7 @@ async function getChats() {
 
 async function restartWhatsApp() {
     console.log('🔄 Restarting WhatsApp Client...');
+    clearTimeout(reconnectTimer);
     if (sock) {
         try {
             sock.end(undefined);
@@ -309,6 +313,7 @@ async function restartWhatsApp() {
 
 async function clearSession() {
     console.log('🧹 Clearing WhatsApp Session...');
+    clearTimeout(reconnectTimer);
     if (sock) {
         try {
             sock.end(undefined);
