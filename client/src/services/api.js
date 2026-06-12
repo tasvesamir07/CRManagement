@@ -241,8 +241,8 @@ export const announcementsAPI = {
         const res = await api.put(`/announcements/${id}`, announcementData);
         return res.data;
     },
-    send: async (id) => {
-        const res = await api.post(`/announcements/${id}/send`);
+    send: async (id, data = { confirmed: true }) => {
+        const res = await api.post(`/announcements/${id}/send`, data);
         return res.data;
     },
     schedule: async (id, scheduledAt) => {
