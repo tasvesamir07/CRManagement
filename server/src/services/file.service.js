@@ -11,7 +11,8 @@ const bucketName = process.env.SUPABASE_BUCKET_NAME || 'announcement-files';
 
 if (supabaseUrl && supabaseKey) {
     console.log('Supabase Storage configurations detected. Initializing Supabase client...');
-    supabase = createClient(supabaseUrl, supabaseKey);
+    const cleanSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+    supabase = createClient(cleanSupabaseUrl, supabaseKey);
 } else {
     console.log('⚠️ Supabase credentials missing. File service will run on local uploads fallback.');
 }
