@@ -22,6 +22,7 @@ let latestQr = '';
 let wsBroadcaster = null;
 let isMockMode = isVercel;
 let hasEverBeenConnected = false;
+let _consecutive401Count = 0;
 let reconnectTimer = null;
 const pairingResolve = null;
 
@@ -187,18 +188,25 @@ async function initWhatsApp() {
 
                 sock = null;
 
-                if (!hasEverBeenConnected || statusCode !== DisconnectReason.loggedOut) {
+                if (statusCode === DisconnectReason.loggedOut) {
+                    _consecutive401Count++;
+                    console.error(`WhatsApp connection error: ${errMsg}`);
+                    console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). ${_consecutive401Count}/5 consecutive 401 failures.`);
+                    if (_consecutive401Count >= 5) {
+                        console.log('⚠️ Too many consecutive 401 failures (likely IP blocked). Falling back to mock mode.');
+                        isMockMode = true;
+                        return;
+                    }
+                } else {
+                    _consecutive401Count = 0;
+                }
+
+                if (!isMockMode) {
                     let delay = 10000;
                     if (statusCode === 408) delay = 10000;
-                    if (!hasEverBeenConnected) {
-                        console.error(`WhatsApp connection error: ${errMsg}`);
-                    }
-                    console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
+                    console.log(`Reconnecting in ${delay / 1000}s...`);
                     clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(initWhatsApp, delay);
-                } else {
-                    console.log(`WhatsApp logged out (reason=${statusCode}). Please re-link your device.`);
-                    isMockMode = false;
                 }
             }
         });
