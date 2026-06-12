@@ -1,13 +1,27 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
+
+const isVercel = !!process.env.VERCEL;
+
+let makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion;
+if (!isVercel) {
+    try {
+        const baileys = require('@whiskeysockets/baileys');
+        makeWASocket = baileys.makeWASocket;
+        useMultiFileAuthState = baileys.useMultiFileAuthState;
+        DisconnectReason = baileys.DisconnectReason;
+        fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
+    } catch (err) {
+        console.error('Failed to load @whiskeysockets/baileys:', err.message);
+    }
+}
 
 let sock = null;
 let connectionStatus = 'DISCONNECTED';
 let latestQr = '';
 let wsBroadcaster = null;
-let isMockMode = false;
+let isMockMode = isVercel;
 const pairingResolve = null;
 
 const AUTH_FOLDER = path.join(__dirname, '../../../.baileys_auth');
@@ -28,6 +42,13 @@ function broadcastStatus() {
 }
 
 async function initWhatsApp() {
+    if (isMockMode) {
+        console.log('WhatsApp service running in Mock Mode. Skipping initialization.');
+        connectionStatus = 'DISCONNECTED';
+        broadcastStatus();
+        return;
+    }
+
     if (sock) {
         console.log('WhatsApp client already initialized.');
         return;
