@@ -203,25 +203,49 @@ export const platformsAPI = {
 };
 
 export const filesAPI = {
-    upload: async (fileObject, onUploadProgress) => {
+    upload: async (fileObject, folderIdOrProgress, onUploadProgress) => {
+        let folderId = null;
+        let progressCallback = onUploadProgress;
+        
+        if (typeof folderIdOrProgress === 'function') {
+            progressCallback = folderIdOrProgress;
+        } else {
+            folderId = folderIdOrProgress;
+        }
+        
         const formData = new FormData();
         formData.append('file', fileObject);
+        if (folderId) {
+            formData.append('folderId', folderId);
+        }
         const res = await api.post('/files/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             },
-            onUploadProgress
+            onUploadProgress: progressCallback
         });
         return res.data;
     },
-    uploadWithOverwrite: async (fileObject, onUploadProgress) => {
+    uploadWithOverwrite: async (fileObject, folderIdOrProgress, onUploadProgress) => {
+        let folderId = null;
+        let progressCallback = onUploadProgress;
+        
+        if (typeof folderIdOrProgress === 'function') {
+            progressCallback = folderIdOrProgress;
+        } else {
+            folderId = folderIdOrProgress;
+        }
+        
         const formData = new FormData();
         formData.append('file', fileObject);
+        if (folderId) {
+            formData.append('folderId', folderId);
+        }
         const res = await api.post('/files/upload?overwrite=true', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             },
-            onUploadProgress
+            onUploadProgress: progressCallback
         });
         return res.data;
     },
@@ -241,8 +265,20 @@ export const filesAPI = {
         const res = await api.get('/files', { params });
         return res.data;
     },
-    checkDuplicate: async (filename) => {
-        const res = await api.post('/files/check-duplicate', { filename });
+    checkDuplicate: async (filename, folderId = null) => {
+        const res = await api.post('/files/check-duplicate', { filename, folderId });
+        return res.data;
+    },
+    listFolders: async () => {
+        const res = await api.get('/files/folders');
+        return res.data;
+    },
+    createFolder: async (name, courseId = null) => {
+        const res = await api.post('/files/folders', { name, courseId });
+        return res.data;
+    },
+    deleteFolder: async (id, deleteFiles = false) => {
+        const res = await api.delete(`/files/folders/${id}`, { params: { deleteFiles } });
         return res.data;
     }
 };

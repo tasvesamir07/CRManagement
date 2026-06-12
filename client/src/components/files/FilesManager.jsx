@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { filesAPI } from '../../services/api';
-import { Search, Download, Trash2, Upload, File, Image, FileText, FileArchive, ChevronLeft, ChevronRight, RefreshCw, Send, Check, X, UploadCloud } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { filesAPI, coursesAPI } from '../../services/api';
+import { 
+  Search, Download, Trash2, Upload, File, Image, FileText, 
+  FileArchive, ChevronLeft, ChevronRight, Send, Check, X, 
+  UploadCloud, Folder, FolderPlus, ArrowLeft, FolderClosed 
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TYPE_ICONS = {
@@ -50,6 +55,18 @@ const FilesManager = () => {
   const [queueCurrent, setQueueCurrent] = useState(0);
   const fileInputRef = useRef(null);
 
+  // Folder and Course States
+  const [folders, setFolders] = useState([]);
+  const [foldersLoading, setFoldersLoading] = useState(false);
+  const [currentFolderId, setCurrentFolderId] = useState(null);
+  const [currentFolderName, setCurrentFolderName] = useState('');
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderCourseId, setNewFolderCourseId] = useState('');
+  const [courses, setCourses] = useState([]);
+  const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState(null);
+
   const handleToggleSelect = (id) => {
     setSelectedFileIds(prev => {
       const next = new Set(prev);
@@ -83,21 +100,59 @@ const FilesManager = () => {
 
   useEffect(() => {
     setSelectedFileIds(new Set());
-  }, [page, search]);
+  }, [page, search, currentFolderId]);
+
+  // Fetch Courses once on mount
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const list = await coursesAPI.list();
+        setCourses(list);
+      } catch (err) {
+        console.error('Failed to load courses:', err);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const fetchFolders = useCallback(async () => {
+    setFoldersLoading(true);
+    try {
+      const result = await filesAPI.listFolders();
+      setFolders(result);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load folders');
+    }
+    setFoldersLoading(false);
+  }, []);
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await filesAPI.list({ page, limit: 50, search });
+      const result = await filesAPI.list({ 
+        page, 
+        limit: 50, 
+        search, 
+        folderId: currentFolderId || '' 
+      });
       setFiles(result.files);
       setPagination(result.pagination);
     } catch (e) {
       toast.error('Failed to load files');
     }
     setLoading(false);
-  }, [page, search]);
+  }, [page, search, currentFolderId]);
 
-  useEffect(() => { fetchFiles(); }, [fetchFiles]);
+  useEffect(() => { 
+    fetchFiles(); 
+  }, [fetchFiles]);
+
+  useEffect(() => {
+    if (currentFolderId === null) {
+      fetchFolders();
+    }
+  }, [currentFolderId, fetchFolders]);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
@@ -168,10 +223,10 @@ const FilesManager = () => {
 
       try {
         setUploadProgress(0);
-        const dupCheck = await filesAPI.checkDuplicate(file.name);
+        const dupCheck = await filesAPI.checkDuplicate(file.name, currentFolderId);
         let overwrite = false;
         if (dupCheck.duplicate) {
-          if (!window.confirm(`A file named "${file.name}" already exists. Do you want to overwrite it?`)) {
+          if (!window.confirm(`A file named "${file.name}" already exists in this folder. Do you want to overwrite it?`)) {
             setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
             continue;
           }
@@ -179,7 +234,7 @@ const FilesManager = () => {
         }
 
         const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
-        await uploadFn(file, (pe) => {
+        await uploadFn(file, currentFolderId, (pe) => {
           const pct = Math.round((pe.loaded * 100) / pe.total);
           setUploadProgress(pct);
           setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, progress: pct } : item));
@@ -282,6 +337,111 @@ const FilesManager = () => {
         </div>
       </div>
 
+      {/* Breadcrumbs for navigated folder */}
+      {currentFolderId !== null && (
+        <div className="flex items-center gap-2 text-sm text-ink-mute font-sans bg-canvas-soft/50 py-2 px-3 rounded-lg border border-hairline w-fit">
+          <button
+            onClick={() => {
+              setCurrentFolderId(null);
+              setCurrentFolderName('');
+              setPage(1);
+            }}
+            className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-deep transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Root
+          </button>
+          <span className="text-hairline-strong">/</span>
+          <span className="text-ink font-semibold truncate max-w-xs">{currentFolderName}</span>
+        </div>
+      )}
+
+      {/* Folders Section */}
+      {currentFolderId === null && !search && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-ink-mute uppercase tracking-wider font-sans">Folders</h2>
+            <button
+              onClick={() => setShowCreateFolderModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-deep transition-colors cursor-pointer"
+            >
+              <FolderPlus className="w-4 h-4" />
+              New Folder
+            </button>
+          </div>
+          
+          {foldersLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-pulse">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className="h-24 bg-canvas-soft border border-hairline rounded-lg"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {/* Create Folder Card */}
+              <div
+                onClick={() => setShowCreateFolderModal(true)}
+                className="group flex flex-col justify-center items-center h-24 p-4 border-2 border-dashed border-hairline hover:border-primary/50 bg-canvas-soft/40 hover:bg-canvas-soft/80 rounded-lg cursor-pointer transition-all duration-200"
+              >
+                <FolderPlus className="w-6 h-6 text-ink-mute group-hover:text-primary transition-colors mb-1.5" />
+                <span className="text-xs font-semibold text-ink-mute group-hover:text-primary transition-colors font-sans">Create Folder</span>
+              </div>
+
+              {folders.map(folder => (
+                <div
+                  key={folder.id}
+                  onClick={() => {
+                    setCurrentFolderId(folder.id);
+                    setCurrentFolderName(folder.name);
+                    setPage(1);
+                  }}
+                  className="group relative flex flex-col justify-between h-24 p-4 bg-canvas border border-hairline hover:border-primary/40 hover:shadow-sm rounded-lg cursor-pointer transition-all duration-200 hover:-translate-y-[2px]"
+                >
+                  <div className="flex items-start justify-between min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-sm bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                        <FolderClosed className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-sm font-semibold text-ink group-hover:text-primary transition-colors truncate block font-sans" title={folder.name}>
+                          {folder.name}
+                        </span>
+                        {folder.course_code ? (
+                          <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 mt-1 bg-primary/10 text-primary rounded-sm uppercase tracking-wider font-sans">
+                            {folder.course_code}
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 mt-1 bg-canvas-soft text-ink-mute rounded-sm font-sans">
+                            Personal
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-auto">
+                    <span className="text-[10px] text-ink-mute font-sans">
+                      {folder.created_at ? new Date(folder.created_at).toLocaleDateString() : ''}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFolderToDelete(folder);
+                        setShowDeleteFolderModal(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-ink-mute hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-sm transition-all duration-150 cursor-pointer"
+                      title="Delete Folder"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Drag & Drop Zone */}
       <div
         onDragEnter={handleDrag}
@@ -369,7 +529,7 @@ const FilesManager = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleShareFiles([file.id])}
-                              className="p-1.5 text-ink-mute hover:text-emerald-600 hover:bg-emerald-50 rounded-sm transition-colors cursor-pointer"
+                              className="p-1.5 text-ink-mute hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-sm transition-colors cursor-pointer"
                               title="Share in Announcement"
                             >
                               <Send className="w-4 h-4" />
@@ -384,7 +544,7 @@ const FilesManager = () => {
                             <button
                               onClick={() => handleDelete(file.id)}
                               disabled={isDeleting}
-                              className="p-1.5 text-ink-mute hover:text-red-500 hover:bg-red-50 rounded-sm transition-colors cursor-pointer disabled:opacity-40"
+                              className="p-1.5 text-ink-mute hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-sm transition-colors cursor-pointer disabled:opacity-40"
                               title="Delete"
                             >
                               {isDeleting ? <div className="animate-spin rounded-full h-4 w-4 border-b border-red-400"></div> : <Trash2 className="w-4 h-4" />}
@@ -423,6 +583,183 @@ const FilesManager = () => {
           </>
         )}
       </div>
+
+      {/* Create Folder Modal */}
+      {showCreateFolderModal && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
+                  <FolderPlus className="text-primary w-5 h-5" />
+                  Create New Folder
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowCreateFolderModal(false);
+                    setNewFolderName('');
+                    setNewFolderCourseId('');
+                  }}
+                  className="text-ink-mute hover:text-ink transition-colors p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">
+                    Folder Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Shared Documents, Assignment Instructions"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/50 focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">
+                    Associate with Course (Optional)
+                  </label>
+                  <select
+                    value={newFolderCourseId}
+                    onChange={(e) => setNewFolderCourseId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary transition-colors"
+                  >
+                    <option value="">Personal / General (No Course)</option>
+                    {courses.map(course => (
+                      <option key={course.id} value={course.id}>
+                        {course.course_id} - {course.course_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowCreateFolderModal(false);
+                    setNewFolderName('');
+                    setNewFolderCourseId('');
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded-sm transition-colors border border-hairline cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newFolderName.trim()) {
+                      toast.error('Folder name is required');
+                      return;
+                    }
+                    try {
+                      await filesAPI.createFolder(newFolderName.trim(), newFolderCourseId || null);
+                      toast.success('Folder created successfully');
+                      setShowCreateFolderModal(false);
+                      setNewFolderName('');
+                      setNewFolderCourseId('');
+                      fetchFolders();
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Failed to create folder');
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded-sm shadow-sm transition-colors cursor-pointer"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Folder Modal */}
+      {showDeleteFolderModal && folderToDelete && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
+                  <Trash2 className="text-red-500 w-5 h-5" />
+                  Delete Folder
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDeleteFolderModal(false);
+                    setFolderToDelete(null);
+                  }}
+                  className="text-ink-mute hover:text-ink transition-colors p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <p className="text-sm text-ink font-sans">
+                  Are you sure you want to delete the folder <span className="font-bold text-primary">"{folderToDelete.name}"</span>?
+                </p>
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
+                  <p className="text-xs text-red-600 dark:text-red-400 font-sans">
+                    Choose what to do with the files currently inside this folder:
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5 pt-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      await filesAPI.deleteFolder(folderToDelete.id, true);
+                      toast.success('Folder and files deleted');
+                      setShowDeleteFolderModal(false);
+                      setFolderToDelete(null);
+                      fetchFolders();
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Failed to delete folder');
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 text-xs font-semibold text-on-primary bg-red-600 hover:bg-red-700 rounded-sm shadow-sm transition-colors text-center cursor-pointer"
+                >
+                  Delete Folder & All Files Inside
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    try {
+                      await filesAPI.deleteFolder(folderToDelete.id, false);
+                      toast.success('Folder deleted, files kept');
+                      setShowDeleteFolderModal(false);
+                      setFolderToDelete(null);
+                      fetchFolders();
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Failed to delete folder');
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong border border-hairline rounded-sm transition-colors text-center cursor-pointer"
+                >
+                  Delete Folder Only (Keep files and move to Root)
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowDeleteFolderModal(false);
+                    setFolderToDelete(null);
+                  }}
+                  className="w-full py-2.5 px-4 text-xs font-medium text-ink-mute hover:text-ink transition-colors text-center cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Upload Queue Overlay */}
       {uploading && queue.length > 0 && (

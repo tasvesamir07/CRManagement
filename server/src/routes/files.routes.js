@@ -11,7 +11,8 @@ router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (r
         }
         
         const overwrite = req.query.overwrite === 'true';
-        const fileRecord = await fileService.uploadFile(req.file, req.user.id, { overwrite });
+        const folderId = req.body.folderId || req.query.folderId || req.body.folder_id || req.query.folder_id;
+        const fileRecord = await fileService.uploadFile(req.file, req.user.id, { overwrite, folderId });
         return res.status(201).json(fileRecord);
     } catch (err) {
         console.error('File upload route error:', err.message);
@@ -21,11 +22,11 @@ router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (r
 
 router.post('/check-duplicate', authMiddleware, async (req, res) => {
     try {
-        const { filename } = req.body;
+        const { filename, folderId } = req.body;
         if (!filename) {
             return res.status(400).json({ error: 'filename is required' });
         }
-        const duplicate = await fileService.checkDuplicate(filename);
+        const duplicate = await fileService.checkDuplicate(filename, folderId);
         return res.json({ duplicate: !!duplicate, file: duplicate });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -34,14 +35,50 @@ router.post('/check-duplicate', authMiddleware, async (req, res) => {
 
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { page, limit, search, userId } = req.query;
+        const { page, limit, search, userId, folderId } = req.query;
         const result = await fileService.listFiles({
             page: parseInt(page) || 1,
             limit: Math.min(parseInt(limit) || 50, 200),
             search,
             userId: userId || req.user.id,
+            folderId
         });
         return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/folders', authMiddleware, async (req, res) => {
+    try {
+        const folders = await fileService.listFolders(req.user.id);
+        return res.json(folders);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/folders', authMiddleware, async (req, res) => {
+    try {
+        const { name, courseId } = req.body;
+        if (!name) {
+            return res.status(400).json({ error: 'Folder name is required' });
+        }
+        const folder = await fileService.createFolder(name, courseId, req.user.id);
+        return res.status(201).json(folder);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/folders/:id', authMiddleware, async (req, res) => {
+    try {
+        const { deleteFiles } = req.query;
+        const deleted = await fileService.deleteFolder(req.params.id, deleteFiles);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Folder not found or already deleted' });
+        }
+        return res.json({ message: 'Folder deleted successfully' });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

@@ -38,18 +38,119 @@ function getExpiryDate() {
     return date.toISOString();
 }
 
-async function uploadFile(file, userId, { overwrite = false } = {}) {
+// Ensure course folders are synced/seeded for the user's active courses
+async function ensureCourseFolders(userId) {
+    if (!userId) return;
+    try {
+        const { getCourses } = require('./course.service');
+        const courses = await getCourses(userId);
+        
+        // Get existing folders with courses
+        const existingFoldersResult = await db.query('SELECT * FROM folders WHERE course_id IS NOT NULL');
+        const existingCourseIds = existingFoldersResult.rows.map(f => parseInt(f.course_id));
+        
+        for (const course of courses) {
+            if (!existingCourseIds.includes(parseInt(course.id))) {
+                const folderName = `${course.course_id} - ${course.course_name}`;
+                await db.query(
+                    'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3)',
+                    [folderName, course.id, userId]
+                );
+            }
+        }
+    } catch (err) {
+        console.error('Failed to seed course folders:', err.message);
+    }
+}
+
+async function listFolders(userId) {
+    if (userId) {
+        await ensureCourseFolders(userId);
+    }
+    
+    const result = await db.query(
+        'SELECT fo.*, c.course_name, c.course_id as course_code FROM folders fo LEFT JOIN courses c ON fo.course_id = c.id'
+    );
+    
+    let filteredFolders = result.rows;
+    if (userId) {
+        const { getCourses } = require('./course.service');
+        const courses = await getCourses(userId);
+        const userCourseIds = courses.map(c => parseInt(c.id));
+        
+        filteredFolders = filteredFolders.filter(folder => {
+            if (folder.course_id) {
+                return userCourseIds.includes(parseInt(folder.course_id));
+            }
+            return parseInt(folder.created_by) === parseInt(userId);
+        });
+    }
+    
+    filteredFolders.sort((a, b) => a.name.localeCompare(b.name));
+    return filteredFolders;
+}
+
+async function createFolder(name, courseId, userId) {
+    const result = await db.query(
+        'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3) RETURNING *',
+        [name, courseId ? parseInt(courseId) : null, userId]
+    );
+    return result.rows[0];
+}
+
+async function deleteFolder(folderId, deleteFiles) {
+    const id = parseInt(folderId);
+    const shouldDeleteFiles = String(deleteFiles) === 'true';
+    
+    if (shouldDeleteFiles) {
+        // Fetch and delete all files in the folder
+        const filesResult = await db.query(
+            'SELECT * FROM files WHERE folder_id = $1 AND is_deleted = false',
+            [id]
+        );
+        for (const file of filesResult.rows) {
+            await deleteFile(file.id);
+        }
+    }
+    
+    // Now delete the folder record
+    // ON DELETE SET NULL constraint will automatically set any remaining files' folder_id to NULL
+    const result = await db.query(
+        'DELETE FROM folders WHERE id = $1',
+        [id]
+    );
+    return result.rowCount > 0;
+}
+
+async function uploadFile(file, userId, { overwrite = false, folderId = null } = {}) {
     const originalName = file.originalname;
     const fileType = file.mimetype;
     let fileSize = file.size;
     const expiresAt = getExpiryDate();
+    const parsedFolderId = folderId ? parseInt(folderId) : null;
 
-    // If overwriting, find and delete existing file with same name
+    // Get folder name for storage path organization
+    let folderName = '';
+    if (parsedFolderId) {
+        const folderResult = await db.query('SELECT name FROM folders WHERE id = $1', [parsedFolderId]);
+        if (folderResult.rows.length > 0) {
+            folderName = folderResult.rows[0].name;
+        }
+    }
+    const cleanFolderName = folderName ? folderName.replace(/[\/\\?%*:|"<>]/g, '_') : '';
+
+    // If overwriting, find and delete existing file with same name in same folder
     if (overwrite) {
-        const existing = await db.query(
-            'SELECT * FROM files WHERE original_name = $1 AND is_deleted = false',
-            [originalName]
-        );
+        let query = 'SELECT * FROM files WHERE original_name = $1 AND is_deleted = false';
+        const params = [originalName];
+        if (parsedFolderId) {
+            query += ' AND folder_id = $2';
+            params.push(parsedFolderId);
+        } else {
+            query += ' AND folder_id IS NULL';
+        }
+        
+        const existing = await db.query(query, params);
         for (const oldFile of existing.rows) {
             await deleteFile(oldFile.id);
         }
@@ -88,11 +189,12 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
     
     if (supabase) {
         const uniqueName = originalName;
+        const uploadKey = cleanFolderName ? `${cleanFolderName}/${uniqueName}` : uniqueName;
         const fileBuffer = fs.readFileSync(file.path);
         
         const { data, error } = await supabase.storage
             .from(bucketName)
-            .upload(uniqueName, fileBuffer, {
+            .upload(uploadKey, fileBuffer, {
                 contentType: fileType,
                 duplex: 'half',
                 upsert: true
@@ -103,7 +205,7 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
             throw new Error(`Supabase upload failed: ${error.message}`);
         }
         
-        storagePath = data?.path || uniqueName;
+        storagePath = data?.path || uploadKey;
         
         try {
             fs.unlinkSync(file.path);
@@ -112,7 +214,18 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
         }
     } else {
         const uniqueName = originalName;
-        const finalPath = path.join(uploadsDir, uniqueName);
+        let finalPath;
+        if (cleanFolderName) {
+            const folderDirPath = path.join(uploadsDir, cleanFolderName);
+            if (!fs.existsSync(folderDirPath)) {
+                fs.mkdirSync(folderDirPath, { recursive: true });
+            }
+            finalPath = path.join(folderDirPath, uniqueName);
+            storagePath = `${cleanFolderName}/${uniqueName}`;
+        } else {
+            finalPath = path.join(uploadsDir, uniqueName);
+            storagePath = uniqueName;
+        }
         
         if (fs.existsSync(finalPath)) {
             try {
@@ -122,26 +235,33 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
             }
         }
         fs.renameSync(file.path, finalPath);
-        storagePath = uniqueName;
     }
 
     const result = await db.query(
-        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [originalName, storagePath, fileType, fileSize, userId, expiresAt]
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [originalName, storagePath, fileType, fileSize, userId, expiresAt, parsedFolderId]
     );
 
     return result.rows[0];
 }
 
-async function checkDuplicate(filename) {
-    const result = await db.query(
-        'SELECT id, original_name, file_type, file_size, uploaded_at, uploaded_by FROM files WHERE original_name = $1 AND is_deleted = false',
-        [filename]
-    );
+async function checkDuplicate(filename, folderId = null) {
+    const parsedFolderId = folderId ? parseInt(folderId) : null;
+    let query = 'SELECT id, original_name, file_type, file_size, uploaded_at, uploaded_by FROM files WHERE original_name = $1 AND is_deleted = false';
+    const params = [filename];
+    
+    if (parsedFolderId) {
+        query += ' AND folder_id = $2';
+        params.push(parsedFolderId);
+    } else {
+        query += ' AND folder_id IS NULL';
+    }
+    
+    const result = await db.query(query, params);
     return result.rows[0] || null;
 }
 
-async function listFiles({ page = 1, limit = 50, search, userId } = {}) {
+async function listFiles({ page = 1, limit = 50, search, userId, folderId } = {}) {
     const offset = (page - 1) * limit;
     const conditions = ['f.is_deleted = false'];
     const params = [];
@@ -151,6 +271,14 @@ async function listFiles({ page = 1, limit = 50, search, userId } = {}) {
         conditions.push(`f.uploaded_by = $${paramIndex++}`);
         params.push(userId);
     }
+    
+    if (folderId) {
+        conditions.push(`f.folder_id = $${paramIndex++}`);
+        params.push(parseInt(folderId));
+    } else if (!search) {
+        conditions.push('f.folder_id IS NULL');
+    }
+
     if (search) {
         conditions.push(`f.original_name ILIKE $${paramIndex++}`);
         params.push(`%${search}%`);
@@ -316,5 +444,8 @@ module.exports = {
     getStorageUsage,
     checkDuplicate,
     listFiles,
-    uploadsDir
+    uploadsDir,
+    listFolders,
+    createFolder,
+    deleteFolder
 };

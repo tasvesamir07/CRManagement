@@ -61,7 +61,8 @@ const JSON_DB_SCHEMA = {
     otps: [],
     audit_logs: [],
     analytics_events: [],
-    announcement_templates: []
+    announcement_templates: [],
+    folders: []
 };
 
 // Initialize local JSON Database if it doesn't exist
@@ -1283,6 +1284,146 @@ async function simulateQuery(text, params = []) {
         }
         return { rows: [] };
     }
+    // Files Listing & Counters
+    if (normalizedText.includes('SELECT COUNT(*) FROM files')) {
+        let list = db.files.filter(f => !f.is_deleted);
+        if (normalizedText.includes('f.uploaded_by =')) {
+            const match = normalizedText.match(/f\.uploaded_by\s*=\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const userId = params[paramIdx];
+                list = list.filter(f => f.uploaded_by === userId);
+            }
+        }
+        if (normalizedText.includes('f.folder_id =')) {
+            const match = normalizedText.match(/f\.folder_id\s*=\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const folderId = params[paramIdx];
+                list = list.filter(f => f.folder_id === folderId);
+            }
+        } else if (normalizedText.includes('f.folder_id IS NULL')) {
+            list = list.filter(f => !f.folder_id);
+        }
+        if (normalizedText.includes('f.original_name ILIKE')) {
+            const match = normalizedText.match(/f\.original_name\s+ILIKE\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const queryVal = params[paramIdx].replace(/%/g, '').toLowerCase();
+                list = list.filter(f => f.original_name.toLowerCase().includes(queryVal));
+            }
+        }
+        return { rows: [{ count: list.length }] };
+    }
+
+    if (normalizedText.includes('SELECT f.*, u.display_name') || normalizedText.includes('SELECT f.* FROM files')) {
+        let list = db.files.filter(f => !f.is_deleted);
+        if (normalizedText.includes('f.uploaded_by =')) {
+            const match = normalizedText.match(/f\.uploaded_by\s*=\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const userId = params[paramIdx];
+                list = list.filter(f => f.uploaded_by === userId);
+            }
+        }
+        if (normalizedText.includes('f.folder_id =')) {
+            const match = normalizedText.match(/f\.folder_id\s*=\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const folderId = params[paramIdx];
+                list = list.filter(f => f.folder_id === folderId);
+            }
+        } else if (normalizedText.includes('f.folder_id IS NULL')) {
+            list = list.filter(f => !f.folder_id);
+        }
+        if (normalizedText.includes('f.original_name ILIKE')) {
+            const match = normalizedText.match(/f\.original_name\s+ILIKE\s*\$(\d+)/);
+            if (match) {
+                const paramIdx = parseInt(match[1]) - 1;
+                const queryVal = params[paramIdx].replace(/%/g, '').toLowerCase();
+                list = list.filter(f => f.original_name.toLowerCase().includes(queryVal));
+            }
+        }
+        list.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
+        const rows = list.map(f => {
+            const user = db.users.find(u => u.id === f.uploaded_by);
+            return {
+                ...f,
+                uploaded_by_name: user ? user.display_name : null,
+                uploaded_by_username: user ? user.username : null
+            };
+        });
+        const limitMatch = normalizedText.match(/LIMIT\s+\$(\d+)/);
+        const offsetMatch = normalizedText.match(/OFFSET\s+\$(\d+)/);
+        let sliced = rows;
+        if (limitMatch && offsetMatch) {
+            const limitIdx = parseInt(limitMatch[1]) - 1;
+            const offsetIdx = parseInt(offsetMatch[1]) - 1;
+            const limit = params[limitIdx];
+            const offset = params[offsetIdx];
+            sliced = rows.slice(offset, offset + limit);
+        }
+        return { rows: sliced };
+    }
+
+    // Virtual Folder query simulations
+    if (normalizedText.includes('INSERT INTO folders')) {
+        const newFolder = {
+            id: db.folders.reduce((max, f) => Math.max(max, f.id || 0), 0) + 1,
+            name: params[0],
+            course_id: params[1] ? parseInt(params[1]) : null,
+            created_by: params[2] ? parseInt(params[2]) : null,
+            created_at: new Date().toISOString()
+        };
+        db.folders.push(newFolder);
+        writeJsonDb(db);
+        return { rows: [newFolder] };
+    }
+
+    if (normalizedText.includes('SELECT fo.*, c.course_name')) {
+        const rows = db.folders.map(f => {
+            const course = db.courses.find(c => c.id === f.course_id);
+            return {
+                ...f,
+                course_name: course ? course.course_name : null,
+                course_code: course ? course.course_id : null
+            };
+        });
+        rows.sort((a, b) => a.name.localeCompare(b.name));
+        return { rows };
+    }
+
+    if (normalizedText.includes('SELECT id FROM folders WHERE course_id =')) {
+        const courseId = parseInt(params[0]);
+        const matched = db.folders.filter(f => f.course_id === courseId);
+        return { rows: matched.map(f => ({ id: f.id })) };
+    }
+
+    if (normalizedText.includes('SELECT name FROM folders WHERE id =')) {
+        const id = parseInt(params[0]);
+        const matched = db.folders.find(f => f.id === id);
+        return { rows: matched ? [{ name: matched.name }] : [] };
+    }
+
+    if (normalizedText.includes('DELETE FROM folders WHERE id =')) {
+        const id = parseInt(params[0]);
+        db.folders = db.folders.filter(f => f.id !== id);
+        db.files = db.files.map(f => f.folder_id === id ? { ...f, folder_id: null } : f);
+        writeJsonDb(db);
+        return { rowCount: 1 };
+    }
+
+    if (normalizedText.includes('SELECT * FROM folders WHERE course_id =')) {
+        const courseId = parseInt(params[0]);
+        const matched = db.folders.filter(f => f.course_id === courseId);
+        return { rows: matched };
+    }
+
+    if (normalizedText.includes('SELECT fo.* FROM folders fo WHERE fo.id =')) {
+        const id = parseInt(params[0]);
+        const matched = db.folders.find(f => f.id === id);
+        return { rows: matched ? [matched] : [] };
+    }
 
     return { rows: [] };
 }
@@ -1308,6 +1449,14 @@ async function initDatabase() {
             await client.query(`
                 ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_platform_type_check;
                 ALTER TABLE platforms ADD CONSTRAINT platforms_platform_type_check CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger'));
+                CREATE TABLE IF NOT EXISTS folders (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+                    created_by INTEGER,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+                ALTER TABLE files ADD COLUMN IF NOT EXISTS folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL;
             `);
             client.release();
         } catch (err) {
