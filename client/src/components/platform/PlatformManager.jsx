@@ -60,7 +60,7 @@ const PlatformManager = () => {
 
   // WhatsApp countdown and local QR states
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [countdown, setCountdown] = useState(300);
+  const [countdown, setCountdown] = useState(60);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Generate QR Code data URL when raw QR changes
@@ -78,12 +78,12 @@ const PlatformManager = () => {
   useEffect(() => {
     let interval = null;
     if (waStatus === 'QR_READY') {
-      setCountdown(300);
+      setCountdown(60);
       interval = setInterval(() => {
         setCountdown(prev => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     } else {
-      setCountdown(300);
+      setCountdown(60);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -345,7 +345,7 @@ const PlatformManager = () => {
                   />
                 </div>
                 <p className={`text-xs font-semibold ${countdown < 30 ? 'text-accent-tomato' : 'text-primary'}`}>
-                  {countdown > 0 ? `QR expires in ${countdown}s...` : 'QR expired. Waiting for refresh...'}
+                  {countdown > 0 ? `Refreshes in ${countdown}s...` : 'Refreshing...'}
                 </p>
                 <p className="text-[11px] text-ink-mute">Open WhatsApp → Linked Devices → Link a Device, then scan this QR code.</p>
               </div>
