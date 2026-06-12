@@ -174,7 +174,10 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
         }
     }
 
-    // Image Compression logic
+    // File Compression Logic
+    const extLower = path.extname(originalName).toLowerCase();
+
+    // 1. Image Compression
     if (isImage) {
         try {
             const sharp = require('sharp');
@@ -188,6 +191,109 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
             console.log(`[Image Compression] Converted & Compressed image "${originalName}" size: ${fileSize} bytes.`);
         } catch (compressErr) {
             console.error('[Image Compression] Failed to compress image:', compressErr.message);
+        }
+    }
+
+    // 2. PPTX (PowerPoint) Compression (by compressing internal images in ppt/media/)
+    if (extLower === '.pptx') {
+        try {
+            const AdmZip = require('adm-zip');
+            const sharp = require('sharp');
+            const zip = new AdmZip(file.path);
+            const zipEntries = zip.getEntries();
+            let compressedCount = 0;
+            let originalBytes = 0;
+            let compressedBytes = 0;
+
+            for (const entry of zipEntries) {
+                const isMedia = entry.entryName.startsWith('ppt/media/');
+                if (!isMedia) continue;
+
+                const mediaExt = path.extname(entry.entryName).toLowerCase();
+                const isMediaImage = ['.jpg', '.jpeg', '.png'].includes(mediaExt);
+                if (!isMediaImage) continue;
+
+                const originalBuffer = entry.getData();
+                originalBytes += originalBuffer.length;
+
+                try {
+                    let compressedBuffer;
+                    if (mediaExt === '.png') {
+                        // Compress PNG with palette and high compression level
+                        compressedBuffer = await sharp(originalBuffer)
+                            .png({ quality: 75, compressionLevel: 8, palette: true })
+                            .toBuffer();
+                    } else {
+                        // Compress JPEG
+                        compressedBuffer = await sharp(originalBuffer)
+                            .jpeg({ quality: 70, progressive: true })
+                            .toBuffer();
+                    }
+
+                    if (compressedBuffer.length < originalBuffer.length) {
+                        entry.setData(compressedBuffer);
+                        compressedBytes += compressedBuffer.length;
+                        compressedCount++;
+                    } else {
+                        compressedBytes += originalBuffer.length;
+                    }
+                } catch (err) {
+                    console.error(`[PPTX Compression] Failed to compress entry ${entry.entryName}:`, err.message);
+                    compressedBytes += originalBuffer.length;
+                }
+            }
+
+            if (compressedCount > 0) {
+                zip.writeZip(file.path);
+                const stats = fs.statSync(file.path);
+                fileSize = stats.size;
+                const savedPercentage = originalBytes > 0 ? ((originalBytes - compressedBytes) / originalBytes * 100).toFixed(1) : '0';
+                console.log(`[PPTX Compression] Compressed ${compressedCount} images in "${originalName}". New size: ${fileSize} bytes. Saved ${savedPercentage}% of media bytes.`);
+            }
+        } catch (compressErr) {
+            console.error('[PPTX Compression] Failed to compress PPTX file:', compressErr.message);
+        }
+    }
+
+    // 3. PDF Compression (via Ghostscript if available on the system)
+    if (extLower === '.pdf') {
+        try {
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execPromise = util.promisify(exec);
+
+            let gsInstalled = false;
+            try {
+                await execPromise('gs --version');
+                gsInstalled = true;
+            } catch (_) {}
+
+            if (gsInstalled) {
+                const tempOutputPath = file.path + '.compressed.pdf';
+                // Optimize PDF images and streams (setting /ebook downsamples images to 150dpi and compresses text/vectors)
+                const gsCommand = `gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile="${tempOutputPath}" "${file.path}"`;
+                
+                await execPromise(gsCommand);
+
+                if (fs.existsSync(tempOutputPath)) {
+                    const originalStats = fs.statSync(file.path);
+                    const compressedStats = fs.statSync(tempOutputPath);
+
+                    if (compressedStats.size < originalStats.size) {
+                        fs.unlinkSync(file.path);
+                        fs.renameSync(tempOutputPath, file.path);
+                        fileSize = compressedStats.size;
+                        console.log(`[PDF Compression] Compressed PDF "${originalName}" from ${originalStats.size} to ${fileSize} bytes.`);
+                    } else {
+                        fs.unlinkSync(tempOutputPath);
+                        console.log(`[PDF Compression] Compression did not reduce size for "${originalName}". Keeping original.`);
+                    }
+                }
+            } else {
+                console.log(`[PDF Compression] Ghostscript (gs) is not installed on this system. Skipping PDF compression.`);
+            }
+        } catch (compressErr) {
+            console.error('[PDF Compression] Failed to compress PDF file:', compressErr.message);
         }
     }
     

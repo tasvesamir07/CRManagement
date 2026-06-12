@@ -2,7 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates ghostscript
 
 COPY package*.json ./
 RUN npm ci --omit=dev
