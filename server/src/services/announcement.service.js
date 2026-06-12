@@ -2,6 +2,7 @@ const db = require('../config/database');
 const fileService = require('./file.service');
 const whatsappService = require('./whatsapp.service');
 const telegramService = require('./telegram.service');
+const messengerService = require('./messenger.service');
 const path = require('path');
 const fs = require('fs');
 
@@ -57,6 +58,14 @@ function formatWhatsApp(announcement, _course) {
 
 // Format message for Telegram (returns the pre-compiled frontend content to avoid repetition)
 function formatTelegram(announcement, _course) {
+    if (announcement.category === 'share_file') {
+        return '';
+    }
+    return announcement.content;
+}
+
+// Format message for Messenger
+function formatMessenger(announcement, _course) {
     if (announcement.category === 'share_file') {
         return '';
     }
@@ -142,6 +151,7 @@ async function sendAnnouncement(id, _hostUrl = '') {
     const nonMockPlatforms = platforms.filter(p => {
         if (p.platform_type === 'whatsapp' && !whatsappService.isMock()) return true;
         if (p.platform_type === 'telegram' && !telegramService.isMock()) return true;
+        if (p.platform_type === 'messenger' && !messengerService.isMock()) return true;
         return false;
     });
     if (nonMockPlatforms.length === 0) {
@@ -172,6 +182,9 @@ async function sendAnnouncement(id, _hostUrl = '') {
             } else if (p.platform_type === 'telegram') {
                 const message = formatTelegram(announcement, course);
                 await telegramService.sendMessageToGroup(p.chat_id, message, attachmentFiles);
+            } else if (p.platform_type === 'messenger') {
+                const message = formatMessenger(announcement, course);
+                await messengerService.sendMessageToGroup(p.chat_id, message, attachmentFiles);
             }
 
             // Update on success
@@ -485,5 +498,6 @@ module.exports = {
     deleteAnnouncement,
     formatWhatsApp,
     formatTelegram,
+    formatMessenger,
     setWsBroadcaster
 };

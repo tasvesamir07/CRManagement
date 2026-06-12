@@ -1270,6 +1270,11 @@ async function initDatabase() {
         try {
             const client = await pool.connect();
             console.log('✅ PostgreSQL database connected successfully.');
+            // Dynamically alter check constraint to allow 'messenger' platform type
+            await client.query(`
+                ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_platform_type_check;
+                ALTER TABLE platforms ADD CONSTRAINT platforms_platform_type_check CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger'));
+            `);
             client.release();
         } catch (err) {
             if (isVercel) {

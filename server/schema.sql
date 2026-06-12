@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS routines (
 CREATE TABLE IF NOT EXISTS platforms (
     id SERIAL PRIMARY KEY,
     platform_name TEXT NOT NULL,
-    platform_type TEXT NOT NULL CHECK (platform_type IN ('whatsapp', 'telegram')),
+    platform_type TEXT NOT NULL CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger')),
     chat_id TEXT NOT NULL,
     description TEXT,
     created_by INTEGER,

@@ -180,6 +180,10 @@ export const platformsAPI = {
         const res = await api.get('/platforms/telegram/status');
         return res.data;
     },
+    getMessengerStatus: async () => {
+        const res = await api.get('/platforms/messenger/status');
+        return res.data;
+    },
     getWhatsAppGroups: async () => {
         const res = await api.get('/platforms/whatsapp/groups');
         return res.data;

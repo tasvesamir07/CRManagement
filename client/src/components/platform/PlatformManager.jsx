@@ -49,6 +49,10 @@ const PlatformManager = () => {
   const [tgStatus, setTgStatus] = useState('DISCONNECTED');
   const [isTgMock, setIsTgMock] = useState(true);
 
+  // Messenger connection states
+  const [messengerStatus, setMessengerStatus] = useState('DISCONNECTED');
+  const [isMessengerMock, setIsMessengerMock] = useState(true);
+
   // Phone pairing states
   const [pairPhone, setPairPhone] = useState('');
   const [countryCode, setCountryCode] = useState('880');
@@ -184,11 +188,22 @@ const PlatformManager = () => {
     }
   };
 
+  const fetchMessengerStatus = async () => {
+    try {
+      const res = await platformsAPI.getMessengerStatus();
+      setMessengerStatus(res.status);
+      setIsMessengerMock(res.isMock);
+    } catch (e) {
+      console.error('Failed HTTP Messenger status fetch:', e);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     fetchPlatforms().finally(() => setLoading(false));
     fetchWhatsAppStatusHttp();
     fetchTelegramStatus();
+    fetchMessengerStatus();
 
     const pollInterval = setInterval(fetchWhatsAppStatusHttp, 7000);
     return () => clearInterval(pollInterval);
@@ -576,6 +591,41 @@ const PlatformManager = () => {
             </div>
           )}
         </div>
+
+        {/* Facebook Messenger Status */}
+        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline-cool pb-3">
+            <h3 className="text-md font-medium text-ink font-sans">Messenger Status</h3>
+            {isMessengerMock && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold bg-accent-yellow/10 text-ink">
+                Disconnected
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col items-center justify-center p-4 border border-dashed border-hairline rounded-sm min-h-[100px]">
+            {!isMessengerMock ? (
+              <div className="text-center space-y-2">
+                <CheckCircle className="w-12 h-12 text-primary stroke-[1.25] mx-auto" />
+                <h4 className="text-sm font-medium text-ink">Bot Connected</h4>
+                <p className="text-xs text-ink-mute">Messenger bot is active using appstate.json. Messages will be delivered.</p>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <AlertTriangle className="w-12 h-12 text-ink-mute stroke-[1.25] mx-auto" />
+                <h4 className="text-sm font-medium text-ink">Not Connected</h4>
+                <p className="text-xs text-ink-mute">appstate.json is missing in root. Messenger service is in mock mode.</p>
+              </div>
+            )}
+          </div>
+          {!isMessengerMock && (
+            <div className="pt-2 border-t border-hairline-cool">
+              <div className="flex items-center gap-2 text-xs text-ink-mute">
+                <span className={`w-1.5 h-1.5 rounded-full ${messengerStatus === 'CONNECTED' ? 'bg-primary' : 'bg-accent-yellow'}`} />
+                Status: {messengerStatus}
+              </div>
+            </div>
+          )}
+        </div>
         </div>
 
         {/* Right Columns: Target Channels CRUD (2 cols) */}
@@ -621,6 +671,7 @@ const PlatformManager = () => {
                       >
                         <option value="telegram">Telegram Bot Channel</option>
                         <option value="whatsapp">WhatsApp Group JID</option>
+                        <option value="messenger">Facebook Messenger Group</option>
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
                         <ChevronDown className="h-4 w-4" />
@@ -644,14 +695,20 @@ const PlatformManager = () => {
 
                   <div>
                     <label className="block text-[11px] font-semibold uppercase text-ink-mute mb-1">
-                      Group / Chat ID
+                      Group / Chat ID / Thread ID
                     </label>
                     <input
                       type="text"
                       required
                       value={pChatId}
                       onChange={(e) => setPChatId(e.target.value)}
-                      placeholder={pType === 'telegram' ? 'e.g. -1001234567890' : 'e.g. 12036329481920@g.us'}
+                      placeholder={
+                        pType === 'telegram' 
+                          ? 'e.g. -1001234567890' 
+                          : pType === 'whatsapp' 
+                          ? 'e.g. 12036329481920@g.us' 
+                          : 'e.g. 123456789012345 (Group Thread ID)'
+                      }
                       className="w-full px-3 py-2 border border-hairline rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono text-xs"
                     />
                   </div>
@@ -719,7 +776,9 @@ const PlatformManager = () => {
                 {platforms.map((p) => {
                   const isOnline = p.platform_type === 'whatsapp' 
                     ? waStatus === 'CONNECTED' 
-                    : tgStatus === 'CONNECTED';
+                    : p.platform_type === 'telegram'
+                    ? tgStatus === 'CONNECTED'
+                    : messengerStatus === 'CONNECTED';
                   const isConfigured = p.service_available !== false;
 
                   return (
@@ -733,13 +792,17 @@ const PlatformManager = () => {
                               !isConfigured ? 'bg-accent-yellow' : isOnline ? 'bg-primary' : 'bg-ink-mute'
                             }`} />
                             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                              p.platform_type === 'whatsapp' ? 'bg-primary/15 text-primary-deep' : 'bg-accent-violet/15 text-accent-violet'
+                              p.platform_type === 'whatsapp' 
+                                ? 'bg-primary/15 text-primary-deep' 
+                                : p.platform_type === 'telegram' 
+                                ? 'bg-accent-violet/15 text-accent-violet'
+                                : 'bg-blue-600/15 text-blue-700'
                             }`}>
                               {p.platform_type}
                             </span>
                             {!isConfigured ? (
                               <span className="text-[10px] font-medium text-accent-yellow" title="Service not configured">
-                                No Token
+                                {p.platform_type === 'whatsapp' ? 'Disconnected' : p.platform_type === 'telegram' ? 'No Token' : 'No Session'}
                               </span>
                             ) : isOnline ? (
                               <span className="text-[10px] font-medium text-primary">Active</span>

@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const whatsappService = require('../services/whatsapp.service');
 const telegramService = require('../services/telegram.service');
+const messengerService = require('../services/messenger.service');
 const authMiddleware = require('../middleware/auth.middleware');
 
 // Fetch registered platforms
@@ -20,7 +21,9 @@ router.get('/', authMiddleware, async (req, res) => {
             ...p,
             service_available: p.platform_type === 'telegram'
                 ? !telegramService.isMock()
-                : !whatsappService.getStatus().isMock
+                : p.platform_type === 'whatsapp'
+                ? !whatsappService.getStatus().isMock
+                : !messengerService.isMock()
         }));
         return res.json(platforms);
     } catch (err) {
@@ -92,6 +95,14 @@ router.get('/telegram/status', authMiddleware, (req, res) => {
     return res.json({
         status: telegramService.isMock() ? 'DISCONNECTED' : 'CONNECTED',
         isMock: telegramService.isMock()
+    });
+});
+
+// Messenger status check
+router.get('/messenger/status', authMiddleware, (req, res) => {
+    return res.json({
+        status: messengerService.isMock() ? 'DISCONNECTED' : 'CONNECTED',
+        isMock: messengerService.isMock()
     });
 });
 

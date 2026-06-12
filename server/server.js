@@ -33,6 +33,7 @@ const logger = require('./src/config/logger');
 const db = require('./src/config/database');
 const whatsappService = require('./src/services/whatsapp.service');
 const telegramService = require('./src/services/telegram.service');
+const messengerService = require('./src/services/messenger.service');
 const fileService = require('./src/services/file.service');
 const announcementService = require('./src/services/announcement.service');
 
@@ -199,6 +200,7 @@ if (!isVercel) {
     whatsappService.initWhatsApp();
 }
 telegramService.initTelegram();
+messengerService.initMessenger();
 
 // Skip active crons and recursive schedulers on Vercel as it is an ephemeral serverless environment
 if (!isVercel) {
