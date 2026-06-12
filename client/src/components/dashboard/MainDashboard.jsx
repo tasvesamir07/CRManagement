@@ -154,12 +154,8 @@ const CRDashboard = ({ navigate }) => {
 
   const handleEditClick = (ann, e) => {
     e.stopPropagation();
-    if (ann.status === 'sent' || ann.status === 'partial') {
-      toast.error('This notice has already been delivered and cannot be edited');
-      return;
-    }
-    if (ann.status === 'failed') {
-      toast.error('This notice has failed and cannot be edited');
+    if (ann.status === 'sent') {
+      toast.error('This notice has already been successfully delivered and cannot be edited');
       return;
     }
     navigate(`/announcement/edit/${ann.id}`);
@@ -439,7 +435,7 @@ const CRDashboard = ({ navigate }) => {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        {(ann.status === 'draft' || ann.status === 'scheduled') && (
+                        {(ann.status === 'draft' || ann.status === 'scheduled' || ann.status === 'partial' || ann.status === 'failed') && (
                           <button
                             onClick={(e) => handleEditClick(ann, e)}
                             className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block mr-1"

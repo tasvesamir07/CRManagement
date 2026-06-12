@@ -1010,10 +1010,28 @@ async function simulateQuery(text, params = []) {
         } else {
             // DELETE FROM announcement_platforms WHERE announcement_id = $1
             const annId = parseInt(params[0]);
-            db.announcement_platforms = db.announcement_platforms.filter(ap => ap.announcement_id !== annId);
+            if (normalizedText.includes("platform_status != 'sent'") || normalizedText.includes("platform_status <> 'sent'")) {
+                db.announcement_platforms = db.announcement_platforms.filter(ap => 
+                    ap.announcement_id !== annId || ap.platform_status === 'sent'
+                );
+            } else {
+                db.announcement_platforms = db.announcement_platforms.filter(ap => ap.announcement_id !== annId);
+            }
             writeJsonDb(db);
             return { rows: [{ announcement_id: annId }] };
         }
+    }
+
+    if (normalizedText.includes('SELECT platform_id FROM announcement_platforms')) {
+        // SELECT platform_id FROM announcement_platforms WHERE announcement_id = $1 AND platform_status = 'sent'
+        const annId = parseInt(params[0]);
+        const statusMatch = normalizedText.match(/platform_status\s*=\s*'(\w+)'/i);
+        const status = statusMatch ? statusMatch[1] : null;
+
+        const filtered = db.announcement_platforms
+            .filter(ap => ap.announcement_id === annId && (!status || ap.platform_status === status))
+            .map(ap => ({ platform_id: ap.platform_id }));
+        return { rows: filtered };
     }
 
     if (normalizedText.includes('INSERT INTO announcement_platforms')) {
@@ -1054,7 +1072,8 @@ async function simulateQuery(text, params = []) {
                     ...ap,
                     platform_name: p ? p.platform_name : 'Unknown',
                     platform_type: p ? p.platform_type : 'unknown',
-                    chat_id: p ? p.chat_id : ''
+                    chat_id: p ? p.chat_id : '',
+                    is_active: p ? (p.is_active !== false) : true
                 };
             });
         return { rows: filtered };

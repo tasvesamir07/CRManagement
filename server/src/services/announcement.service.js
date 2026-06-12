@@ -172,6 +172,10 @@ async function sendAnnouncement(id, _hostUrl = '') {
 
     // 4. Broadcaster to selected platforms
     for (const p of platforms) {
+        if (p.platform_status === 'sent') {
+            overallSuccessCount++;
+            continue;
+        }
         try {
             await db.query(
                 'UPDATE announcement_platforms SET platform_status = $1 WHERE announcement_id = $2 AND platform_id = $3',
@@ -457,17 +461,14 @@ async function getAnnouncementById(id) {
 }
 
 async function updateAnnouncement(id, { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids }) {
-    // Only allow updating draft announcements
+    // Only allow updating draft, scheduled, partial, or failed announcements
     const check = await db.query('SELECT status FROM announcements WHERE id = $1', [id]);
     if (check.rows.length === 0) {
         throw new Error('Announcement not found');
     }
-    if (check.rows[0].status !== 'draft' && check.rows[0].status !== 'scheduled') {
-        const status = check.rows[0].status;
-        if (status === 'sent' || status === 'partial') {
-            throw new Error('This notice has already been delivered and cannot be edited');
-        }
-        throw new Error('This notice cannot be edited');
+    const currentStatus = check.rows[0].status;
+    if (currentStatus !== 'draft' && currentStatus !== 'scheduled' && currentStatus !== 'partial' && currentStatus !== 'failed') {
+        throw new Error('This notice has already been successfully delivered and cannot be edited');
     }
 
     const result = await db.query(
@@ -476,14 +477,29 @@ async function updateAnnouncement(id, { title, content, category, course_id, cus
     );
     const announcement = result.rows[0];
 
-    // Update platform links: delete existing, insert new
-    await db.query('DELETE FROM announcement_platforms WHERE announcement_id = $1', [id]);
+    // Update platform links:
+    // 1. Fetch already sent platform IDs
+    const sentResult = await db.query(
+        "SELECT platform_id FROM announcement_platforms WHERE announcement_id = $1 AND platform_status = 'sent'",
+        [id]
+    );
+    const sentPlatformIds = sentResult.rows.map(row => row.platform_id);
+
+    // 2. Delete non-sent platforms
+    await db.query(
+        "DELETE FROM announcement_platforms WHERE announcement_id = $1 AND platform_status != 'sent'",
+        [id]
+    );
+
+    // 3. Insert new platforms (skipping those already sent)
     if (platform_ids && platform_ids.length > 0) {
         for (const pid of platform_ids) {
-            await db.query(
-                'INSERT INTO announcement_platforms (announcement_id, platform_id, platform_status) VALUES ($1, $2, $3)',
-                [id, pid, 'pending']
-            );
+            if (!sentPlatformIds.includes(pid)) {
+                await db.query(
+                    'INSERT INTO announcement_platforms (announcement_id, platform_id, platform_status) VALUES ($1, $2, $3)',
+                    [id, pid, 'pending']
+                );
+            }
         }
     }
 

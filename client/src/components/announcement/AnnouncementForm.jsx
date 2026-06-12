@@ -258,6 +258,7 @@ const AnnouncementForm = () => {
   const [closingText, setClosingText] = useState(() => getInitialValue('closingText', 'Please be prepared and attend on time. Good luck! 🍀📖'));
 
   const [selectedPlatforms, setSelectedPlatforms] = useState(() => getInitialValue('selectedPlatforms', []));
+  const [alreadySentPlatforms, setAlreadySentPlatforms] = useState([]);
   const [waStatus, setWaStatus] = useState('DISCONNECTED');
   const [uploadedFiles, setUploadedFiles] = useState(() => getInitialValue('uploadedFiles', []));
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -867,7 +868,7 @@ const AnnouncementForm = () => {
       try {
         setLoadingData(true);
         const ann = await announcementsAPI.get(editId);
-        if (ann.status !== 'draft' && ann.status !== 'scheduled') { toast.error('Cannot edit this notice.'); setLoadingData(false); navigate('/dashboard'); return; }
+        if (ann.status !== 'draft' && ann.status !== 'scheduled' && ann.status !== 'partial' && ann.status !== 'failed') { toast.error('Cannot edit this notice.'); setLoadingData(false); navigate('/dashboard'); return; }
         setAnnouncementId(ann.id);
         if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
         setTitle(ann.title); setCategory(ann.category); setBroadcastMode(ann.category === 'share_file' ? 'share_file' : 'notice');
@@ -878,7 +879,10 @@ const AnnouncementForm = () => {
         }
         setSelectedCourseId(ann.course_id ? String(ann.course_id) : '');
         if (ann.file_ids?.length > 0 || ann.file_id) setUploadedFiles(ann.files || []);
-        if (ann.delivery?.length > 0) setSelectedPlatforms(ann.delivery.map(d => d.platform_id));
+        if (ann.delivery?.length > 0) {
+          setSelectedPlatforms(ann.delivery.filter(d => d.platform_status !== 'sent').map(d => d.platform_id));
+          setAlreadySentPlatforms(ann.delivery.filter(d => d.platform_status === 'sent').map(d => d.platform_id));
+        }
         setLoadingData(false);
       } catch (err) { toast.error('Failed to load announcement'); setLoadingData(false); navigate('/dashboard'); }
     };
@@ -1359,7 +1363,7 @@ const AnnouncementForm = () => {
 
 
 
-          <PlatformSelector platforms={platforms} selectedPlatforms={selectedPlatforms} onToggle={handlePlatformToggle} waStatus={waStatus} />
+          <PlatformSelector platforms={platforms} selectedPlatforms={selectedPlatforms} onToggle={handlePlatformToggle} waStatus={waStatus} alreadySentPlatforms={alreadySentPlatforms} />
 
           <div className="pt-4 border-t border-hairline-cool space-y-3">
             <div className="flex items-center justify-between">
