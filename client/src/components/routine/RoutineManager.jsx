@@ -27,6 +27,7 @@ const RoutineManager = () => {
   const [err, setErr] = useState('');
   const [editId, setEditId] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
+  const [announceTarget, setAnnounceTarget] = useState(null);
 
   // Routine Grid Headers
   const [semesterTitle, setSemesterTitle] = useState('Summer – 2026 (v3)');
@@ -603,6 +604,13 @@ const RoutineManager = () => {
                                       </div>
                                       <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 no-export">
                                         <button
+                                          onClick={() => setAnnounceTarget({ routine: r, slot, matchedCourse })}
+                                          className="text-ink-mute hover:text-accent-yellow hover:bg-accent-yellow/10 p-0.5 rounded cursor-pointer"
+                                          title="Announce Cancel/Reschedule"
+                                        >
+                                          <AlertCircle className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
                                           onClick={() => handleEdit(r)}
                                           className="text-ink-mute hover:text-primary hover:bg-hairline-cool p-0.5 rounded cursor-pointer"
                                           title="Edit Entry"
@@ -629,6 +637,65 @@ const RoutineManager = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Announce Cancel/Reschedule Dialog Modal */}
+      {announceTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/30 backdrop-blur-sm">
+          <div className="bg-canvas border border-hairline rounded-lg shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-hairline-cool pb-2.5">
+              <h3 className="text-sm font-semibold text-ink">Announce Class Change</h3>
+              <button onClick={() => setAnnounceTarget(null)} className="text-ink-mute hover:text-ink cursor-pointer">
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+            <p className="text-xs text-ink-mute">
+              Draft an announcement for <strong>{announceTarget.routine.c_id}</strong> on {announceTarget.routine.day_of_week} at {formatTimeRange(announceTarget.slot.start, announceTarget.slot.end)}.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  const r = announceTarget.routine;
+                  const matchedCourse = announceTarget.matchedCourse;
+                  const initials = matchedCourse ? matchedCourse.teacher_initials : '';
+                  const timeRangeStr = formatTimeRange(announceTarget.slot.start, announceTarget.slot.end);
+                  navigate('/announcement/new', {
+                    state: {
+                      preFillTitle: `Class Cancelled: ${r.c_id}`,
+                      preFillBody: `Dear batch,\n\nPlease note that the *${matchedCourse?.course_name || r.c_id}* (${initials ? initials : ''}) class scheduled for *${r.day_of_week}* at *${timeRangeStr}* in Room *${r.room_number}* has been *CANCELLED*.\n\nEnjoy the break! ☕`,
+                      preFillCategory: 'notice'
+                    }
+                  });
+                  setAnnounceTarget(null);
+                }}
+                className="flex flex-col items-center justify-center p-4 bg-canvas hover:border-accent-tomato hover:bg-accent-tomato/5 border border-hairline rounded-md cursor-pointer transition-all duration-150 text-ink hover:text-accent-tomato group"
+              >
+                <X className="w-6 h-6 mb-2 text-ink-mute group-hover:text-accent-tomato" />
+                <span className="text-xs font-semibold">Cancel Class</span>
+              </button>
+              <button
+                onClick={() => {
+                  const r = announceTarget.routine;
+                  const matchedCourse = announceTarget.matchedCourse;
+                  const initials = matchedCourse ? matchedCourse.teacher_initials : '';
+                  const timeRangeStr = formatTimeRange(announceTarget.slot.start, announceTarget.slot.end);
+                  navigate('/announcement/new', {
+                    state: {
+                      preFillTitle: `Class Rescheduled: ${r.c_id}`,
+                      preFillBody: `Dear batch,\n\nPlease note that the *${matchedCourse?.course_name || r.c_id}* (${initials ? initials : ''}) class scheduled for *${r.day_of_week}* at *${timeRangeStr}* in Room *${r.room_number}* has been *RESCHEDULED*.\n\n*New Schedule:*\n- Day/Date: [New Day]\n- Time: [New Time]\n- Room: [New Room]\n\nKindly adjust your timings. 🕒`,
+                      preFillCategory: 'notice'
+                    }
+                  });
+                  setAnnounceTarget(null);
+                }}
+                className="flex flex-col items-center justify-center p-4 bg-canvas hover:border-primary hover:bg-primary/5 border border-hairline rounded-md cursor-pointer transition-all duration-150 text-ink hover:text-primary group"
+              >
+                <Clock className="w-6 h-6 mb-2 text-ink-mute group-hover:text-primary" />
+                <span className="text-xs font-semibold">Reschedule Class</span>
+              </button>
             </div>
           </div>
         </div>

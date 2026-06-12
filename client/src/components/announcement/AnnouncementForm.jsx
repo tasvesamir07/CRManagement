@@ -307,15 +307,44 @@ const AnnouncementForm = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (location.state?.selectedFiles) {
-      setUploadedFiles(prev => {
-        const existingIds = new Set(prev.map(f => f.id));
-        const uniqueNew = location.state.selectedFiles.filter(f => !existingIds.has(f.id));
-        return [...prev, ...uniqueNew];
-      });
-      toast.success(`${location.state.selectedFiles.length} file(s) attached!`);
-      // Clear location state to prevent re-adding on refresh/back-navigation
-      window.history.replaceState({}, document.title);
+    if (location.state) {
+      let stateChanged = false;
+      if (location.state.preFillTitle) {
+        setTitle(location.state.preFillTitle);
+        setTitlePreset('Custom');
+        stateChanged = true;
+      }
+      if (location.state.preFillBody) {
+        setCustomText(location.state.preFillBody);
+        setBroadcastMode('custom');
+        stateChanged = true;
+      }
+      if (location.state.preFillCategory) {
+        setCategory(location.state.preFillCategory);
+        stateChanged = true;
+      }
+      if (location.state.preAttachedFiles) {
+        setUploadedFiles(prev => {
+          const existingIds = new Set(prev.map(f => f.id));
+          const uniqueNew = location.state.preAttachedFiles.filter(f => !existingIds.has(f.id));
+          return [...prev, ...uniqueNew];
+        });
+        toast.success(`${location.state.preAttachedFiles.length} file(s) attached!`);
+        stateChanged = true;
+      }
+      if (location.state.selectedFiles) {
+        setUploadedFiles(prev => {
+          const existingIds = new Set(prev.map(f => f.id));
+          const uniqueNew = location.state.selectedFiles.filter(f => !existingIds.has(f.id));
+          return [...prev, ...uniqueNew];
+        });
+        toast.success(`${location.state.selectedFiles.length} file(s) attached!`);
+        stateChanged = true;
+      }
+      if (stateChanged) {
+        // Clear location state to prevent re-adding on refresh/back-navigation
+        window.history.replaceState({}, document.title);
+      }
     }
   }, [location]);
 
