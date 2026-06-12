@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { platformsAPI } from '../../services/api';
 import { Plus, Trash2, Edit2, Radio, CheckCircle, AlertTriangle, RefreshCw, X, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import QRCode from 'qrcode';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const COUNTRY_CODES = [
   { code: '880', label: 'BD (+880)', flag: '🇧🇩' },
@@ -189,48 +190,19 @@ const PlatformManager = () => {
     fetchWhatsAppStatusHttp();
     fetchTelegramStatus();
 
-    // Setup WebSocket for real-time QR/status
-    let ws = null;
-    let reconnectTimeout = null;
-
-    const connectWs = () => {
-      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
-      ws = new WebSocket(wsUrl);
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'whatsapp_status') {
-            setWaStatus(payload.data.status);
-            setWaQr(payload.data.qr);
-            setIsWaMock(payload.data.isMock);
-          }
-        } catch (e) {
-          console.error('Failed parsing WS message:', e);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WS connection closed. Reconnecting in 5s...');
-        reconnectTimeout = setTimeout(connectWs, 5000);
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
-    };
-
-    connectWs();
-
-    // Fallback polling (every 7 seconds) in case WebSockets fail
     const pollInterval = setInterval(fetchWhatsAppStatusHttp, 7000);
-
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      clearInterval(pollInterval);
-    };
+    return () => clearInterval(pollInterval);
   }, []);
+
+  const handleWsMessage = useCallback((payload) => {
+    if (payload.type === 'whatsapp_status') {
+      setWaStatus(payload.data.status);
+      setWaQr(payload.data.qr);
+      setIsWaMock(payload.data.isMock);
+    }
+  }, []);
+
+  useWebSocket({ onMessage: handleWsMessage });
 
   const handleSyncGroups = async () => {
     if (waStatus !== 'CONNECTED') return;
@@ -395,11 +367,19 @@ const PlatformManager = () => {
           {/* Phone Pairing Section - only when engine is real (not mock) */}
           {isWaMock && (waStatus === 'QR_READY' || waStatus === 'DISCONNECTED') && (
             <div className="border-t border-hairline-cool pt-4">
-              <div className="flex items-center gap-2 p-3 bg-accent-yellow/5 border border-accent-yellow/20 rounded-sm">
-                <AlertTriangle className="w-4 h-4 text-accent-yellow flex-shrink-0" />
+              <div className="flex flex-col gap-2 p-3 bg-accent-yellow/5 border border-accent-yellow/20 rounded-sm">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-accent-yellow flex-shrink-0" />
+                  <p className="text-xs font-semibold text-ink">WhatsApp Engine is in Mock Mode</p>
+                </div>
                 <p className="text-xs text-ink-mute">
-                  Phone pairing unavailable — WhatsApp engine is in mock mode. The WhatsApp service failed to initialize.
+                  Vercel uses Serverless Functions which cannot maintain the persistent 24/7 connection required by WhatsApp (Baileys). 
+                  To connect your real WhatsApp account:
                 </p>
+                <ul className="text-xs text-ink-mute list-disc pl-4 space-y-1">
+                  <li><strong>Locally:</strong> Run both the frontend and backend locally on your computer.</li>
+                  <li><strong>Production:</strong> Host the backend server on a persistent hosting service like Render, Railway, or a VPS.</li>
+                </ul>
               </div>
             </div>
           )}

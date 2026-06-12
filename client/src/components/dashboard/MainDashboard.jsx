@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { coursesAPI, platformsAPI, announcementsAPI, adminAPI } from '../../services/api';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { 
   Megaphone, 
   BookOpen, 
@@ -128,57 +129,31 @@ const CRDashboard = ({ navigate }) => {
   useEffect(() => {
     fetchWhatsAppStatus();
     const interval = setInterval(fetchWhatsAppStatus, 10000);
-
-    let ws = null;
-    let reconnectTimeout = null;
-
-    const connectWs = () => {
-      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
-      ws = new WebSocket(wsUrl);
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'whatsapp_status') {
-            setWaStatus(payload.data.status);
-          } else if (payload.type === 'announcement_status') {
-            setAnnouncements(prev => prev.map(ann => {
-              if (ann.id === payload.data.id) {
-                return {
-                  ...ann,
-                  status: payload.data.status,
-                  sent_at: payload.data.sent_at || ann.sent_at,
-                  delivery: payload.data.delivery && payload.data.delivery.length > 0
-                    ? payload.data.delivery
-                    : ann.delivery
-                };
-              }
-              return ann;
-            }));
-            fetchData(true);
-          }
-        } catch (e) {
-          console.error('Failed parsing WS message in dashboard:', e);
-        }
-      };
-
-      ws.onclose = () => {
-        reconnectTimeout = setTimeout(connectWs, 5000);
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
-    };
-
-    connectWs();
-
-    return () => {
-      clearInterval(interval);
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
+    return () => clearInterval(interval);
   }, []);
+
+  const handleWsMessage = useCallback((payload) => {
+    if (payload.type === 'whatsapp_status') {
+      setWaStatus(payload.data.status);
+    } else if (payload.type === 'announcement_status') {
+      setAnnouncements(prev => prev.map(ann => {
+        if (ann.id === payload.data.id) {
+          return {
+            ...ann,
+            status: payload.data.status,
+            sent_at: payload.data.sent_at || ann.sent_at,
+            delivery: payload.data.delivery && payload.data.delivery.length > 0
+              ? payload.data.delivery
+              : ann.delivery
+          };
+        }
+        return ann;
+      }));
+      fetchData(true);
+    }
+  }, []);
+
+  useWebSocket({ onMessage: handleWsMessage });
 
   // Refetch when filters or page change
   useEffect(() => {

@@ -92,6 +92,11 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', time: new Date() });
 });
 
+// WebSocket availability check (client uses this to decide whether to connect WS)
+app.get('/api/ws-available', (req, res) => {
+    res.json({ available: !isVercel, reason: isVercel ? 'Vercel serverless does not support persistent WebSockets' : null });
+});
+
 // Import route modules
 const authRoutes = require('./src/routes/auth.routes');
 const coursesRoutes = require('./src/routes/courses.routes');

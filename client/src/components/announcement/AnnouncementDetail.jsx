@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { announcementsAPI } from '../../services/api';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   ArrowLeft,
   Edit3,
@@ -45,51 +46,23 @@ const AnnouncementDetail = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [id]);
 
-  useEffect(() => {
-    let ws = null;
-    let reconnectTimeout = null;
-
-    const connectWs = () => {
-      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
-      ws = new WebSocket(wsUrl);
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'announcement_status' && payload.data.id === parseInt(id)) {
-            setAnnouncement(prev => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                status: payload.data.status,
-                sent_at: payload.data.sent_at || prev.sent_at,
-                delivery: payload.data.delivery && payload.data.delivery.length > 0 
-                  ? payload.data.delivery 
-                  : prev.delivery
-              };
-            });
-          }
-        } catch (e) {
-          console.error('Failed parsing WS message in detail:', e);
-        }
-      };
-
-      ws.onclose = () => {
-        reconnectTimeout = setTimeout(connectWs, 5000);
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
-    };
-
-    connectWs();
-
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
+  const handleWsMessage = useCallback((payload) => {
+    if (payload.type === 'announcement_status' && payload.data.id === parseInt(id)) {
+      setAnnouncement(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: payload.data.status,
+          sent_at: payload.data.sent_at || prev.sent_at,
+          delivery: payload.data.delivery && payload.data.delivery.length > 0 
+            ? payload.data.delivery 
+            : prev.delivery
+        };
+      });
+    }
   }, [id]);
+
+  useWebSocket({ onMessage: handleWsMessage });
 
   const handleDelete = async () => {
     if (!window.confirm('Delete this announcement permanently?')) return;

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI, platformsAPI, filesAPI, announcementsAPI, templatesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { DatePicker } from '../ui/date-picker';
 import { TimePicker } from '../ui/time-picker';
 import {
@@ -392,17 +393,15 @@ const AnnouncementForm = () => {
       finally { setLoadingData(false); }
     };
     init();
-    let ws = null, reconnectTimeout = null;
-    const connectWs = () => {
-      ws = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:5000');
-      ws.onmessage = (event) => { try { const p = JSON.parse(event.data); if (p.type === 'whatsapp_status') setWaStatus(p.data.status); } catch (_) {} };
-      ws.onclose = () => { reconnectTimeout = setTimeout(connectWs, 5000); };
-      ws.onerror = () => ws.close();
-    };
-    connectWs();
     const pollInterval = setInterval(async () => { try { const res = await platformsAPI.getWhatsAppStatus(); setWaStatus(res.status); } catch (_) {} }, 7000);
-    return () => { if (ws) ws.close(); if (reconnectTimeout) clearTimeout(reconnectTimeout); clearInterval(pollInterval); };
+    return () => clearInterval(pollInterval);
   }, []);
+
+  const handleWsMessage = useCallback((payload) => {
+    if (payload.type === 'whatsapp_status') setWaStatus(payload.data.status);
+  }, []);
+
+  useWebSocket({ onMessage: handleWsMessage });
 
   useEffect(() => {
     if (platforms.length > 0) {
