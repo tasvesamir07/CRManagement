@@ -132,7 +132,7 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
           renderProps.isHovered &&
             !renderProps.isSelected &&
             !renderProps.isDisabled &&
-            "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 cursor-pointer rounded-md font-semibold transition-colors duration-150",
+            "bg-primary/10 text-primary cursor-pointer rounded-md font-semibold transition-colors duration-150",
           /* Selection Start/End */
           renderProps.isSelected &&
             isRange &&

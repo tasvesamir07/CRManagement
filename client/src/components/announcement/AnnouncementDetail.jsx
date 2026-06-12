@@ -173,7 +173,7 @@ const AnnouncementDetail = () => {
       {/* Content */}
       <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-3">Message Content</h3>
-        <div className="bg-[#1c1c1c] text-white rounded-lg p-4 font-sans text-sm leading-relaxed">
+        <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed">
           <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
         </div>
       </div>

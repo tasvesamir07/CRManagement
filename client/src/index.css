@@ -216,47 +216,5 @@
   scrollbar-width: none;
 }
 
-/* Dark mode */
-[data-theme="dark"] {
-  --color-primary: #3ecf8e;
-  --color-primary-deep: #4ade80;
-  --color-primary-soft: #2e8b5e;
-  --color-ink: #e5e5e5;
-  --color-ink-secondary: #d4d4d4;
-  --color-ink-mute: #a0a0a0;
-  --color-ink-mute-2: #808080;
-  --color-ink-faint: #606060;
-  --color-on-primary: #171717;
-  --color-on-dark: #ffffff;
-  --color-canvas: #1a1a1a;
-  --color-canvas-soft: #1e1e1e;
-  --color-canvas-night: #0d0d0d;
-  --color-canvas-night-soft: #141414;
-  
-  --color-hairline: #2a2a2a;
-  --color-hairline-strong: #3a3a3a;
-  --color-hairline-cool: #222222;
-  --color-hairline-cool-2: #252525;
-  --color-hairline-cool-3: #303030;
-
-  --color-accent-purple: #a855f7;
-  --color-accent-violet: #818cf8;
-  --color-accent-yellow: #facc15;
-  --color-accent-tomato: #ff4444;
-}
-
-[data-theme="dark"] .glass-panel {
-  background: rgba(26, 26, 26, 0.8);
-}
-
-[data-theme="dark"] body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: var(--color-hairline-strong);
-}
-
 
 

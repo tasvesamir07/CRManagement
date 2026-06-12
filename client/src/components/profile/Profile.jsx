@@ -354,7 +354,7 @@ const Profile = () => {
           <div className="space-y-4 bg-canvas-soft p-4 rounded-sm border border-hairline">
             <p className="text-sm font-medium text-ink">Scan this QR code with your authenticator app:</p>
             {twoFactorQrUrl && (
-              <div className="bg-white p-4 inline-block rounded-sm">
+              <div className="bg-canvas border border-hairline p-4 inline-block rounded-sm">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(twoFactorQrUrl)}`}
                   alt="2FA QR Code"

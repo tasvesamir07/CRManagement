@@ -114,7 +114,7 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
                   type="button"
                   onClick={() => set24hTime(h, parsedTime.minute, parsedTime.period)}
                   className={cn(
-                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-zinc-100 hover:text-zinc-900 select-none",
+                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-canvas-soft hover:text-ink select-none",
                     isSelected ? "bg-primary text-primary-foreground font-bold hover:bg-primary hover:text-primary-foreground" : "text-ink"
                   )}
                 >
@@ -135,7 +135,7 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
                   type="button"
                   onClick={() => set24hTime(parsedTime.hour, m, parsedTime.period)}
                   className={cn(
-                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-zinc-100 hover:text-zinc-900 select-none",
+                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-canvas-soft hover:text-ink select-none",
                     isSelected ? "bg-primary text-primary-foreground font-bold hover:bg-primary hover:text-primary-foreground" : "text-ink"
                   )}
                 >
@@ -156,7 +156,7 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
                   type="button"
                   onClick={() => set24hTime(parsedTime.hour, parsedTime.minute, p)}
                   className={cn(
-                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-zinc-100 hover:text-zinc-900 select-none mb-1",
+                    "py-1 text-xs text-center rounded-sm transition-all duration-150 cursor-pointer hover:bg-canvas-soft hover:text-ink select-none mb-1",
                     isSelected ? "bg-primary text-primary-foreground font-bold hover:bg-primary hover:text-primary-foreground" : "text-ink"
                   )}
                 >

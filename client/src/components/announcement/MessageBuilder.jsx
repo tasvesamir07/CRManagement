@@ -305,7 +305,7 @@ export default function MessageBuilder({
       {/* Preview */}
       <div>
         <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-2">Preview</label>
-        <div className="bg-[#1c1c1c] text-white rounded-lg p-4 font-sans text-sm leading-relaxed min-h-[100px] whitespace-pre-wrap">
+        <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed min-h-[100px] whitespace-pre-wrap">
           {preview || 'Your message preview will appear here...'}
         </div>
       </div>
