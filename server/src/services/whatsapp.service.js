@@ -4,13 +4,12 @@ const pino = require('pino');
 
 const isVercel = !!process.env.VERCEL;
 
-let makeWASocket, DisconnectReason, fetchLatestBaileysVersion, Browsers;
+let makeWASocket, DisconnectReason, Browsers;
 if (!isVercel) {
     try {
         const baileys = require('@whiskeysockets/baileys');
         makeWASocket = baileys.makeWASocket;
         DisconnectReason = baileys.DisconnectReason;
-        fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
         Browsers = baileys.Browsers;
     } catch (err) {
         console.error('Failed to load @whiskeysockets/baileys:', err.message);
@@ -129,18 +128,9 @@ async function initWhatsApp() {
 
     try {
         const { state, saveCreds } = await useDbAuthState();
-        
-        let version = [2, 3000, 1015941307];
-        try {
-            const latest = await fetchLatestBaileysVersion();
-            version = latest.version;
-        } catch (verErr) {
-            console.warn('⚠️ Failed to fetch latest Baileys version, using fallback:', verErr.message);
-        }
 
         sock = makeWASocket({
             auth: state,
-            version,
             logger,
             printQRInTerminal: false,
             markOnlineOnConnect: true,
