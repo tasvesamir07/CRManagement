@@ -439,13 +439,15 @@ const CRDashboard = ({ navigate }) => {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        <button
-                          onClick={(e) => handleEditClick(ann, e)}
-                          className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block mr-1"
-                          title="Edit Broadcast"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
+                        {ann.status !== 'sent' && ann.status !== 'partial' && (
+                          <button
+                            onClick={(e) => handleEditClick(ann, e)}
+                            className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block mr-1"
+                            title="Edit Broadcast"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteAnnouncement(ann.id)}
                           className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer"
