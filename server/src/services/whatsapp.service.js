@@ -4,12 +4,11 @@ const pino = require('pino');
 
 const isVercel = !!process.env.VERCEL;
 
-let makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion;
+let makeWASocket, DisconnectReason, fetchLatestBaileysVersion;
 if (!isVercel) {
     try {
         const baileys = require('@whiskeysockets/baileys');
         makeWASocket = baileys.makeWASocket;
-        useMultiFileAuthState = baileys.useMultiFileAuthState;
         DisconnectReason = baileys.DisconnectReason;
         fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
     } catch (err) {
@@ -29,6 +28,55 @@ const pairingResolve = null;
 const AUTH_FOLDER = path.join(__dirname, '../../../.baileys_auth');
 
 const logger = pino({ level: 'silent' });
+
+async function useDbAuthState() {
+    const { useMultiFileAuthState, initAuthCreds } = require('@whiskeysockets/baileys');
+    const db = require('../config/database');
+    const isPostgres = !!process.env.DATABASE_URL && !db.useJsonDb();
+    let credsData = null;
+    let keysStore = {};
+
+    if (isPostgres) {
+        try {
+            await db.query(`CREATE TABLE IF NOT EXISTS whatsapp_creds (type TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW())`);
+            const cr = await db.query("SELECT data FROM whatsapp_creds WHERE type = 'creds'");
+            if (cr.rows[0]) credsData = cr.rows[0].data;
+            const kr = await db.query("SELECT data FROM whatsapp_creds WHERE type = 'keys'");
+            if (kr.rows[0]) keysStore = kr.rows[0].data || {};
+        } catch (err) {
+            console.error('DB auth init failed, using file fallback:', err.message);
+            return useMultiFileAuthState(AUTH_FOLDER);
+        }
+    } else {
+        return useMultiFileAuthState(AUTH_FOLDER);
+    }
+
+    if (!credsData) credsData = initAuthCreds();
+
+    const keys = {
+        get: async (type, ids) => {
+            const data = keysStore[type] || {};
+            if (!ids) return data;
+            const r = {};
+            for (const id of ids) if (data[id] !== undefined) r[id] = data[id];
+            return r;
+        },
+        set: async (data) => {
+            for (const type in data) {
+                if (!keysStore[type]) keysStore[type] = {};
+                Object.assign(keysStore[type], data[type]);
+            }
+            await db.query(`INSERT INTO whatsapp_creds (type, data, updated_at) VALUES ('keys', $1::jsonb, NOW()) ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, [JSON.stringify(keysStore)]);
+        },
+        delete: async () => {}
+    };
+
+    const saveCreds = async () => {
+        await db.query(`INSERT INTO whatsapp_creds (type, data, updated_at) VALUES ('creds', $1::jsonb, NOW()) ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, [JSON.stringify(credsData)]);
+    };
+
+    return { state: { creds: credsData, keys }, saveCreds };
+}
 
 function setWsBroadcaster(broadcaster) {
     wsBroadcaster = broadcaster;
@@ -63,7 +111,7 @@ async function initWhatsApp() {
     broadcastStatus();
 
     try {
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+        const { state, saveCreds } = await useDbAuthState();
         const { version } = await fetchLatestBaileysVersion();
 
         sock = makeWASocket({
