@@ -26,8 +26,12 @@ router.post('/platforms/delete', authMiddleware, async (req, res) => {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return res.status(400).json({ error: 'ids array is required' });
         }
+        // Delete referenced rows in announcement_platforms first
+        await db.query('DELETE FROM announcement_platforms WHERE platform_id = ANY($1::int[])', [ids]);
+        
+        // Delete the platforms themselves
         const result = await db.query(
-            'UPDATE platforms SET is_active = false WHERE id = ANY($1::int[]) RETURNING id',
+            'DELETE FROM platforms WHERE id = ANY($1::int[]) RETURNING id',
             [ids]
         );
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });

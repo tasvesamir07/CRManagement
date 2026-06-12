@@ -47,12 +47,17 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 });
 
-// Delete platform (soft delete)
+// Delete platform (hard delete)
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
+        const platformId = req.params.id;
+        // Delete referenced rows in announcement_platforms first
+        await db.query('DELETE FROM announcement_platforms WHERE platform_id = $1', [platformId]);
+        
+        // Delete the platform itself
         const result = await db.query(
-            'UPDATE platforms SET is_active = false WHERE id = $1 RETURNING *',
-            [req.params.id]
+            'DELETE FROM platforms WHERE id = $1 RETURNING *',
+            [platformId]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Platform not found' });

@@ -591,6 +591,33 @@ async function simulateQuery(text, params = []) {
         return { rows: [] };
     }
 
+    if (normalizedText.includes('DELETE FROM platforms')) {
+        if (normalizedText.includes('id = ANY') || normalizedText.includes('id = any')) {
+            const ids = params[0]; // array of integers
+            const deleted = [];
+            db.platforms = db.platforms.filter(p => {
+                if (ids.includes(p.id)) {
+                    deleted.push(p);
+                    return false;
+                }
+                return true;
+            });
+            writeJsonDb(db);
+            return { rows: deleted.map(d => ({ id: d.id })) };
+        } else {
+            // DELETE FROM platforms WHERE id = $1 RETURNING *
+            const id = parseInt(params[0]);
+            const idx = db.platforms.findIndex(p => p.id === id);
+            if (idx !== -1) {
+                const deletedPlatform = db.platforms[idx];
+                db.platforms.splice(idx, 1);
+                writeJsonDb(db);
+                return { rows: [deletedPlatform] };
+            }
+            return { rows: [] };
+        }
+    }
+
     if (normalizedText.includes('UPDATE platforms SET platform_name')) {
         const id = parseInt(params[4]);
         const idx = db.platforms.findIndex(p => p.id === id);
@@ -951,11 +978,23 @@ async function simulateQuery(text, params = []) {
 
     // 7. Announcement Platforms Queries
     if (normalizedText.includes('DELETE FROM announcement_platforms')) {
-        // DELETE FROM announcement_platforms WHERE announcement_id = $1
-        const annId = parseInt(params[0]);
-        db.announcement_platforms = db.announcement_platforms.filter(ap => ap.announcement_id !== annId);
-        writeJsonDb(db);
-        return { rows: [{ announcement_id: annId }] };
+        if (normalizedText.includes('platform_id = ANY') || normalizedText.includes('platform_id = any')) {
+            const ids = params[0]; // array of integers
+            db.announcement_platforms = db.announcement_platforms.filter(ap => !ids.includes(ap.platform_id));
+            writeJsonDb(db);
+            return { rows: ids.map(id => ({ platform_id: id })) };
+        } else if (normalizedText.includes('platform_id =')) {
+            const platId = parseInt(params[0]);
+            db.announcement_platforms = db.announcement_platforms.filter(ap => ap.platform_id !== platId);
+            writeJsonDb(db);
+            return { rows: [{ platform_id: platId }] };
+        } else {
+            // DELETE FROM announcement_platforms WHERE announcement_id = $1
+            const annId = parseInt(params[0]);
+            db.announcement_platforms = db.announcement_platforms.filter(ap => ap.announcement_id !== annId);
+            writeJsonDb(db);
+            return { rows: [{ announcement_id: annId }] };
+        }
     }
 
     if (normalizedText.includes('INSERT INTO announcement_platforms')) {
