@@ -60,7 +60,7 @@ const PlatformManager = () => {
 
   // WhatsApp countdown and local QR states
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(50);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Generate QR Code data URL when raw QR changes
@@ -78,12 +78,12 @@ const PlatformManager = () => {
   useEffect(() => {
     let interval = null;
     if (waStatus === 'QR_READY') {
-      setCountdown(60);
+      setCountdown(50);
       interval = setInterval(() => {
         setCountdown(prev => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     } else {
-      setCountdown(60);
+      setCountdown(50);
     }
     return () => {
       if (interval) clearInterval(interval);

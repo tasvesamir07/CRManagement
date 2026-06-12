@@ -85,6 +85,7 @@ async function initWhatsApp() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
+                console.log('WhatsApp QR emitted (new code ready for scanning)');
                 latestQr = qr;
                 connectionStatus = 'QR_READY';
                 broadcastStatus();
@@ -111,10 +112,9 @@ async function initWhatsApp() {
                 sock = null;
 
                 if (shouldReconnect) {
-                    let delay = 5000;
-                    if (!hasEverBeenConnected && statusCode !== 408) {
-                        delay = 30000;
-                    }
+                    let delay = 10000;
+                    if (statusCode === 408) delay = 10000;
+                    else if (!hasEverBeenConnected) delay = 30000;
                     console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
                     clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(initWhatsApp, delay);
@@ -281,8 +281,8 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 async function getChats() {
     if (isMockMode || connectionStatus !== 'CONNECTED' || !sock) {
         return [
-            { id: '12036329481920@g.us', name: 'Mock WhatsApp General Group', isGroup: true },
-            { id: '12036329483344@g.us', name: 'Mock SWE Course Group', isGroup: true }
+            { id: '12036329481920@g.us', name: 'General Community', isGroup: true },
+            { id: '12036329483344@g.us', name: 'Announcement Community', isGroup: true }
         ];
     }
 

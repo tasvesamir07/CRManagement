@@ -38,6 +38,7 @@ const announcementService = require('./src/services/announcement.service');
 
 // Initialize Express app
 const app = express();
+app.set('trust proxy', 1); // trust first proxy (Render LB) for rate-limiter
 const PORT = process.env.PORT || 5000;
 
 // Security and utility middlewares
