@@ -9,7 +9,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
-  Paperclip
+  Paperclip,
+  Clipboard
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
@@ -172,7 +173,10 @@ const AnnouncementDetail = () => {
 
       {/* Content */}
       <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute mb-3">Message Content</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute">Message Content</h3>
+          <button type="button" onClick={() => { navigator.clipboard.writeText(announcement.content); toast.success('Message copied!'); }} className="flex items-center gap-1.5 px-2.5 py-1 border border-hairline rounded-sm text-xs font-medium text-ink-mute hover:text-ink hover:bg-canvas-soft transition-colors cursor-pointer"><Clipboard className="w-3.5 h-3.5" />Copy</button>
+        </div>
         <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed">
           <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
         </div>
