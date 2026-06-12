@@ -148,6 +148,12 @@ async function initWhatsApp() {
                 broadcastStatus();
             }
 
+            if (connection === 'connecting') {
+                console.log('🔄 WhatsApp client is connecting...');
+                connectionStatus = 'CONNECTING';
+                broadcastStatus();
+            }
+
             if (connection === 'open') {
                 console.log('✅ WhatsApp client is ready and connected!');
                 connectionStatus = 'CONNECTED';
