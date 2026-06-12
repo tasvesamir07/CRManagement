@@ -436,6 +436,17 @@ async function getStorageUsage() {
     };
 }
 
+async function moveFiles(fileIds, targetFolderId) {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) return false;
+    const parsedFolderId = targetFolderId ? parseInt(targetFolderId) : null;
+    
+    await db.query(
+        'UPDATE files SET folder_id = $1 WHERE id = ANY($2::int[])',
+        [parsedFolderId, fileIds]
+    );
+    return true;
+}
+
 module.exports = {
     uploadFile,
     getFileUrl,
@@ -447,5 +458,6 @@ module.exports = {
     uploadsDir,
     listFolders,
     createFolder,
-    deleteFolder
+    deleteFolder,
+    moveFiles
 };

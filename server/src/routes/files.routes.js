@@ -115,4 +115,17 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/move', authMiddleware, async (req, res) => {
+    try {
+        const { ids, folderId } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids array is required' });
+        }
+        await fileService.moveFiles(ids, folderId);
+        return res.json({ message: 'Files moved successfully' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

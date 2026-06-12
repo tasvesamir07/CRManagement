@@ -56,6 +56,24 @@ router.post('/announcements/delete', authMiddleware, async (req, res) => {
     }
 });
 
+const fileService = require('../services/file.service');
+router.post('/files/delete', authMiddleware, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids array is required' });
+        }
+        let count = 0;
+        for (const id of ids) {
+            const success = await fileService.deleteFile(id);
+            if (success) count++;
+        }
+        return res.json({ deleted: count, ids });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/platforms/test-connections', authMiddleware, async (req, res) => {
     try {
         const whatsappStatus = require('../services/whatsapp.service').getStatus();

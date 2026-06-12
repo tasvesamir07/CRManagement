@@ -280,6 +280,10 @@ export const filesAPI = {
     deleteFolder: async (id, deleteFiles = false) => {
         const res = await api.delete(`/files/folders/${id}`, { params: { deleteFiles } });
         return res.data;
+    },
+    moveFiles: async (ids, folderId) => {
+        const res = await api.post('/files/move', { ids, folderId });
+        return res.data;
     }
 };
 
@@ -348,6 +352,10 @@ export const bulkAPI = {
     },
     deleteAnnouncements: async (ids) => {
         const res = await api.post('/bulk/announcements/delete', { ids });
+        return res.data;
+    },
+    deleteFiles: async (ids) => {
+        const res = await api.post('/bulk/files/delete', { ids });
         return res.data;
     },
     testConnections: async () => {

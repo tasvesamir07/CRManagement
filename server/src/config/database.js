@@ -1366,6 +1366,19 @@ async function simulateQuery(text, params = []) {
         return { rows: sliced };
     }
 
+    if (normalizedText.includes('UPDATE files SET folder_id =')) {
+        const folderId = params[0] ? parseInt(params[0]) : null;
+        const ids = params[1] || [];
+        db.files = db.files.map(f => {
+            if (ids.includes(f.id)) {
+                return { ...f, folder_id: folderId };
+            }
+            return f;
+        });
+        writeJsonDb(db);
+        return { rowCount: ids.length };
+    }
+
     // Virtual Folder query simulations
     if (normalizedText.includes('INSERT INTO folders')) {
         const newFolder = {

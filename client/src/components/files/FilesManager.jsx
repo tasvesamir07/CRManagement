@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { filesAPI, coursesAPI } from '../../services/api';
+import { filesAPI, coursesAPI, bulkAPI } from '../../services/api';
 import { 
   Search, Download, Trash2, Upload, File, Image, FileText, 
   FileArchive, ChevronLeft, ChevronRight, Send, Check, X, 
@@ -66,6 +66,7 @@ const FilesManager = () => {
   const [courses, setCourses] = useState([]);
   const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
 
   const handleToggleSelect = (id) => {
     setSelectedFileIds(prev => {
@@ -292,6 +293,60 @@ const FilesManager = () => {
     setDeleting(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedFileIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to permanently delete the ${selectedFileIds.size} selected file(s)?`)) return;
+    
+    const idsToDelete = [...selectedFileIds];
+    setDeleting(prev => {
+      const next = new Set(prev);
+      idsToDelete.forEach(id => next.add(id));
+      return next;
+    });
+    
+    try {
+      await bulkAPI.deleteFiles(idsToDelete);
+      setFiles(prev => prev.filter(f => !selectedFileIds.has(f.id)));
+      setSelectedFileIds(new Set());
+      toast.success('Selected files deleted successfully');
+      fetchFiles();
+    } catch (e) {
+      toast.error('Bulk deletion failed');
+    } finally {
+      setDeleting(prev => {
+        const next = new Set(prev);
+        idsToDelete.forEach(id => next.delete(id));
+        return next;
+      });
+    }
+  };
+
+  const handlePerformMove = async (targetFolderId) => {
+    try {
+      await filesAPI.moveFiles([...selectedFileIds], targetFolderId);
+      toast.success('Files moved successfully');
+      setShowMoveModal(false);
+      setSelectedFileIds(new Set());
+      fetchFiles();
+    } catch (err) {
+      toast.error('Failed to move files');
+    }
+  };
+
+  const handleShareFolder = async (folderId) => {
+    try {
+      const result = await filesAPI.list({ limit: 200, folderId });
+      const ids = result.files.map(f => f.id);
+      if (ids.length === 0) {
+        toast.error('This folder is empty');
+        return;
+      }
+      navigate(`/announcement/new?file_ids=${ids.join(',')}`);
+    } catch (e) {
+      toast.error('Failed to prepare folder files');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -311,13 +366,29 @@ const FilesManager = () => {
             />
           </div>
           {selectedFileIds.size > 0 && (
-            <button
-              onClick={() => handleShareFiles([...selectedFileIds])}
-              className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-colors duration-150 cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              Share Selected ({selectedFileIds.size})
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleShareFiles([...selectedFileIds])}
+                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-colors duration-150 cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5 mr-1.5" />
+                Share Selected ({selectedFileIds.size})
+              </button>
+              <button
+                onClick={() => setShowMoveModal(true)}
+                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-sm shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong focus:outline-none transition-colors duration-150 cursor-pointer"
+              >
+                <Folder className="w-3.5 h-3.5 mr-1.5" />
+                Move Selected ({selectedFileIds.size})
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-red-600 hover:bg-red-700 focus:outline-none transition-colors duration-150 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Delete Selected ({selectedFileIds.size})
+              </button>
+            </div>
           )}
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -423,17 +494,29 @@ const FilesManager = () => {
                     <span className="text-[10px] text-ink-mute font-sans">
                       {folder.created_at ? new Date(folder.created_at).toLocaleDateString() : ''}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFolderToDelete(folder);
-                        setShowDeleteFolderModal(true);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-ink-mute hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-sm transition-all duration-150 cursor-pointer"
-                      title="Delete Folder"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShareFolder(folder.id);
+                        }}
+                        className="p-1.5 text-ink-mute hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-sm transition-all duration-150 cursor-pointer"
+                        title="Share All Files in Folder"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFolderToDelete(folder);
+                          setShowDeleteFolderModal(true);
+                        }}
+                        className="p-1.5 text-ink-mute hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-sm transition-all duration-150 cursor-pointer"
+                        title="Delete Folder"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -751,6 +834,73 @@ const FilesManager = () => {
                     setFolderToDelete(null);
                   }}
                   className="w-full py-2.5 px-4 text-xs font-medium text-ink-mute hover:text-ink transition-colors text-center cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Move Files Modal */}
+      {showMoveModal && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
+                  <Folder className="text-primary w-5 h-5" />
+                  Move Files
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowMoveModal(false);
+                  }}
+                  className="text-ink-mute hover:text-ink transition-colors p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <p className="text-sm text-ink-mute font-sans">
+                Select target folder for the {selectedFileIds.size} selected file(s):
+              </p>
+
+              <div className="max-h-60 overflow-y-auto border border-hairline rounded-md divide-y divide-hairline">
+                <div
+                  onClick={() => handlePerformMove(null)}
+                  className="p-3 text-sm text-ink hover:bg-canvas-soft cursor-pointer transition-colors flex items-center gap-2.5 font-sans"
+                >
+                  <FolderClosed className="w-4.5 h-4.5 text-ink-mute" />
+                  <span className="font-medium">Root Level / Uncategorized</span>
+                </div>
+                {folders.map(folder => (
+                  <div
+                    key={folder.id}
+                    onClick={() => handlePerformMove(folder.id)}
+                    className="p-3 text-sm text-ink hover:bg-canvas-soft cursor-pointer transition-colors flex items-center gap-2.5 justify-between font-sans"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FolderClosed className="w-4.5 h-4.5 text-primary" />
+                      <span className="truncate">{folder.name}</span>
+                    </div>
+                    {folder.course_code && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-sm uppercase shrink-0">
+                        {folder.course_code}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  onClick={() => {
+                    setShowMoveModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded-sm transition-colors border border-hairline cursor-pointer"
                 >
                   Cancel
                 </button>

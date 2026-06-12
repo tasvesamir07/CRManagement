@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { logsAPI } from '../../services/api';
+import { logsAPI, announcementsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { 
@@ -109,6 +109,17 @@ const LogsManager = () => {
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to clear logs');
+    }
+  };
+
+  const handleRetrySend = async (announcementId) => {
+    try {
+      toast.loading('Retrying broadcast...', { id: 'retry-toast' });
+      await announcementsAPI.send(announcementId);
+      toast.success('Broadcast resent successfully!', { id: 'retry-toast' });
+      handleRefresh();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to retry broadcast', { id: 'retry-toast' });
     }
   };
 
@@ -508,13 +519,26 @@ const LogsManager = () => {
                       <p className="text-xs text-ink-secondary leading-relaxed">
                         {troubleshoot.explanation}
                       </p>
-                      <div className="space-y-1.5 pt-1.5 border-t border-accent-tomato/10">
-                        <span className="text-[10px] uppercase font-bold text-accent-tomato tracking-wider block">How to fix this:</span>
-                        <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1">
-                          {troubleshoot.steps.map((step, idx) => (
-                            <li key={idx} className="leading-normal">{step}</li>
-                          ))}
-                        </ul>
+                      <div className="space-y-1.5 pt-1.5 border-t border-accent-tomato/10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-accent-tomato tracking-wider block">How to fix this:</span>
+                          <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1">
+                            {troubleshoot.steps.map((step, idx) => (
+                              <li key={idx} className="leading-normal">{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        {selectedLog.entity_type === 'announcement' && selectedLog.entity_id && (
+                          <button
+                            onClick={() => {
+                              handleRetrySend(selectedLog.entity_id);
+                              setSelectedLog(null);
+                            }}
+                            className="px-3 py-1.5 bg-accent-tomato hover:bg-accent-tomato-deep text-white rounded-sm text-xs font-semibold cursor-pointer shrink-0 transition-colors shadow-sm self-start sm:self-auto"
+                          >
+                            Retry Broadcast
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
