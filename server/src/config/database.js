@@ -1105,6 +1105,40 @@ async function simulateQuery(text, params = []) {
         return { rows: logs };
     }
 
+    if (normalizedText.includes('DELETE FROM audit_logs')) {
+        if (normalizedText.includes('id =') && normalizedText.includes('user_id =')) {
+            const id = parseInt(params[0]);
+            const userId = parseInt(params[1]);
+            const idx = db.audit_logs.findIndex(l => l.id === id && l.user_id === userId);
+            if (idx !== -1) {
+                const deleted = db.audit_logs[idx];
+                db.audit_logs.splice(idx, 1);
+                writeJsonDb(db);
+                return { rows: [deleted] };
+            }
+            return { rows: [] };
+        } else if (normalizedText.includes('id =')) {
+            const id = parseInt(params[0]);
+            const idx = db.audit_logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                const deleted = db.audit_logs[idx];
+                db.audit_logs.splice(idx, 1);
+                writeJsonDb(db);
+                return { rows: [deleted] };
+            }
+            return { rows: [] };
+        } else if (normalizedText.includes('user_id =')) {
+            const userId = parseInt(params[0]);
+            db.audit_logs = db.audit_logs.filter(l => l.user_id !== userId);
+            writeJsonDb(db);
+            return { rows: [] };
+        } else {
+            db.audit_logs = [];
+            writeJsonDb(db);
+            return { rows: [] };
+        }
+    }
+
     // 9. Analytics Events Queries
     if (normalizedText.includes('INSERT INTO analytics_events')) {
         const newEvent = {

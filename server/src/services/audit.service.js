@@ -57,4 +57,28 @@ async function getLogs({ page = 1, limit = 50, userId, action, entityType } = {}
   };
 }
 
-module.exports = { log, getLogs };
+async function deleteLog(logId, userId = null) {
+  if (userId) {
+    const result = await db.query(
+      'DELETE FROM audit_logs WHERE id = $1 AND user_id = $2 RETURNING *',
+      [logId, userId]
+    );
+    return result.rows.length > 0;
+  } else {
+    const result = await db.query(
+      'DELETE FROM audit_logs WHERE id = $1 RETURNING *',
+      [logId]
+    );
+    return result.rows.length > 0;
+  }
+}
+
+async function clearLogs(userId = null) {
+  if (userId) {
+    await db.query('DELETE FROM audit_logs WHERE user_id = $1', [userId]);
+  } else {
+    await db.query('DELETE FROM audit_logs');
+  }
+}
+
+module.exports = { log, getLogs, deleteLog, clearLogs };

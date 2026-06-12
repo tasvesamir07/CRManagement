@@ -16,7 +16,8 @@ import {
   Eye, 
   AlertCircle, 
   CheckCircle,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from 'lucide-react';
 
 const LogsManager = () => {
@@ -78,6 +79,37 @@ const LogsManager = () => {
     setEntityTypeFilter('');
     setSearchUserId('');
     setPage(1);
+  };
+
+  const handleDeleteLog = async (logId, event) => {
+    event.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this log entry?')) return;
+    try {
+      await logsAPI.delete(logId);
+      toast.success('Log entry deleted');
+      if (logs.length === 1 && page > 1) {
+        setPage(prev => prev - 1);
+      } else {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete log');
+    }
+  };
+
+  const handleClearLogs = async () => {
+    const confirmMsg = isAdmin 
+      ? 'Are you sure you want to delete ALL system audit logs? This cannot be undone.'
+      : 'Are you sure you want to clear all your notice delivery logs?';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      await logsAPI.clear();
+      toast.success('Logs cleared successfully');
+      setPage(1);
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to clear logs');
+    }
   };
 
   // Helper to parse JSON details
@@ -225,13 +257,23 @@ const LogsManager = () => {
             }
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center px-3 py-1.5 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleClearLogs}
+            disabled={logs.length === 0}
+            className="flex items-center px-3 py-1.5 border border-accent-tomato/20 rounded-sm text-xs font-medium text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+            {isAdmin ? 'Clear All Logs' : 'Clear Logs'}
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center px-3 py-1.5 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Filters Card */}
@@ -359,13 +401,22 @@ const LogsManager = () => {
                         {log.ip_address || '—'}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => setSelectedLog(log)}
-                          className="inline-flex items-center px-2 py-1 text-xs border border-hairline rounded-sm text-ink-mute hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          View
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedLog(log)}
+                            className="inline-flex items-center px-2 py-1 text-xs border border-hairline rounded-sm text-ink-mute hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1" />
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteLog(log.id, e)}
+                            className="inline-flex items-center px-2 py-1 text-xs border border-accent-tomato/20 rounded-sm text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+                            title="Delete log entry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
