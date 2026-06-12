@@ -740,6 +740,9 @@ const AnnouncementForm = () => {
             </div>
             <div className="w-24 h-1 bg-zinc-600 rounded-full mx-auto mt-3.5"></div>
           </div>
+          <button type="button" onClick={() => { navigator.clipboard.writeText(compiledMessage || ''); toast.success('Message copied!'); }} className="w-full flex items-center justify-center py-2.5 px-4 border-2 border-dashed border-primary/40 hover:border-primary rounded-sm text-sm font-medium text-primary hover:bg-primary/5 transition-colors cursor-pointer mt-4">
+            <Clipboard className="w-4 h-4 mr-2" />Copy Message to Clipboard
+          </button>
         </div>
       </div>
 
@@ -753,7 +756,6 @@ const AnnouncementForm = () => {
             <div className="bg-accent-yellow/5 border border-accent-yellow/20 rounded-sm p-3 text-xs text-ink-mute"><AlertTriangle className="w-3.5 h-3.5 inline mr-1 text-accent-yellow" /> This action cannot be undone. The notice will be broadcast to all selected platforms.</div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowConfirmModal(false)} className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer">Cancel</button>
-              <button type="button" onClick={() => { navigator.clipboard.writeText(compiledMessage); toast.success('Message copied!'); setShowConfirmModal(false); }} className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer flex items-center"><Clipboard className="w-4 h-4 mr-1.5" />Copy Message</button>
               <button type="button" onClick={handleSendBroadcast} disabled={submitting} className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50 flex items-center"><Send className="w-4 h-4 mr-1.5" />{submitting ? 'Sending...' : 'Yes, Broadcast Now'}</button>
             </div>
           </div>
