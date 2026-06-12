@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { announcementsAPI } from '../../services/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import {
@@ -88,6 +89,18 @@ const troubleshootError = (errorStr) => {
       steps: [
         'Verify that your file attachments are within size limits (WhatsApp/Telegram have limits around 16MB - 50MB depending on type).',
         'If sending a large notice with multiple attachments, use the "Schedule" feature instead of sending immediately to allow staggered dispatch.'
+      ]
+    };
+  }
+
+  if (lower.includes('text is empty') || lower.includes('message text is empty') || lower.includes('empty text') || lower.includes('body is empty')) {
+    return {
+      title: 'Empty Message Content',
+      explanation: 'The Telegram broadcast failed because the compiled message body was empty.',
+      steps: [
+        'Ensure the notice content is not blank before sending.',
+        'If broadcasting a "Share File" notice, verify that you have uploaded at least one attachment.',
+        'If using a template, verify that all variables are filled out so that the compiled content is not empty.'
       ]
     };
   }
@@ -349,65 +362,67 @@ const AnnouncementDetail = () => {
         )}
       </div>
 
-      {/* Troubleshoot Advisor Modal */}
-      {troubleshootingError && (() => {
-        const troubleshoot = troubleshootError(troubleshootingError);
-        return (
-          <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-canvas border border-hairline rounded-lg w-full max-w-md shadow-xl p-6 relative">
-              <button
-                onClick={() => setTroubleshootingError(null)}
-                className="absolute top-4 right-4 p-1 hover:bg-canvas-soft rounded cursor-pointer"
-              >
-                <X className="w-4 h-4 text-ink-mute" />
-              </button>
-              
-              <div className="flex items-center gap-2.5 text-accent-tomato mb-4">
-                <AlertTriangle className="w-5 h-5" />
-                <h3 className="text-md font-semibold text-ink">Delivery Troubleshooter</h3>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block">Raw Error Message</span>
-                  <p className="mt-1 text-xs font-mono bg-canvas-soft p-3 rounded border border-hairline break-words text-ink">
-                    {troubleshootingError}
-                  </p>
-                </div>
-                
-                {troubleshoot && (
-                  <>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-primary tracking-wider block">{troubleshoot.title}</span>
-                      <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
-                        {troubleshoot.explanation}
-                      </p>
-                    </div>
-                    
-                    <div className="border-t border-hairline pt-3">
-                      <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block mb-1.5">Suggested Action Checklist:</span>
-                      <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1.5">
-                        {troubleshoot.steps.map((step, index) => (
-                          <li key={index} className="leading-normal">{step}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              <div className="mt-6 flex justify-end">
+      {troubleshootingError && createPortal(
+        (() => {
+          const troubleshoot = troubleshootError(troubleshootingError);
+          return (
+            <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+              <div className="bg-canvas border border-hairline rounded-lg w-full max-w-md shadow-xl p-6 relative">
                 <button
                   onClick={() => setTroubleshootingError(null)}
-                  className="px-4 py-2 bg-ink text-on-dark hover:bg-ink-secondary text-xs font-medium rounded-sm transition-colors cursor-pointer"
+                  className="absolute top-4 right-4 p-1 hover:bg-canvas-soft rounded cursor-pointer"
                 >
-                  Dismiss
+                  <X className="w-4 h-4 text-ink-mute" />
                 </button>
+                
+                <div className="flex items-center gap-2.5 text-accent-tomato mb-4">
+                  <AlertTriangle className="w-5 h-5" />
+                  <h3 className="text-md font-semibold text-ink">Delivery Troubleshooter</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block">Raw Error Message</span>
+                    <p className="mt-1 text-xs font-mono bg-canvas-soft p-3 rounded border border-hairline break-words text-ink">
+                      {troubleshootingError}
+                    </p>
+                  </div>
+                  
+                  {troubleshoot && (
+                    <>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-primary tracking-wider block">{troubleshoot.title}</span>
+                        <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
+                          {troubleshoot.explanation}
+                        </p>
+                      </div>
+                      
+                      <div className="border-t border-hairline pt-3">
+                        <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block mb-1.5">Suggested Action Checklist:</span>
+                        <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1.5">
+                          {troubleshoot.steps.map((step, index) => (
+                            <li key={index} className="leading-normal">{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => setTroubleshootingError(null)}
+                    className="px-4 py-2 bg-ink text-on-dark hover:bg-ink-secondary text-xs font-medium rounded-sm transition-colors cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 };

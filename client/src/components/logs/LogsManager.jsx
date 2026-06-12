@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { logsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -182,6 +183,18 @@ const LogsManager = () => {
         steps: [
           'Verify that your file attachments are within size limits (WhatsApp/Telegram have limits around 16MB - 50MB depending on type).',
           'If sending a large notice with multiple attachments, use the "Schedule" feature instead of sending immediately to allow staggered dispatch.'
+        ]
+      };
+    }
+
+    if (lower.includes('text is empty') || lower.includes('message text is empty') || lower.includes('empty text') || lower.includes('body is empty')) {
+      return {
+        title: 'Empty Message Content',
+        explanation: 'The Telegram broadcast failed because the compiled message body was empty.',
+        steps: [
+          'Ensure the notice content is not blank before sending.',
+          'If broadcasting a "Share File" notice, verify that you have uploaded at least one attachment.',
+          'If using a template, verify that all variables are filled out so that the compiled content is not empty.'
         ]
       };
     }
@@ -389,93 +402,96 @@ const LogsManager = () => {
       </div>
 
       {/* Details & Troubleshooter Modal */}
-      {selectedLog && (() => {
-        const details = parseDetails(selectedLog.details);
-        const errorMsg = details?.error || details?.message;
-        const troubleshoot = troubleshootError(errorMsg);
+      {selectedLog && createPortal(
+        (() => {
+          const details = parseDetails(selectedLog.details);
+          const errorMsg = details?.error || details?.message;
+          const troubleshoot = troubleshootError(errorMsg);
 
-        return (
-          <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-canvas border border-hairline rounded-lg w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-hairline">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-primary" />
-                  <h3 className="text-md font-semibold text-ink">Log Entry #{selectedLog.id} Details</h3>
-                </div>
-                <button
-                  onClick={() => setSelectedLog(null)}
-                  className="p-1 hover:bg-canvas-soft rounded cursor-pointer"
-                >
-                  <X className="w-4 h-4 text-ink-mute" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-6 overflow-y-auto space-y-6">
-                {/* Meta details grid */}
-                <div className="grid grid-cols-2 gap-4 text-xs border-b border-hairline pb-4">
-                  <div>
-                    <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Action Type</span>
-                    <div className="mt-1 font-medium">{selectedLog.action}</div>
+          return (
+            <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+              <div className="bg-canvas border border-hairline rounded-lg w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-hairline">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-primary" />
+                    <h3 className="text-md font-semibold text-ink">Log Entry #{selectedLog.id} Details</h3>
                   </div>
-                  <div>
-                    <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Timestamp</span>
-                    <div className="mt-1 font-mono">{new Date(selectedLog.created_at).toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Triggered By</span>
-                    <div className="mt-1 font-medium">{selectedLog.display_name || selectedLog.username || 'System'}</div>
-                  </div>
-                  <div>
-                    <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">IP Address</span>
-                    <div className="mt-1 font-mono">{selectedLog.ip_address || 'N/A'}</div>
-                  </div>
+                  <button
+                    onClick={() => setSelectedLog(null)}
+                    className="p-1 hover:bg-canvas-soft rounded cursor-pointer"
+                  >
+                    <X className="w-4 h-4 text-ink-mute" />
+                  </button>
                 </div>
 
-                {/* Troubleshooter Advisor section (if failure exists) */}
-                {troubleshoot && (
-                  <div className="bg-accent-tomato/5 border border-accent-tomato/20 rounded-md p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-accent-tomato font-semibold text-sm">
-                      <AlertCircle className="w-4 h-4" />
-                      {troubleshoot.title}
+                {/* Body */}
+                <div className="p-6 overflow-y-auto space-y-6">
+                  {/* Meta details grid */}
+                  <div className="grid grid-cols-2 gap-4 text-xs border-b border-hairline pb-4">
+                    <div>
+                      <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Action Type</span>
+                      <div className="mt-1 font-medium">{selectedLog.action}</div>
                     </div>
-                    <p className="text-xs text-ink-secondary leading-relaxed">
-                      {troubleshoot.explanation}
-                    </p>
-                    <div className="space-y-1.5 pt-1.5 border-t border-accent-tomato/10">
-                      <span className="text-[10px] uppercase font-bold text-accent-tomato tracking-wider block">How to fix this:</span>
-                      <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1">
-                        {troubleshoot.steps.map((step, idx) => (
-                          <li key={idx} className="leading-normal">{step}</li>
-                        ))}
-                      </ul>
+                    <div>
+                      <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Timestamp</span>
+                      <div className="mt-1 font-mono">{new Date(selectedLog.created_at).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">Triggered By</span>
+                      <div className="mt-1 font-medium">{selectedLog.display_name || selectedLog.username || 'System'}</div>
+                    </div>
+                    <div>
+                      <span className="text-ink-mute block uppercase tracking-wider font-semibold text-[10px]">IP Address</span>
+                      <div className="mt-1 font-mono">{selectedLog.ip_address || 'N/A'}</div>
                     </div>
                   </div>
-                )}
 
-                {/* Raw Event Details JSON */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-mute">Event Metadata (Raw Details)</h4>
-                  <pre className="bg-canvas-night text-on-dark text-xs p-4 rounded font-mono overflow-x-auto max-h-48 whitespace-pre-wrap">
-                    {JSON.stringify(details, null, 2)}
-                  </pre>
+                  {/* Troubleshooter Advisor section (if failure exists) */}
+                  {troubleshoot && (
+                    <div className="bg-accent-tomato/5 border border-accent-tomato/20 rounded-md p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-accent-tomato font-semibold text-sm">
+                        <AlertCircle className="w-4 h-4" />
+                        {troubleshoot.title}
+                      </div>
+                      <p className="text-xs text-ink-secondary leading-relaxed">
+                        {troubleshoot.explanation}
+                      </p>
+                      <div className="space-y-1.5 pt-1.5 border-t border-accent-tomato/10">
+                        <span className="text-[10px] uppercase font-bold text-accent-tomato tracking-wider block">How to fix this:</span>
+                        <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1">
+                          {troubleshoot.steps.map((step, idx) => (
+                            <li key={idx} className="leading-normal">{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Raw Event Details JSON */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-mute">Event Metadata (Raw Details)</h4>
+                    <pre className="bg-canvas-night text-on-dark text-xs p-4 rounded font-mono overflow-x-auto max-h-48 whitespace-pre-wrap">
+                      {JSON.stringify(details, null, 2)}
+                    </pre>
+                  </div>
                 </div>
-              </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-end p-4 border-t border-hairline bg-canvas-soft/30 rounded-b-lg">
-                <button
-                  onClick={() => setSelectedLog(null)}
-                  className="px-4 py-2 bg-ink text-on-dark hover:bg-ink-secondary text-xs font-medium rounded-sm transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
+                {/* Footer */}
+                <div className="flex items-center justify-end p-4 border-t border-hairline bg-canvas-soft/30 rounded-b-lg">
+                  <button
+                    onClick={() => setSelectedLog(null)}
+                    className="px-4 py-2 bg-ink text-on-dark hover:bg-ink-secondary text-xs font-medium rounded-sm transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 };

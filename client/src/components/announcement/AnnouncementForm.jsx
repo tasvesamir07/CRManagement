@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { coursesAPI, platformsAPI, filesAPI, announcementsAPI, templatesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -1017,7 +1018,7 @@ const AnnouncementForm = () => {
         </div>
       </div>
 
-      {showConfirmModal && (
+      {showConfirmModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-canvas border border-hairline rounded-lg shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -1030,7 +1031,8 @@ const AnnouncementForm = () => {
               <button type="button" onClick={handleSendBroadcast} disabled={submitting} className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50 flex items-center"><Send className="w-4 h-4 mr-1.5" />{submitting ? 'Sending...' : 'Yes, Broadcast Now'}</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
