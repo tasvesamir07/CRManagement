@@ -37,13 +37,29 @@ async function useDbAuthState() {
     let credsData = null;
     let keysStore = {};
 
+    function reviveBuffers(obj) {
+        if (obj === null || obj === undefined) return obj;
+        if (Array.isArray(obj)) return obj.map(reviveBuffers);
+        if (typeof obj === 'object' && obj.type === 'Buffer' && Array.isArray(obj.data)) {
+            return Buffer.from(obj.data);
+        }
+        if (typeof obj === 'object') {
+            const result = {};
+            for (const key in obj) {
+                result[key] = reviveBuffers(obj[key]);
+            }
+            return result;
+        }
+        return obj;
+    }
+
     if (isPostgres) {
         try {
             await db.query(`CREATE TABLE IF NOT EXISTS whatsapp_creds (type TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW())`);
             const cr = await db.query("SELECT data FROM whatsapp_creds WHERE type = 'creds'");
-            if (cr.rows[0]) credsData = cr.rows[0].data;
+            if (cr.rows[0]) credsData = reviveBuffers(cr.rows[0].data);
             const kr = await db.query("SELECT data FROM whatsapp_creds WHERE type = 'keys'");
-            if (kr.rows[0]) keysStore = kr.rows[0].data || {};
+            if (kr.rows[0]) keysStore = reviveBuffers(kr.rows[0].data) || {};
         } catch (err) {
             console.error('DB auth init failed, using file fallback:', err.message);
             return useMultiFileAuthState(AUTH_FOLDER);
