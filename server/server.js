@@ -97,34 +97,39 @@ app.use((err, req, res, _next) => {
 // Create HTTP server
 const server = http.createServer(app);
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+const isVercel = !!process.env.VERCEL;
 
-// Store active WebSocket connections
+// Create WebSocket server (skipped on Vercel as it doesn't support persistent WebSockets)
+let wss = null;
 const clients = new Set();
 
-wss.on('connection', (ws) => {
-    logger.info('WebSocket client connected');
-    clients.add(ws);
-    
-    // Immediately send current WhatsApp status upon connection
-    ws.send(JSON.stringify({
-        type: 'whatsapp_status',
-        data: whatsappService.getStatus()
-    }));
-    
-    ws.on('close', () => {
-        logger.info('WebSocket client disconnected');
-        clients.delete(ws);
+if (!isVercel) {
+    wss = new WebSocket.Server({ server });
+
+    wss.on('connection', (ws) => {
+        logger.info('WebSocket client connected');
+        clients.add(ws);
+        
+        // Immediately send current WhatsApp status upon connection
+        ws.send(JSON.stringify({
+            type: 'whatsapp_status',
+            data: whatsappService.getStatus()
+        }));
+        
+        ws.on('close', () => {
+            logger.info('WebSocket client disconnected');
+            clients.delete(ws);
+        });
+        
+        ws.on('error', (err) => {
+            logger.error({ err }, 'WebSocket client error');
+        });
     });
-    
-    ws.on('error', (err) => {
-        logger.error({ err }, 'WebSocket client error');
-    });
-});
+}
 
 // Hook up WhatsApp service to broadcast to WS clients
 whatsappService.setWsBroadcaster((payload) => {
+    if (isVercel) return;
     const message = JSON.stringify(payload);
     for (const client of clients) {
         if (client.readyState === WebSocket.OPEN) {
@@ -135,6 +140,7 @@ whatsappService.setWsBroadcaster((payload) => {
 
 // Hook up Announcement service to broadcast to WS clients
 announcementService.setWsBroadcaster((payload) => {
+    if (isVercel) return;
     const message = JSON.stringify(payload);
     for (const client of clients) {
         if (client.readyState === WebSocket.OPEN) {
@@ -143,63 +149,71 @@ announcementService.setWsBroadcaster((payload) => {
     }
 });
 
-// Start services
-whatsappService.initWhatsApp();
+// Start services (Skip WhatsApp client on Vercel as it requires persistent session/WebSocket)
+if (!isVercel) {
+    whatsappService.initWhatsApp();
+}
 telegramService.initTelegram();
 
-// Schedule daily cleanup at midnight (0 0 * * *)
-// We run it every night to clean up files older than 15 days
-nodeCron.schedule('0 0 * * *', async () => {
-    logger.info('Running scheduled midnight file cleanup...');
-    try {
-        await fileService.cleanupExpiredFiles();
-    } catch (err) {
-        logger.error({ err }, 'Error during scheduled file cleanup');
-    }
-});
+// Skip active crons and recursive schedulers on Vercel as it is an ephemeral serverless environment
+if (!isVercel) {
+    // Schedule daily cleanup at midnight (0 0 * * *)
+    // We run it every night to clean up files older than 15 days
+    nodeCron.schedule('0 0 * * *', async () => {
+        logger.info('Running scheduled midnight file cleanup...');
+        try {
+            await fileService.cleanupExpiredFiles();
+        } catch (err) {
+            logger.error({ err }, 'Error during scheduled file cleanup');
+        }
+    });
 
-// Process due scheduled announcements
-// Uses recursive setTimeout to prevent overlapping runs
-let schedulerTimeout = null;
-let scheduledProcessing = false;
-const processScheduledAnnouncements = async () => {
-    if (scheduledProcessing) return;
-    scheduledProcessing = true;
-    try {
-        const due = await announcementService.getDueScheduledAnnouncements();
-        for (const ann of due) {
-            try {
-                // Mark as sending immediately to prevent re-pickup by a concurrent tick
-                await announcementService.markAnnouncementSending(ann.id);
-                logger.info({ annId: ann.id, title: ann.title }, 'Sending scheduled announcement');
-                await announcementService.sendAnnouncement(ann.id);
-                logger.info({ annId: ann.id }, 'Scheduled announcement sent successfully');
-            } catch (sendErr) {
-                logger.error({ annId: ann.id, err: sendErr }, 'Failed to send scheduled announcement');
-                // Mark as failed so it won't be retried forever
+    // Process due scheduled announcements
+    // Uses recursive setTimeout to prevent overlapping runs
+    let schedulerTimeout = null;
+    let scheduledProcessing = false;
+    const processScheduledAnnouncements = async () => {
+        if (scheduledProcessing) return;
+        scheduledProcessing = true;
+        try {
+            const due = await announcementService.getDueScheduledAnnouncements();
+            for (const ann of due) {
                 try {
-                    await announcementService.markAnnouncementFailed(ann.id);
-                } catch (markErr) {
-                    logger.error({ annId: ann.id, err: markErr }, 'Failed to mark announcement as failed');
+                    // Mark as sending immediately to prevent re-pickup by a concurrent tick
+                    await announcementService.markAnnouncementSending(ann.id);
+                    logger.info({ annId: ann.id, title: ann.title }, 'Sending scheduled announcement');
+                    await announcementService.sendAnnouncement(ann.id);
+                    logger.info({ annId: ann.id }, 'Scheduled announcement sent successfully');
+                } catch (sendErr) {
+                    logger.error({ annId: ann.id, err: sendErr }, 'Failed to send scheduled announcement');
+                    // Mark as failed so it won't be retried forever
+                    try {
+                        await announcementService.markAnnouncementFailed(ann.id);
+                    } catch (markErr) {
+                        logger.error({ annId: ann.id, err: markErr }, 'Failed to mark announcement as failed');
+                    }
                 }
             }
+        } catch (err) {
+            logger.error({ err }, 'Error processing scheduled announcements');
+        } finally {
+            scheduledProcessing = false;
+            // Schedule next check after this run completes
+            schedulerTimeout = setTimeout(processScheduledAnnouncements, 30000);
         }
-    } catch (err) {
-        logger.error({ err }, 'Error processing scheduled announcements');
-    } finally {
-        scheduledProcessing = false;
-        // Schedule next check after this run completes
-        schedulerTimeout = setTimeout(processScheduledAnnouncements, 30000);
-    }
-};
+    };
 
-// Start the scheduler loop
-processScheduledAnnouncements();
+    // Start the scheduler loop
+    processScheduledAnnouncements();
+}
 
 // Start listening
 server.listen(PORT, () => {
     logger.info({ port: PORT }, 'CR Announcement Server started');
 });
+
+// Export Express app for Vercel
+module.exports = app;
 
 // Graceful shutdown helper
 const gracefulShutdown = async (signal) => {
