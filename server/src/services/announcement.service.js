@@ -120,12 +120,8 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 }
                 clearTimeout(timeout);
                 const tempPath = path.join(fileService.uploadsDir, `temp-${f.storage_path}`);
-                const writeStream = fs.createWriteStream(tempPath);
-                await new Promise((resolve, reject) => {
-                    response.body.pipe(writeStream);
-                    writeStream.on('finish', resolve);
-                    writeStream.on('error', reject);
-                });
+                const arrayBuffer = await response.arrayBuffer();
+                fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
                 localFilePath = tempPath;
             } catch (e) {
                 throw new Error(`Failed to download attachment "${f.original_name}" from Supabase: ${e.message}`);
