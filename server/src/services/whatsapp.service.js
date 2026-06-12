@@ -327,8 +327,21 @@ if (isRelayMode) {
                         _consecutive401Count++;
                         console.error(`WhatsApp connection error: ${errMsg}`);
                         console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). ${_consecutive401Count}/5 consecutive 401 failures.`);
+                        
+                        try {
+                            const db = require('../config/database');
+                            if (process.env.DATABASE_URL && !db.useJsonDb()) {
+                                db.query("DELETE FROM whatsapp_creds").catch(e => console.error(e));
+                            }
+                            if (fs.existsSync(AUTH_FOLDER)) {
+                                fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
+                            }
+                        } catch (e) {
+                            console.error('Failed to clean up credentials on logout:', e.message);
+                        }
+
                         if (_consecutive401Count >= 5) {
-                            console.log('⚠️ Too many consecutive 401 failures (likely IP blocked). Falling back to mock mode.');
+                            console.log('⚠️ Too many consecutive 401 failures (likely invalid credentials). Falling back to mock mode.');
                             isMockMode = true;
                             return;
                         }
@@ -581,6 +594,16 @@ if (isRelayMode) {
                 console.error('❌ Failed to delete Baileys auth directory:', err.message);
                 throw err;
             }
+        }
+
+        try {
+            const db = require('../config/database');
+            if (process.env.DATABASE_URL && !db.useJsonDb()) {
+                await db.query("DELETE FROM whatsapp_creds");
+                console.log('✅ Database auth credentials cleared successfully.');
+            }
+        } catch (err) {
+            console.error('❌ Failed to clear database auth credentials:', err.message);
         }
 
         latestQr = '';
