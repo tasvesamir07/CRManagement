@@ -73,7 +73,7 @@ async function initWhatsApp() {
             printQRInTerminal: false,
             markOnlineOnConnect: true,
             syncFullHistory: false,
-            browser: ['CR Announcement', 'Chrome', '1.0.0'],
+            browser: ['Chrome (Linux)', '', ''],
             generateHighQualityLinkPreview: false,
             keepAliveIntervalMs: 15000,
             connectTimeoutMs: 60000
