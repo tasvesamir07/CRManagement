@@ -101,6 +101,10 @@ export default function MessageBuilder({
     let msg = title.trim() ? `📢 *${title}*\n\n` : '📢 *Title*\n\n';
 
     if (category === 'class_cancel') {
+      const sectionNames = sections.map(sec => sec.name).filter(Boolean);
+      if (sectionNames.length > 0) {
+        msg += `*Section ${sectionNames.join(', ')}*\n`;
+      }
       if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
       const eventDate = selectedDate ? new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]) : new Date();
       const day = String(eventDate.getDate()).padStart(2, '0');
@@ -113,7 +117,7 @@ export default function MessageBuilder({
       else if (makeupStatus === 'rescheduled') {
         msg += '📝 *Note:* Rescheduled to new slot:\n';
         sections.forEach(sec => {
-          if (sec.name) msg += ` · Section ${sec.name}:\n`;
+          if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
           if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
           else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
           if (sec.mode === 'Online') msg += '   🏫 *Room:* Online\n';
@@ -122,7 +126,7 @@ export default function MessageBuilder({
       } else if (makeupStatus === 'online') {
         msg += '📝 *Note:* Class will be held Online:\n';
         sections.forEach(sec => {
-          if (sec.name) msg += ` · Section ${sec.name}:\n`;
+          if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
           if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
           else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
           msg += '   🏫 *Room:* Online\n';
@@ -137,6 +141,10 @@ export default function MessageBuilder({
       return msg;
     }
 
+    const sectionNames = sections.map(sec => sec.name).filter(Boolean);
+    if (sectionNames.length > 0) {
+      msg += `*Section ${sectionNames.join(', ')}*\n`;
+    }
     if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}\n`;
     if (selectedDate) {
       const eventDate = new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, selectedDate.split('-')[2]);
@@ -150,7 +158,7 @@ export default function MessageBuilder({
     const hasSections = sections.some(sec => sec.name || sec.startTime || sec.endTime || sec.room);
     if (hasSections) {
       sections.forEach(sec => {
-        if (sec.name) msg += `\n*Section ${sec.name}*\n`;
+        if (sections.length > 1 && sec.name) msg += `\n*Section ${sec.name}*\n`;
         if (sec.startTime && sec.endTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
         else if (sec.startTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
         else msg += '⏰ *Time:* Will announce later\n';
