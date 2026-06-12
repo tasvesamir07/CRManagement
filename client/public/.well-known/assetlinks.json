@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.crmanagement_frontend.twa",
+        "sha256_cert_fingerprints": ["79:3A:D0:F8:8F:5F:11:21:E1:BC:6E:A9:E9:56:01:DF:25:D4:CB:9C:F7:6F:72:FF:F6:67:25:83:01:4B:EC:6F"]
+      }
+    }]
