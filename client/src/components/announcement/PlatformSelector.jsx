@@ -12,14 +12,19 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
     );
   }
 
-  const allSelected = platforms.every(p => selectedPlatforms.includes(p.id));
+  const availablePlatforms = platforms.filter(p => {
+    const engineUnavailable = p.service_available === false || p.is_active === false;
+    const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
+    return !(engineUnavailable || needsPairing);
+  });
+
+  const allSelected = availablePlatforms.length > 0 && availablePlatforms.every(p => selectedPlatforms.includes(p.id));
   const toggleAll = () => {
     if (allSelected) {
       onToggle('clear');
     } else {
-      platforms.forEach(p => {
-        const off = p.service_available === false || p.is_active === false;
-        if (!off && !selectedPlatforms.includes(p.id)) {
+      availablePlatforms.forEach(p => {
+        if (!selectedPlatforms.includes(p.id)) {
           onToggle(p.id);
         }
       });
@@ -38,7 +43,7 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
         const isSelected = selectedPlatforms.includes(p.id);
         const engineUnavailable = p.service_available === false || p.is_active === false;
         const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
-        const isUnavailable = engineUnavailable;
+        const isUnavailable = engineUnavailable || needsPairing;
         let badgeText = '';
         let badgeClass = '';
         if (engineUnavailable) {
@@ -46,13 +51,13 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
           badgeClass = 'text-accent-yellow';
         } else if (needsPairing) {
           badgeText = 'Needs Pairing';
-          badgeClass = 'text-ink-mute';
+          badgeClass = 'text-accent-yellow';
         }
         return (
           <div key={p.id}
             className={`flex items-center justify-between p-3 border rounded-sm transition-all cursor-pointer ${isSelected
               ? 'border-primary bg-primary/5'
-              : isUnavailable ? 'border-hairline-cool bg-canvas-soft/50 opacity-60' : 'border-hairline hover:border-hairline-strong'}`}
+              : isUnavailable ? 'border-hairline-cool bg-canvas-soft/50 opacity-60 pointer-events-none' : 'border-hairline hover:border-hairline-strong'}`}
             onClick={() => { if (!isUnavailable) onToggle(p.id); }}>
             <div className="flex items-center gap-3 min-w-0">
               <div className="shrink-0">

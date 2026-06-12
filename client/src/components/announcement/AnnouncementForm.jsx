@@ -405,10 +405,19 @@ const AnnouncementForm = () => {
 
   useEffect(() => {
     if (platforms.length > 0) {
-      const unavailableIds = platforms.filter(p => p.service_available === false || p.is_active === false).map(p => p.id);
-      if (unavailableIds.length > 0) setSelectedPlatforms(prev => { const filtered = prev.filter(id => !unavailableIds.includes(id)); return filtered.length !== prev.length ? filtered : prev; });
+      const unavailableIds = platforms.filter(p => {
+        const engineUnavailable = p.service_available === false || p.is_active === false;
+        const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
+        return engineUnavailable || needsPairing;
+      }).map(p => p.id);
+      if (unavailableIds.length > 0) {
+        setSelectedPlatforms(prev => {
+          const filtered = prev.filter(id => !unavailableIds.includes(id));
+          return filtered.length !== prev.length ? filtered : prev;
+        });
+      }
     }
-  }, [platforms]);
+  }, [platforms, waStatus]);
 
   useEffect(() => {
     if (!isEditMode || !editId) return;
