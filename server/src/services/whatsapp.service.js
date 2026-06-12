@@ -174,6 +174,7 @@ async function initWhatsApp() {
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const errMsg = lastDisconnect?.error?.message || lastDisconnect?.error?.toString() || 'unknown';
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
                 connectionStatus = 'DISCONNECTED';
                 latestQr = '';
@@ -184,7 +185,10 @@ async function initWhatsApp() {
                 if (shouldReconnect) {
                     let delay = 10000;
                     if (statusCode === 408) delay = 10000;
-                    else if (!hasEverBeenConnected) delay = 30000;
+                    else if (!hasEverBeenConnected) {
+                        delay = 10000;
+                        console.error(`WhatsApp connection error: ${errMsg}`);
+                    }
                     console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). Reconnecting in ${delay / 1000}s...`);
                     clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(initWhatsApp, delay);
