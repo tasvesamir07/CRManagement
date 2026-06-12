@@ -160,7 +160,7 @@ async function listFiles({ page = 1, limit = 50, search, userId } = {}) {
          FROM files f
          LEFT JOIN users u ON f.uploaded_by = u.id
          ${where}
-         ORDER BY f.created_at DESC
+         ORDER BY f.uploaded_at DESC
          LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
         [...params, limit, offset]
     );
