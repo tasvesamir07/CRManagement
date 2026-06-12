@@ -951,7 +951,7 @@ const AnnouncementForm = () => {
           {uploadedFiles.length > 0 && (
             <div className="pt-2 bg-canvas/30 rounded-sm p-3 border border-hairline/60">
               <div className="flex justify-between items-center text-[10px] uppercase font-bold text-ink-mute mb-1">
-                <span>Storage Space</span>
+                <span>{storageUsage.storageType || 'Storage Space'}</span>
                 <span>{(storageUsage.usedBytes / 1024 / 1024).toFixed(2)} MB / {(storageUsage.limitBytes / 1024 / 1024).toFixed(0)} MB ({storageUsage.percentage}%)</span>
               </div>
               <div className="w-full bg-hairline rounded-full h-1.5 overflow-hidden">

@@ -205,15 +205,35 @@ async function cleanupExpiredFiles() {
 }
 
 async function getStorageUsage() {
-    const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
-    const usedBytes = parseInt(result.rows[0].used_bytes, 10);
-    const limitBytes = parseInt(process.env.STORAGE_LIMIT_BYTES || '104857600', 10); // default to 100MB
+    let usedBytes = 0;
+    let limitBytes = parseInt(process.env.STORAGE_LIMIT_BYTES || '104857600', 10); // default to 100MB
+    const storageType = supabase ? 'Supabase Bucket' : 'Local Storage';
+    
+    if (supabase) {
+        try {
+            const result = await db.query(
+                "SELECT COALESCE(SUM((metadata->>'size')::bigint), 0) as used_bytes FROM storage.objects WHERE bucket_id = $1",
+                [bucketName]
+            );
+            usedBytes = parseInt(result.rows[0].used_bytes, 10);
+        } catch (err) {
+            console.error('Failed to get Supabase bucket size from database, falling back to files table:', err.message);
+            const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
+            usedBytes = parseInt(result.rows[0].used_bytes, 10);
+        }
+        limitBytes = parseInt(process.env.STORAGE_LIMIT_BYTES || '1073741824', 10); // default to 1GB for Supabase
+    } else {
+        const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
+        usedBytes = parseInt(result.rows[0].used_bytes, 10);
+    }
+    
     const percentage = limitBytes > 0 ? parseFloat(((usedBytes / limitBytes) * 100).toFixed(2)) : 0;
     
     return {
         usedBytes,
         limitBytes,
-        percentage
+        percentage,
+        storageType
     };
 }
 
