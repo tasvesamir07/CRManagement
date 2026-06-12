@@ -65,6 +65,7 @@ export default function MessageBuilder({
   customMakeupText, setCustomMakeupText,
   showTopics, currentCourseRoutines,
 }) {
+  const [noteType, setNoteType] = React.useState('note');
   const handlePresetChange = (presetValue) => {
     setTitlePreset(presetValue);
     if (presetValue !== 'Custom') {
@@ -79,13 +80,13 @@ export default function MessageBuilder({
     }
   };
 
-  const addSection = () => setSections(prev => [...prev, { name: '', startTime: '', endTime: '', room: '', mode: 'Offline' }]);
+  const addSection = () => setSections(prev => [...prev, { name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }]);
   const removeSection = (i) => { if (sections.length > 1) setSections(prev => prev.filter((_, idx) => idx !== i)); };
   const updateSection = (i, field, val) => setSections(prev => { const u = [...prev]; u[i] = { ...u[i], [field]: val }; return u; });
 
   const addTopic = () => { if (currentTopic.trim()) { setTopics(prev => [...prev, currentTopic.trim()]); setCurrentTopic(''); } };
   const removeTopic = (i) => setTopics(prev => prev.filter((_, idx) => idx !== i));
-  const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, currentNote.trim()]); setCurrentNote(''); } };
+  const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, { text: currentNote.trim(), type: noteType }]); setCurrentNote(''); } };
   const removeNote = (i) => setNotes(prev => prev.filter((_, idx) => idx !== i));
 
   const formatTime12 = (t) => {
@@ -118,8 +119,15 @@ export default function MessageBuilder({
         msg += '📝 *Note:* Rescheduled to new slot:\n';
         sections.forEach(sec => {
           if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
-          if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
-          else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
+          if (sec.timeOption === 'none') {
+            // Omit time line
+          } else if (sec.timeOption === 'tbd') {
+            msg += '   ⏰ *Time:* Will announce later\n';
+          } else {
+            if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
+            else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
+            else msg += '   ⏰ *Time:* Will announce later\n';
+          }
           if (sec.mode === 'Online') msg += '   🏫 *Room:* Online\n';
           else if (sec.room) msg += `   🏫 *Room:* ${sec.room}\n`;
         });
@@ -127,8 +135,15 @@ export default function MessageBuilder({
         msg += '📝 *Note:* Class will be held Online:\n';
         sections.forEach(sec => {
           if (sections.length > 1 && sec.name) msg += ` · Section ${sec.name}:\n`;
-          if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
-          else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
+          if (sec.timeOption === 'none') {
+            // Omit time line
+          } else if (sec.timeOption === 'tbd') {
+            msg += '   ⏰ *Time:* Will announce later\n';
+          } else {
+            if (sec.startTime && sec.endTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
+            else if (sec.startTime) msg += `   ⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
+            else msg += '   ⏰ *Time:* Will announce later\n';
+          }
           msg += '   🏫 *Room:* Online\n';
         });
       } else if (makeupStatus === 'custom') {
@@ -136,7 +151,10 @@ export default function MessageBuilder({
       } else {
         msg += '📝 *Note:* No make-up class scheduled.\n';
       }
-      notes.forEach(n => msg += ` · *${n}*\n`);
+      notes.forEach(n => {
+        const text = typeof n === 'object' && n !== null ? n.text : n;
+        msg += ` · *${text}*\n`;
+      });
       if (closingText) msg += `\n_${closingText}_`;
       return msg;
     }
@@ -155,13 +173,19 @@ export default function MessageBuilder({
       msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.startTime || sec.endTime || sec.room);
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd');
     if (hasSections) {
       sections.forEach(sec => {
         if (sections.length > 1 && sec.name) msg += `\n*Section ${sec.name}*\n`;
-        if (sec.startTime && sec.endTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
-        else if (sec.startTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
-        else msg += '⏰ *Time:* Will announce later\n';
+        if (sec.timeOption === 'none') {
+          // Omit time line
+        } else if (sec.timeOption === 'tbd') {
+          msg += '⏰ *Time:* Will announce later\n';
+        } else {
+          if (sec.startTime && sec.endTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)} – ${formatTime12(sec.endTime)}\n`;
+          else if (sec.startTime) msg += `⏰ *Time:* ${formatTime12(sec.startTime)}\n`;
+          else msg += '⏰ *Time:* Will announce later\n';
+        }
         if (sec.mode === 'Online') msg += '🏫 *Room:* Online\n';
         else if (sec.room) msg += `🏫 *Room:* ${sec.room}\n`;
       });
@@ -172,7 +196,38 @@ export default function MessageBuilder({
       msg += `\n📝 *${labels[category] || 'Topics:'}*\n`;
       topics.forEach(t => msg += ` · *${t}*\n`);
     }
-    notes.forEach(n => msg += `\n*Note:*\n · *${n}*\n`);
+
+    // Group notes/instructions by type
+    const groupedNotes = notes.reduce((acc, item) => {
+      const isObject = typeof item === 'object' && item !== null;
+      const text = isObject ? item.text : item;
+      const type = isObject ? item.type : 'note';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(text);
+      return acc;
+    }, {});
+
+    if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
+      const label = groupedNotes.instruction.length > 1 ? '*Instructions:*' : '*Instruction:*';
+      msg += `\n${label}\n`;
+      groupedNotes.instruction.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
+    if (groupedNotes.important && groupedNotes.important.length > 0) {
+      const label = '*Important:*';
+      msg += `\n${label}\n`;
+      groupedNotes.important.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
+    if (groupedNotes.note && groupedNotes.note.length > 0) {
+      const label = groupedNotes.note.length > 1 ? '*Notes:*' : '*Note:*';
+      msg += `\n${label}\n`;
+      groupedNotes.note.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
     if (closingText) msg += `\n_${closingText}_`;
     return msg;
   };
@@ -218,11 +273,31 @@ export default function MessageBuilder({
           <div key={i} className="flex flex-wrap items-center gap-2 p-3 border border-hairline rounded-sm">
             <input type="text" placeholder="Section" value={sec.name} onChange={e => updateSection(i, 'name', e.target.value)}
               className="flex-1 min-w-[80px] px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary" />
-            <input type="time" value={sec.startTime} onChange={e => updateSection(i, 'startTime', e.target.value)}
-              className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[100px]" />
-            <span className="text-xs text-ink-mute">—</span>
-            <input type="time" value={sec.endTime} onChange={e => updateSection(i, 'endTime', e.target.value)}
-              className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[100px]" />
+            <select value={sec.timeOption || 'select'} onChange={(e) => {
+              const opt = e.target.value;
+              updateSection(i, 'timeOption', opt);
+              if (opt !== 'select') {
+                updateSection(i, 'startTime', '');
+                updateSection(i, 'endTime', '');
+              }
+            }} className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary">
+              <option value="select">⏱️ Set Time</option>
+              <option value="tbd">⏳ Not Decided</option>
+              <option value="none">❌ No Time</option>
+            </select>
+            {(!sec.timeOption || sec.timeOption === 'select') ? (
+              <>
+                <input type="time" value={sec.startTime} onChange={e => updateSection(i, 'startTime', e.target.value)}
+                  className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[100px]" />
+                <span className="text-xs text-ink-mute">—</span>
+                <input type="time" value={sec.endTime} onChange={e => updateSection(i, 'endTime', e.target.value)}
+                  className="px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary w-[100px]" />
+              </>
+            ) : (
+              <span className="px-2 py-1.5 text-xs text-ink-mute border border-dashed border-hairline bg-canvas-soft rounded-sm">
+                {sec.timeOption === 'tbd' ? 'Will announce later' : 'No time needed'}
+              </span>
+            )}
             <input type="text" placeholder="Room" value={sec.room} onChange={e => updateSection(i, 'room', e.target.value)}
               className="flex-1 min-w-[80px] px-2 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary" />
             <select value={sec.mode} onChange={e => updateSection(i, 'mode', e.target.value)}
@@ -262,18 +337,31 @@ export default function MessageBuilder({
       <div>
         <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-2">Notes / Instructions</label>
         <div className="flex gap-2 mb-2">
+          <select value={noteType} onChange={(e) => setNoteType(e.target.value)} className="px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-primary">
+            <option value="note">Note</option>
+            <option value="instruction">Instruction</option>
+            <option value="important">Important</option>
+          </select>
           <input type="text" value={currentNote} onChange={e => setCurrentNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addNote(); } }}
             placeholder="Add a note..."
             className="flex-1 px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder:text-ink-mute focus:outline-none focus:border-primary" />
           <button type="button" onClick={addNote} className="px-3 py-2 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep cursor-pointer"><Plus className="w-4 h-4" /></button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {notes.map((n, i) => (
-            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-accent-violet/10 text-ink text-xs rounded-sm">
-              {n}
-              <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
-            </span>
-          ))}
+          {notes.map((n, i) => {
+            const isObj = typeof n === 'object' && n !== null;
+            const text = isObj ? n.text : n;
+            const type = isObj ? n.type : 'note';
+            const typeLabel = type === 'instruction' ? 'Instruction' : type === 'important' ? 'Important' : 'Note';
+            const badgeColor = type === 'instruction' ? 'bg-primary/10 text-primary' : type === 'important' ? 'bg-accent-tomato/10 text-accent-tomato' : 'bg-accent-violet/10 text-accent-violet';
+            return (
+              <span key={i} className={`inline-flex items-center gap-1 px-2 py-1 ${badgeColor} text-xs rounded-sm`}>
+                <span className="font-bold text-[10px] uppercase mr-0.5">{typeLabel}:</span>
+                {text}
+                <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
+              </span>
+            );
+          })}
         </div>
       </div>
 

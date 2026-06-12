@@ -96,14 +96,27 @@ const AnnouncementForm = () => {
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => getInitialValue('selectedDate', ''));
 
-  const [sections, setSections] = useState(() => getInitialValue('sections', [
-    { name: '', startTime: '', endTime: '', room: '', mode: 'Offline' }
-  ]));
+  const [sections, setSections] = useState(() => {
+    const raw = getInitialValue('sections', [
+      { name: '', startTime: '', endTime: '', room: '', mode: 'Offline' }
+    ]);
+    return raw.map(sec => ({
+      ...sec,
+      timeOption: sec.timeOption || (sec.startTime ? 'select' : 'tbd')
+    }));
+  });
 
   const [topics, setTopics] = useState(() => getInitialValue('topics', []));
   const [currentTopic, setCurrentTopic] = useState('');
-  const [notes, setNotes] = useState(() => getInitialValue('notes', []));
+  const [notes, setNotes] = useState(() => {
+    const raw = getInitialValue('notes', []);
+    return raw.map(n => {
+      if (typeof n === 'string') return { text: n, type: 'note' };
+      return n;
+    });
+  });
   const [currentNote, setCurrentNote] = useState('');
+  const [noteType, setNoteType] = useState('note');
   const [closingText, setClosingText] = useState(() => getInitialValue('closingText', 'Please be prepared and attend on time. Good luck! 🍀📖'));
 
   const [selectedPlatforms, setSelectedPlatforms] = useState(() => getInitialValue('selectedPlatforms', []));
@@ -145,20 +158,31 @@ const AnnouncementForm = () => {
         msg += `📝 *Note:* ${makeupStatus === 'online' ? 'Class will be held Online' : 'Rescheduled to new slot'}:\n`;
         sections.forEach(sec => {
           if (sec.name) msg += ` · Section ${sec.name}:\n`;
-          if (sec.startTime && sec.endTime) {
-            const [h1, m1] = sec.startTime.split(':');
-            const [h2, m2] = sec.endTime.split(':');
-            msg += `   ⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
-          } else if (sec.startTime) {
-            const [h, m] = sec.startTime.split(':');
-            msg += `   ⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`;
+          if (sec.timeOption === 'none') {
+            // Omit time line
+          } else if (sec.timeOption === 'tbd') {
+            msg += '   ⏰ *Time:* Will announce later\n';
+          } else {
+            if (sec.startTime && sec.endTime) {
+              const [h1, m1] = sec.startTime.split(':');
+              const [h2, m2] = sec.endTime.split(':');
+              msg += `   ⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
+            } else if (sec.startTime) {
+              const [h, m] = sec.startTime.split(':');
+              msg += `   ⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`;
+            } else {
+              msg += '   ⏰ *Time:* Will announce later\n';
+            }
           }
           if (makeupStatus === 'online' || sec.mode === 'Online') msg += '   🏫 *Room:* Online\n';
           else if (sec.room) msg += `   🏫 *Room:* ${sec.room}\n`;
         });
       } else if (makeupStatus === 'custom') msg += `📝 *Note:* ${customMakeupText || 'Custom make-up details'}\n`;
       else msg += '📝 *Note:* No make-up class scheduled.\n';
-      notes.forEach(n => msg += ` · *${n}*\n`);
+      notes.forEach(n => {
+        const text = typeof n === 'object' && n !== null ? n.text : n;
+        msg += ` · *${text}*\n`;
+      });
       if (closingText) msg += `\n_${closingText}_`;
       return msg;
     }
@@ -172,18 +196,26 @@ const AnnouncementForm = () => {
       msg += `📅 *Date:* ${day}/${month}/${year} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
     }
 
-    const hasSections = sections.some(sec => sec.name || sec.startTime || sec.endTime || sec.room);
+    const hasSections = sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd');
     if (hasSections) {
       sections.forEach(sec => {
         if (sec.name) msg += `\n*Section ${sec.name}*\n`;
-        if (sec.startTime && sec.endTime) {
-          const [h1, m1] = sec.startTime.split(':');
-          const [h2, m2] = sec.endTime.split(':');
-          msg += `⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
-        } else if (sec.startTime) {
-          const [h, m] = sec.startTime.split(':');
-          msg += `⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`;
-        } else msg += '⏰ *Time:* Will announce later\n';
+        if (sec.timeOption === 'none') {
+          // Omit time line
+        } else if (sec.timeOption === 'tbd') {
+          msg += '⏰ *Time:* Will announce later\n';
+        } else {
+          if (sec.startTime && sec.endTime) {
+            const [h1, m1] = sec.startTime.split(':');
+            const [h2, m2] = sec.endTime.split(':');
+            msg += `⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
+          } else if (sec.startTime) {
+            const [h, m] = sec.startTime.split(':');
+            msg += `⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`;
+          } else {
+            msg += '⏰ *Time:* Will announce later\n';
+          }
+        }
         if (sec.mode === 'Online') msg += '🏫 *Room:* Online\n';
         else if (sec.room) msg += `🏫 *Room:* ${sec.room}\n`;
       });
@@ -194,7 +226,38 @@ const AnnouncementForm = () => {
       msg += `\n📝 *${labels[category] || 'Topics:'}*\n`;
       topics.forEach(t => msg += ` · *${t}*\n`);
     }
-    notes.forEach(n => msg += `\n*Note:*\n · *${n}*\n`);
+
+    // Group notes/instructions by type
+    const groupedNotes = notes.reduce((acc, item) => {
+      const isObject = typeof item === 'object' && item !== null;
+      const text = isObject ? item.text : item;
+      const type = isObject ? item.type : 'note';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(text);
+      return acc;
+    }, {});
+
+    if (groupedNotes.instruction && groupedNotes.instruction.length > 0) {
+      const label = groupedNotes.instruction.length > 1 ? '*Instructions:*' : '*Instruction:*';
+      msg += `\n${label}\n`;
+      groupedNotes.instruction.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
+    if (groupedNotes.important && groupedNotes.important.length > 0) {
+      const label = '*Important:*';
+      msg += `\n${label}\n`;
+      groupedNotes.important.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
+    if (groupedNotes.note && groupedNotes.note.length > 0) {
+      const label = groupedNotes.note.length > 1 ? '*Notes:*' : '*Note:*';
+      msg += `\n${label}\n`;
+      groupedNotes.note.forEach(text => {
+        msg += ` · *${text}*\n`;
+      });
+    }
     if (closingText) msg += `\n_${closingText}_`;
     return msg;
   })();
@@ -275,18 +338,21 @@ const AnnouncementForm = () => {
     setTitle(tpl.title_template);
     setCategory(tpl.category || 'notice');
     if (tpl.content_template) {
-      setNotes(prev => [...prev.filter(n => n !== tpl.content_template), tpl.content_template]);
+      setNotes(prev => [
+        ...prev.filter(n => (typeof n === 'object' ? n.text : n) !== tpl.content_template),
+        { text: tpl.content_template, type: 'note' }
+      ]);
     }
     toast.success(`Template "${tpl.name}" applied.`);
     setSelectedTemplate(templateId);
   };
 
-  const addSectionField = () => setSections(prev => [...prev, { name: '', startTime: '', endTime: '', room: '', mode: makeupStatus === 'online' ? 'Online' : 'Offline' }]);
+  const addSectionField = () => setSections(prev => [...prev, { name: '', startTime: '', endTime: '', room: '', mode: makeupStatus === 'online' ? 'Online' : 'Offline', timeOption: 'select' }]);
   const removeSectionField = (i) => { if (sections.length > 1) setSections(prev => prev.filter((_, idx) => idx !== i)); };
   const handleSectionChange = (i, field, val) => setSections(prev => { const u = [...prev]; u[i] = { ...u[i], [field]: val }; return u; });
   const addTopic = () => { if (currentTopic.trim()) { setTopics(prev => [...prev, currentTopic.trim()]); setCurrentTopic(''); } };
   const removeTopic = (i) => setTopics(prev => prev.filter((_, idx) => idx !== i));
-  const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, currentNote.trim()]); setCurrentNote(''); } };
+  const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, { text: currentNote.trim(), type: noteType }]); setCurrentNote(''); } };
   const removeNote = (i) => setNotes(prev => prev.filter((_, idx) => idx !== i));
 
   const validateForm = () => {
@@ -473,10 +539,10 @@ const AnnouncementForm = () => {
   useEffect(() => {
     const draftStr = sessionStorage.getItem('announcement_draft');
     if (draftStr && !isSectionsRestored.current) { isSectionsRestored.current = true; return; }
-    if (!selectedDay || currentCourseRoutines.length === 0) { setSections([{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline' }]); return; }
+    if (!selectedDay || currentCourseRoutines.length === 0) { setSections([{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }]); return; }
     const matched = currentCourseRoutines.filter(r => r.day_of_week.toLowerCase() === selectedDay.toLowerCase());
-    if (matched.length > 0) setSections(matched.map(m => ({ name: m.section || '', startTime: m.start_time?.substring(0, 5) || '', endTime: m.end_time?.substring(0, 5) || '', room: m.room_number, mode: 'Offline' })));
-    else setSections([{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline' }]);
+    if (matched.length > 0) setSections(matched.map(m => ({ name: m.section || '', startTime: m.start_time?.substring(0, 5) || '', endTime: m.end_time?.substring(0, 5) || '', room: m.room_number, mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd' })));
+    else setSections([{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }]);
   }, [selectedDay, currentCourseRoutines]);
 
   useEffect(() => {
@@ -587,28 +653,57 @@ const AnnouncementForm = () => {
                     {sections.map((sec, idx) => (
                       <div key={idx} className="flex flex-col md:flex-row items-end gap-3 p-3 bg-canvas border border-hairline rounded-sm relative">
                         {sections.length > 1 && <button type="button" onClick={() => removeSectionField(idx)} className="absolute top-2 right-2 p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors"><X className="w-3.5 h-3.5" /></button>}
-                        <div className="w-full md:w-[12%]">
+                        <div className="w-full md:w-[10%]">
                           <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Section *</label></div>
                           <input type="text" required value={sec.name} onChange={(e) => handleSectionChange(idx, 'name', e.target.value)} placeholder="e.g. A" className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
                         </div>
-                        <div className="w-full md:w-[22%]">
-                          <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Time / Start Time</label></div>
-                          <TimePicker value={sec.startTime || ''} onChange={(val) => handleSectionChange(idx, 'startTime', val)} placeholder="Start Time" className="text-xs" />
-                        </div>
-                        <div className="w-full md:w-[22%]">
-                          <div className="h-5 flex items-end justify-between mb-1">
-                            <label className="block text-[10px] font-semibold text-ink-mute leading-none">End Time</label>
-                            <label className="inline-flex items-center text-[9px] font-semibold text-primary cursor-pointer select-none leading-none pb-0.5">
-                              <input type="checkbox" checked={sec.hasEndTime !== false} onChange={(e) => { handleSectionChange(idx, 'hasEndTime', e.target.checked); if (!e.target.checked) handleSectionChange(idx, 'endTime', ''); }} className="mr-0.5 accent-primary w-2.5 h-2.5" /> Range
-                            </label>
+                        <div className="w-full md:w-[16%]">
+                          <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Time Option</label></div>
+                          <div className="custom-select-wrapper">
+                            <select value={sec.timeOption || 'select'} onChange={(e) => {
+                              const opt = e.target.value;
+                              handleSectionChange(idx, 'timeOption', opt);
+                              if (opt !== 'select') {
+                                handleSectionChange(idx, 'startTime', '');
+                                handleSectionChange(idx, 'endTime', '');
+                              }
+                            }} className="custom-select block w-full pl-2 pr-7 h-9 py-1.5 border border-hairline bg-canvas rounded-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-ink hover:border-hairline-strong transition-all duration-150">
+                              <option value="select">⏱️ Set Time</option>
+                              <option value="tbd">⏳ Not Decided</option>
+                              <option value="none">❌ No Time</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-ink-mute"><ChevronDown className="h-3.5 w-3.5" /></div>
                           </div>
-                          {sec.hasEndTime !== false ? (
-                            <TimePicker value={sec.endTime || ''} onChange={(val) => handleSectionChange(idx, 'endTime', val)} placeholder="End Time" className="text-xs" />
-                          ) : (
-                            <div className="w-full px-2 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[10px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular Time</div>
-                          )}
                         </div>
-                        <div className="w-full md:w-[24%]">
+                        {(!sec.timeOption || sec.timeOption === 'select') ? (
+                          <>
+                            <div className="w-full md:w-[18%]">
+                              <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Start Time</label></div>
+                              <TimePicker value={sec.startTime || ''} onChange={(val) => handleSectionChange(idx, 'startTime', val)} placeholder="Start Time" className="text-xs" />
+                            </div>
+                            <div className="w-full md:w-[18%]">
+                              <div className="h-5 flex items-end justify-between mb-1">
+                                <label className="block text-[10px] font-semibold text-ink-mute leading-none">End Time</label>
+                                <label className="inline-flex items-center text-[9px] font-semibold text-primary cursor-pointer select-none leading-none pb-0.5">
+                                  <input type="checkbox" checked={sec.hasEndTime !== false} onChange={(e) => { handleSectionChange(idx, 'hasEndTime', e.target.checked); if (!e.target.checked) handleSectionChange(idx, 'endTime', ''); }} className="mr-0.5 accent-primary w-2.5 h-2.5" /> Range
+                                </label>
+                              </div>
+                              {sec.hasEndTime !== false ? (
+                                <TimePicker value={sec.endTime || ''} onChange={(val) => handleSectionChange(idx, 'endTime', val)} placeholder="End Time" className="text-xs" />
+                              ) : (
+                                <div className="w-full px-2 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[10px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular Time</div>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full md:w-[36%]">
+                            <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Timing Status</label></div>
+                            <div className="w-full px-3 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-xs text-ink-mute h-9 flex items-center justify-center select-none font-medium">
+                              {sec.timeOption === 'tbd' ? '⏳ Will announce later' : '❌ No time needed'}
+                            </div>
+                          </div>
+                        )}
+                        <div className="w-full md:w-[20%]">
                           <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Mode</label></div>
                           <div className="custom-select-wrapper">
                             <select value={sec.mode} disabled={makeupStatus === 'online'} onChange={(e) => handleSectionChange(idx, 'mode', e.target.value)} className="custom-select block w-full pl-3 pr-7 h-9 py-1.5 border border-hairline bg-canvas rounded-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-ink disabled:opacity-60 disabled:cursor-not-allowed hover:border-hairline-strong transition-all duration-150">
@@ -619,7 +714,7 @@ const AnnouncementForm = () => {
                           </div>
                         </div>
                         {sec.mode === 'Offline' && (
-                          <div className="w-full md:w-[20%]">
+                          <div className="w-full md:w-[18%]">
                             <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Room #</label></div>
                             <input type="text" value={sec.room} onChange={(e) => handleSectionChange(idx, 'room', e.target.value)} placeholder="e.g. 611" className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
                           </div>
@@ -653,17 +748,32 @@ const AnnouncementForm = () => {
               <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><StickyNote className="w-4 h-4 mr-1.5 text-primary" /> Instructions & Notes</h4>
                 <div className="flex gap-2">
-                  <input type="text" value={currentNote} onChange={(e) => setCurrentNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNote(); } }} placeholder="Add cover page / submit slides link..." className="w-full px-3 py-1.5 border border-hairline rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <select value={noteType} onChange={(e) => setNoteType(e.target.value)} className="px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150">
+                    <option value="note">Note</option>
+                    <option value="instruction">Instruction</option>
+                    <option value="important">Important</option>
+                  </select>
+                  <input type="text" value={currentNote} onChange={(e) => setCurrentNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNote(); } }} placeholder="Add cover page / submit slides link..." className="flex-1 px-3 py-1.5 border border-hairline rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                   <button type="button" onClick={addNote} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors">Add</button>
                 </div>
                 {notes.length > 0 && (
                   <div className="space-y-1.5 max-h-[120px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
-                    {notes.map((n, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs text-ink-secondary py-1 px-2 hover:bg-canvas-soft rounded-sm">
-                        <span className="truncate"> • {n}</span>
-                        <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato"><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                    ))}
+                    {notes.map((n, i) => {
+                      const isObj = typeof n === 'object' && n !== null;
+                      const text = isObj ? n.text : n;
+                      const type = isObj ? n.type : 'note';
+                      const typeLabel = type === 'instruction' ? 'Instruction' : type === 'important' ? 'Important' : 'Note';
+                      const badgeColor = type === 'instruction' ? 'bg-primary/10 text-primary' : type === 'important' ? 'bg-accent-tomato/10 text-accent-tomato' : 'bg-accent-violet/10 text-accent-violet';
+                      return (
+                        <div key={i} className="flex items-center justify-between text-xs text-ink-secondary py-1 px-2 hover:bg-canvas-soft rounded-sm">
+                          <span className="truncate flex items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor}`}>{typeLabel}</span>
+                            <span className="truncate">{text}</span>
+                          </span>
+                          <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
