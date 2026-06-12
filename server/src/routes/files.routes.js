@@ -115,6 +115,32 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/compress', authMiddleware, async (req, res) => {
+    try {
+        const { ids, archiveName, folderId } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids array is required' });
+        }
+        const record = await fileService.compressFiles(ids, archiveName, folderId, req.user.id);
+        return res.json(record);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/extract/:id', authMiddleware, async (req, res) => {
+    try {
+        const { deleteOriginal, targetFolderId } = req.body;
+        const result = await fileService.extractZip(req.params.id, req.user.id, {
+            deleteOriginal,
+            targetFolderId
+        });
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/move', authMiddleware, async (req, res) => {
     try {
         const { ids, folderId } = req.body;
@@ -128,4 +154,15 @@ router.post('/move', authMiddleware, async (req, res) => {
     }
 });
 
+router.patch('/:id/expiry', authMiddleware, async (req, res) => {
+    try {
+        const { expiresAt } = req.body;
+        const file = await fileService.updateFileExpiry(req.params.id, expiresAt, req.user.id);
+        return res.json(file);
+    } catch (err) {
+        return res.status(err.message === 'Unauthorized to modify this file' ? 403 : 500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
+

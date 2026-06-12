@@ -26,7 +26,10 @@ import {
   Calendar,
   Clipboard,
   GripVertical,
-  FolderClosed
+  FolderClosed,
+  Eye,
+  File,
+  Download
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 
@@ -102,6 +105,36 @@ const AnnouncementForm = () => {
   const [fileCaption, setFileCaption] = useState(() => getInitialValue('fileCaption', ''));
 
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+
+  // Lightbox Preview states
+  const [previewFile, setPreviewFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handlePreview = async (file) => {
+    setPreviewFile(file);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    try {
+      const data = await filesAPI.getDownloadUrl(file.id);
+      setPreviewUrl(data.url);
+    } catch (err) {
+      toast.error('Failed to load file preview');
+      setPreviewFile(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const formatSize = (bytes) => {
+    if (!bytes) return '—';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    let size = bytes;
+    while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+    return `${size.toFixed(1)} ${units[i]}`;
+  };
+
   const [libFiles, setLibFiles] = useState([]);
   const [libLoading, setLibLoading] = useState(false);
   const [libSearch, setLibSearch] = useState('');
@@ -1087,18 +1120,7 @@ const AnnouncementForm = () => {
 
           <FileUploader fileInputRef={fileInputRef} uploadedFiles={uploadedFiles} uploading={uploading} uploadProgress={uploadProgress} dragActive={dragActive} onDrag={handleDrag} onDrop={handleDrop} onFileChange={handleFileChange} onRemove={removeAttachment} onChooseFromLibrary={handleOpenLibrary} />
 
-          {uploadedFiles.length > 0 && (
-            <div className="pt-2 bg-canvas/30 rounded-sm p-3 border border-hairline/60">
-              <div className="flex justify-between items-center text-[10px] uppercase font-bold text-ink-mute mb-1">
-                <span>{storageUsage.storageType || 'Storage Space'}</span>
-                <span>{(storageUsage.usedBytes / 1024 / 1024).toFixed(2)} MB / {(storageUsage.limitBytes / 1024 / 1024).toFixed(0)} MB ({storageUsage.percentage}%)</span>
-              </div>
-              <div className="w-full bg-hairline rounded-full h-1.5 overflow-hidden">
-                <div className={`h-1.5 rounded-full transition-all duration-300 ${storageUsage.percentage > 90 ? 'bg-accent-tomato' : storageUsage.percentage > 70 ? 'bg-accent-yellow' : 'bg-primary'}`} style={{ width: `${Math.min(storageUsage.percentage, 100)}%` }}></div>
-              </div>
-              {storageUsage.percentage >= 100 && <p className="text-[10px] text-accent-tomato font-semibold mt-1 flex items-center gap-1">⚠️ Storage limit reached. Remove files to upload more.</p>}
-            </div>
-          )}
+
 
           <PlatformSelector platforms={platforms} selectedPlatforms={selectedPlatforms} onToggle={handlePlatformToggle} waStatus={waStatus} />
 
@@ -1266,7 +1288,7 @@ const AnnouncementForm = () => {
                               : 'border-hairline hover:bg-canvas-soft'
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <input
                             type="checkbox"
                             disabled={isAlreadyAttached}
@@ -1274,16 +1296,26 @@ const AnnouncementForm = () => {
                             onChange={() => {}} 
                             className="accent-primary w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                           />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-ink truncate">{file.original_name}</p>
                             <p className="text-xs text-ink-mute">
                               {(file.file_size / 1024).toFixed(1)} KB • {new Date(file.uploaded_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-                        {isAlreadyAttached && (
-                          <span className="text-[10px] font-bold text-ink-mute bg-hairline px-2 py-0.5 rounded-full">Already Attached</span>
-                        )}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handlePreview(file)}
+                            className="p-1.5 text-ink-mute hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-sm transition-colors cursor-pointer"
+                            title="Quick Preview"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {isAlreadyAttached && (
+                            <span className="text-[10px] font-bold text-ink-mute bg-hairline px-2 py-0.5 rounded-full shrink-0">Already Attached</span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1304,6 +1336,76 @@ const AnnouncementForm = () => {
                   Attach Selected
                 </button>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Lightbox Preview Modal */}
+      {previewFile && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="relative bg-canvas border border-hairline w-full max-w-4xl h-[85vh] rounded-lg shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 font-sans">
+            {/* Header */}
+            <div className="p-4 border-b border-hairline flex items-center justify-between bg-canvas">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-ink truncate font-sans">{previewFile.original_name}</h3>
+                <p className="text-xs text-ink-mute font-sans">
+                  {formatSize(previewFile.file_size)} • {previewFile.file_type}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewFile(null);
+                  setPreviewUrl(null);
+                }}
+                className="text-ink-mute hover:text-ink transition-colors p-1.5 hover:bg-canvas-soft rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 bg-canvas-soft flex items-center justify-center overflow-auto p-4">
+              {previewLoading ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="text-xs text-ink-mute font-sans">Loading preview...</p>
+                </div>
+              ) : previewUrl ? (
+                <>
+                  {previewFile.file_type?.startsWith('image/') ? (
+                    <img
+                      src={previewUrl}
+                      alt={previewFile.original_name}
+                      className="max-w-full max-h-full object-contain rounded shadow-md"
+                    />
+                  ) : previewFile.file_type === 'application/pdf' ? (
+                    <iframe
+                      src={`${previewUrl}#toolbar=0`}
+                      title={previewFile.original_name}
+                      className="w-full h-full border-0 rounded"
+                    />
+                  ) : (
+                    <div className="text-center p-8 max-w-sm">
+                      <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
+                      <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
+                      <p className="text-xs text-ink-mute font-sans mb-4">This file type ({previewFile.file_type}) cannot be previewed directly in the browser.</p>
+                      <a
+                        href={previewUrl}
+                        download={previewFile.original_name}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download to View
+                      </a>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-ink-mute font-sans">Failed to load preview.</p>
+              )}
             </div>
           </div>
         </div>,

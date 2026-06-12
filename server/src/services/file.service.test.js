@@ -54,4 +54,61 @@ describe('File Service', () => {
       expect(found).toBeUndefined();
     });
   });
+
+  describe('File Expiry and Update Operations', () => {
+    beforeEach(async () => {
+      // Clear users/files in json db if any
+      const data = db.useJsonDb() ? require('fs').readFileSync(require('path').join(__dirname, '../../../db.json'), 'utf8') : '{}';
+      if (db.useJsonDb()) {
+        const parsed = JSON.parse(data);
+        parsed.users = [];
+        parsed.files = [];
+        require('fs').writeFileSync(require('path').join(__dirname, '../../../db.json'), JSON.stringify(parsed, null, 2));
+      }
+    });
+
+    it('should update file expiry date successfully', async () => {
+      const userRes = await db.query(
+        'INSERT INTO users (username, email, password_hash, display_name, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        ['testuser', 'testuser@example.com', 'hash', 'Test User', 'cr']
+      );
+      const userId = userRes.rows[0].id;
+
+      const fileResult = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        ['test_expiry.txt', 'test_expiry.txt', 'text/plain', 200, userId, new Date().toISOString()]
+      );
+      const file = fileResult.rows[0];
+      expect(file).toBeDefined();
+
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30);
+      const updated = await fileService.updateFileExpiry(file.id, futureDate.toISOString(), userId);
+      
+      expect(updated).toBeDefined();
+      expect(new Date(updated.expires_at).getDate()).toBe(futureDate.getDate());
+
+      const permanent = await fileService.updateFileExpiry(file.id, null, userId);
+      expect(permanent.expires_at).toBeNull();
+    });
+
+    it('should fail to update if unauthorized', async () => {
+      const userRes = await db.query(
+        'INSERT INTO users (username, email, password_hash, display_name, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        ['testuser', 'testuser@example.com', 'hash', 'Test User', 'cr']
+      );
+      const userId = userRes.rows[0].id;
+
+      const fileResult = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        ['test_expiry2.txt', 'test_expiry2.txt', 'text/plain', 200, userId, new Date().toISOString()]
+      );
+      const file = fileResult.rows[0];
+
+      const differentUserId = userId + 1;
+      await expect(
+        fileService.updateFileExpiry(file.id, null, differentUserId)
+      ).rejects.toThrow('Unauthorized to modify this file');
+    });
+  });
 });

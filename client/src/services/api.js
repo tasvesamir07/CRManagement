@@ -284,6 +284,18 @@ export const filesAPI = {
     moveFiles: async (ids, folderId) => {
         const res = await api.post('/files/move', { ids, folderId });
         return res.data;
+    },
+    compressFiles: async (ids, archiveName = 'archive.zip', folderId = null) => {
+        const res = await api.post('/files/compress', { ids, archiveName, folderId });
+        return res.data;
+    },
+    extractZip: async (id, deleteOriginal = false, targetFolderId = null) => {
+        const res = await api.post(`/files/extract/${id}`, { deleteOriginal, targetFolderId });
+        return res.data;
+    },
+    updateExpiry: async (id, expiresAt) => {
+        const res = await api.patch(`/files/${id}/expiry`, { expiresAt });
+        return res.data;
     }
 };
 

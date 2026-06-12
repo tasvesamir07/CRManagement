@@ -170,6 +170,12 @@ async function simulateQuery(text, params = []) {
         return { rows: user ? [user] : [] };
     }
 
+    if (normalizedText.includes('SELECT role FROM users WHERE id =')) {
+        const id = parseInt(params[0]);
+        const user = db.users.find(u => u.id === id && u.is_active);
+        return { rows: user ? [{ role: user.role }] : [] };
+    }
+
     if (normalizedText.includes('UPDATE users SET password_hash')) {
         const passwordHash = params[0];
         const id = parseInt(params[1]);
@@ -692,6 +698,18 @@ async function simulateQuery(text, params = []) {
         const idx = db.files.findIndex(f => f.id === id);
         if (idx !== -1) {
             db.files[idx].is_deleted = true;
+            writeJsonDb(db);
+            return { rows: [db.files[idx]] };
+        }
+        return { rows: [] };
+    }
+
+    if (normalizedText.includes('UPDATE files SET expires_at =')) {
+        const expiresAt = params[0] ? new Date(params[0]).toISOString() : null;
+        const id = parseInt(params[1]);
+        const idx = db.files.findIndex(f => f.id === id);
+        if (idx !== -1) {
+            db.files[idx].expires_at = expiresAt;
             writeJsonDb(db);
             return { rows: [db.files[idx]] };
         }

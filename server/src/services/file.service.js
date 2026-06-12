@@ -129,8 +129,20 @@ async function deleteFolder(folderId, deleteFiles) {
 }
 
 async function uploadFile(file, userId, { overwrite = false, folderId = null } = {}) {
-    const originalName = file.originalname;
-    const fileType = file.mimetype;
+    let originalName = file.originalname;
+    let fileType = file.mimetype;
+    
+    // Auto WebP conversion for images
+    const fileTypeLower = fileType.toLowerCase();
+    const isImage = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(fileTypeLower);
+    if (isImage) {
+        fileType = 'image/webp';
+        const ext = path.extname(originalName);
+        if (ext.toLowerCase() !== '.webp') {
+            originalName = originalName.substring(0, originalName.length - ext.length) + '.webp';
+        }
+    }
+
     let fileSize = file.size;
     const expiresAt = getExpiryDate();
     const parsedFolderId = folderId ? parseInt(folderId) : null;
@@ -163,29 +175,17 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
     }
 
     // Image Compression logic
-    const fileTypeLower = fileType.toLowerCase();
-    const isImage = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(fileTypeLower);
-    
     if (isImage) {
         try {
             const sharp = require('sharp');
             const imageQuality = parseInt(process.env.IMAGE_QUALITY || '80');
-            const pngCompression = parseInt(process.env.PNG_COMPRESSION_LEVEL || '9');
             
-            let pipeline = sharp(file.path).rotate();
-            
-            if (fileTypeLower === 'image/jpeg' || fileTypeLower === 'image/jpg') {
-                pipeline = pipeline.jpeg({ quality: imageQuality });
-            } else if (fileTypeLower === 'image/png') {
-                pipeline = pipeline.png({ compressionLevel: pngCompression, palette: true });
-            } else if (fileTypeLower === 'image/webp') {
-                pipeline = pipeline.webp({ quality: imageQuality });
-            }
+            const pipeline = sharp(file.path).rotate().webp({ quality: imageQuality });
             
             const compressedBuffer = await pipeline.toBuffer();
             fs.writeFileSync(file.path, compressedBuffer);
             fileSize = compressedBuffer.length;
-            console.log(`[Image Compression] Compressed image "${originalName}" from ${file.size} to ${fileSize} bytes.`);
+            console.log(`[Image Compression] Converted & Compressed image "${originalName}" size: ${fileSize} bytes.`);
         } catch (compressErr) {
             console.error('[Image Compression] Failed to compress image:', compressErr.message);
         }
@@ -441,13 +441,59 @@ async function getStorageUsage() {
         usedBytes = parseInt(result.rows[0].used_bytes, 10);
     }
     
+    // Calculate category-wise breakdown
+    const filesQuery = await db.query(
+        "SELECT file_type, file_size FROM files WHERE is_deleted = false"
+    );
+    
+    let breakdown = {
+        images: 0,
+        documents: 0,
+        archives: 0,
+        others: 0
+    };
+    
+    for (const row of filesQuery.rows) {
+        const size = parseInt(row.file_size || 0);
+        const mime = (row.file_type || '').toLowerCase();
+        
+        if (mime.startsWith('image/')) {
+            breakdown.images += size;
+        } else if (
+            mime.includes('pdf') || 
+            mime.includes('word') || 
+            mime.includes('excel') || 
+            mime.includes('powerpoint') || 
+            mime.includes('presentation') || 
+            mime.includes('sheet') || 
+            mime.includes('text/') || 
+            mime.includes('csv') ||
+            mime.includes('msword') ||
+            mime.includes('officedocument') ||
+            mime.includes('epub')
+        ) {
+            breakdown.documents += size;
+        } else if (
+            mime.includes('zip') || 
+            mime.includes('rar') || 
+            mime.includes('tar') || 
+            mime.includes('compressed') ||
+            mime.includes('7z')
+        ) {
+            breakdown.archives += size;
+        } else {
+            breakdown.others += size;
+        }
+    }
+    
     const percentage = limitBytes > 0 ? parseFloat(((usedBytes / limitBytes) * 100).toFixed(2)) : 0;
     
     return {
         usedBytes,
         limitBytes,
         percentage,
-        storageType
+        storageType,
+        breakdown
     };
 }
 
@@ -462,6 +508,255 @@ async function moveFiles(fileIds, targetFolderId) {
     return true;
 }
 
+async function updateFileExpiry(fileId, expiresAt, userId) {
+    const checkResult = await db.query('SELECT * FROM files WHERE id = $1 AND is_deleted = false', [parseInt(fileId)]);
+    if (checkResult.rows.length === 0) {
+        throw new Error('File not found');
+    }
+    const file = checkResult.rows[0];
+    
+    const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+    const userRole = userResult.rows[0]?.role;
+    
+    if (parseInt(file.uploaded_by) !== parseInt(userId) && userRole !== 'admin') {
+        throw new Error('Unauthorized to modify this file');
+    }
+
+    const value = expiresAt ? new Date(expiresAt).toISOString() : null;
+    const result = await db.query(
+        'UPDATE files SET expires_at = $1 WHERE id = $2 RETURNING *',
+        [value, parseInt(fileId)]
+    );
+    return result.rows[0];
+}
+
+
+function getMimetype(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    const mimes = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.ppt': 'application/vnd.ms-powerpoint',
+        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        '.txt': 'text/plain',
+        '.csv': 'text/csv',
+        '.zip': 'application/zip',
+        '.rar': 'application/vnd.rar',
+        '.mp3': 'audio/mpeg',
+        '.mp4': 'video/mp4'
+    };
+    return mimes[ext] || 'application/octet-stream';
+}
+
+async function extractZip(fileId, userId, { deleteOriginal = false, targetFolderId = null } = {}) {
+    const AdmZip = require('adm-zip');
+    
+    // 1. Get the ZIP file record from DB
+    const result = await db.query('SELECT * FROM files WHERE id = $1 AND is_deleted = false', [fileId]);
+    if (result.rows.length === 0) {
+        throw new Error('File not found');
+    }
+    const file = result.rows[0];
+
+    // 2. Download or locate zip file
+    let localZipPath = '';
+    const tempDir = path.join(uploadsDir, 'temp_zip');
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    if (supabase) {
+        // Download from Supabase
+        const { data, error } = await supabase.storage
+            .from(bucketName)
+            .download(file.storage_path);
+        
+        if (error) {
+            throw new Error(`Failed to download zip from Supabase: ${error.message}`);
+        }
+        
+        localZipPath = path.join(tempDir, `extract_${Date.now()}_${file.original_name}`);
+        const buffer = Buffer.from(await data.arrayBuffer());
+        fs.writeFileSync(localZipPath, buffer);
+    } else {
+        localZipPath = path.join(uploadsDir, file.storage_path);
+    }
+
+    try {
+        // 3. Open Zip
+        const zip = new AdmZip(localZipPath);
+        const zipEntries = zip.getEntries();
+
+        const extractedFiles = [];
+        const folderMap = {};
+
+        // If we are starting from a target folder, get its course ID so new subfolders share the same course context
+        let courseId = null;
+        if (targetFolderId) {
+            const folderRes = await db.query('SELECT course_id FROM folders WHERE id = $1', [targetFolderId]);
+            if (folderRes.rows.length > 0) {
+                courseId = folderRes.rows[0].course_id;
+            }
+        }
+
+        // Loop 1: Create folders first to preserve hierarchy
+        for (const entry of zipEntries) {
+            if (entry.isDirectory) {
+                const parts = entry.entryName.split('/').filter(Boolean);
+                let currentPath = '';
+
+                for (const part of parts) {
+                    currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+                    if (!folderMap[currentPath]) {
+                        // Check if folder already exists for this user/course
+                        let existingFolderQuery = 'SELECT id FROM folders WHERE name = $1 AND created_by = $2';
+                        const params = [part, userId];
+                        if (courseId) {
+                            existingFolderQuery += ' AND course_id = $3';
+                            params.push(courseId);
+                        } else {
+                            existingFolderQuery += ' AND course_id IS NULL';
+                        }
+                        
+                        const existingFolder = await db.query(existingFolderQuery, params);
+                        if (existingFolder.rows.length > 0) {
+                            folderMap[currentPath] = existingFolder.rows[0].id;
+                        } else {
+                            // Create new virtual folder
+                            const newFolder = await createFolder(part, courseId, userId);
+                            folderMap[currentPath] = newFolder.id;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Loop 2: Extract files and assign them to correct folders
+        for (const entry of zipEntries) {
+            if (!entry.isDirectory) {
+                const entryName = entry.entryName;
+                // Skip macOS resource fork files and dotfiles
+                if (entryName.includes('__MACOSX') || path.basename(entryName).startsWith('.')) {
+                    continue;
+                }
+
+                // Determine folder ID based on ZIP folder path
+                const dirName = path.dirname(entryName);
+                let folderIdToUse = targetFolderId;
+                if (dirName !== '.' && folderMap[dirName]) {
+                    folderIdToUse = folderMap[dirName];
+                }
+
+                const fileBuffer = entry.getData();
+                const original_name = path.basename(entryName);
+                
+                // Write buffer to temp file on disk
+                const tempFilePath = path.join(tempDir, `unzip_file_${Date.now()}_${original_name}`);
+                fs.writeFileSync(tempFilePath, fileBuffer);
+
+                const mockFile = {
+                    originalname: original_name,
+                    mimetype: getMimetype(original_name),
+                    size: fileBuffer.length,
+                    path: tempFilePath
+                };
+
+                // Upload the file using standard upload logic
+                const record = await uploadFile(mockFile, userId, { overwrite: true, folderId: folderIdToUse });
+                extractedFiles.push(record);
+            }
+        }
+
+        // 4. Cleanup original zip if requested
+        if (String(deleteOriginal) === 'true') {
+            await deleteFile(fileId);
+        }
+
+        return {
+            message: `Successfully extracted ${extractedFiles.length} file(s)`,
+            files: extractedFiles
+        };
+    } finally {
+        // Clean up temp zip file if downloaded from Supabase
+        if (supabase && fs.existsSync(localZipPath)) {
+            try { fs.unlinkSync(localZipPath); } catch (_) {}
+        }
+    }
+}
+
+async function compressFiles(fileIds, archiveName, targetFolderId, userId) {
+    const AdmZip = require('adm-zip');
+    
+    // Fetch files from DB
+    const result = await db.query(
+        'SELECT * FROM files WHERE id = ANY($1::int[]) AND is_deleted = false',
+        [fileIds]
+    );
+    const matchedFiles = result.rows;
+
+    if (matchedFiles.length === 0) {
+        throw new Error('No valid files selected for compression');
+    }
+
+    // Default archive name
+    let finalArchiveName = archiveName ? archiveName.trim() : 'archive.zip';
+    if (!finalArchiveName.toLowerCase().endsWith('.zip')) {
+        finalArchiveName += '.zip';
+    }
+
+    const tempDir = path.join(uploadsDir, 'temp_zip');
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const zip = new AdmZip();
+
+    // Download/Locate each file and add to ZIP
+    for (const file of matchedFiles) {
+        if (supabase) {
+            const { data, error } = await supabase.storage
+                .from(bucketName)
+                .download(file.storage_path);
+            if (error) {
+                console.error(`Failed to download "${file.original_name}" for compression:`, error.message);
+                continue;
+            }
+            const buffer = Buffer.from(await data.arrayBuffer());
+            zip.addFile(file.original_name, buffer);
+        } else {
+            const filePath = path.join(uploadsDir, file.storage_path);
+            if (fs.existsSync(filePath)) {
+                zip.addLocalFile(filePath, '', file.original_name);
+            }
+        }
+    }
+
+    // Write ZIP to a temp path
+    const tempZipPath = path.join(tempDir, `compress_${Date.now()}_${finalArchiveName}`);
+    zip.writeZip(tempZipPath);
+
+    // Upload zip as a new file in the library
+    const stats = fs.statSync(tempZipPath);
+    const mockFile = {
+        originalname: finalArchiveName,
+        mimetype: 'application/zip',
+        size: stats.size,
+        path: tempZipPath
+    };
+
+    const record = await uploadFile(mockFile, userId, { overwrite: true, folderId: targetFolderId });
+    return record;
+}
+
 module.exports = {
     uploadFile,
     getFileUrl,
@@ -474,5 +769,8 @@ module.exports = {
     listFolders,
     createFolder,
     deleteFolder,
-    moveFiles
+    moveFiles,
+    extractZip,
+    compressFiles,
+    updateFileExpiry
 };
