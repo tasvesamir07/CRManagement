@@ -65,6 +65,13 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         return { success: true, messageId: `mock-tg-id-${Date.now()}` };
     }
 
+    const caption = (message && message.trim()) ? message : undefined;
+    const parseMode = caption ? 'Markdown' : undefined;
+
+    if (files.length === 0 && !caption) {
+        throw new Error('Cannot broadcast an empty text notice without file attachments.');
+    }
+
     try {
         let sentMsg;
         if (files.length === 1 && fs.existsSync(files[0].path)) {
@@ -72,14 +79,14 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
             if (isImage) {
                 sentMsg = await bot.sendPhoto(finalChatId, fs.createReadStream(files[0].path), {
-                    caption: message,
-                    parse_mode: 'Markdown',
+                    caption: caption,
+                    parse_mode: parseMode,
                     message_thread_id: threadId
                 });
             } else {
                 sentMsg = await bot.sendDocument(finalChatId, fs.createReadStream(files[0].path), {
-                    caption: message,
-                    parse_mode: 'Markdown',
+                    caption: caption,
+                    parse_mode: parseMode,
                     message_thread_id: threadId
                 }, {
                     filename: files[0].originalName
@@ -96,8 +103,8 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 const media = files.map((f, index) => ({
                     type: 'photo',
                     media: fs.createReadStream(f.path),
-                    caption: index === 0 ? message : undefined,
-                    parse_mode: index === 0 ? 'Markdown' : undefined,
+                    caption: index === 0 ? caption : undefined,
+                    parse_mode: index === 0 ? parseMode : undefined,
                     fileOptions: {
                         filename: f.originalName
                     }
@@ -111,8 +118,8 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 const media = files.map((f, index) => ({
                     type: 'document',
                     media: fs.createReadStream(f.path),
-                    caption: index === 0 ? message : undefined,
-                    parse_mode: index === 0 ? 'Markdown' : undefined,
+                    caption: index === 0 ? caption : undefined,
+                    parse_mode: index === 0 ? parseMode : undefined,
                     fileOptions: {
                         filename: f.originalName
                     }
