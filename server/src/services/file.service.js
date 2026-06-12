@@ -216,6 +216,10 @@ async function deleteFile(fileId) {
     
     const file = result.rows[0];
     
+    // Nullify references in announcements before deleting
+    await db.query("UPDATE announcements SET file_id = NULL WHERE file_id = $1", [fileId]);
+    await db.query("UPDATE announcements SET file_ids = array_remove(file_ids, $1) WHERE $1 = ANY(file_ids)", [fileId]);
+    
     if (supabase) {
         const { error } = await supabase.storage
             .from(bucketName)
@@ -235,7 +239,6 @@ async function deleteFile(fileId) {
         }
     }
     
-    // Mark as deleted in database
     await db.query('UPDATE files SET is_deleted = true WHERE id = $1', [fileId]);
     return true;
 }
