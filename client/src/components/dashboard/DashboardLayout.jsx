@@ -15,7 +15,8 @@ import {
   Shield,
   Sun,
   Moon,
-  ClipboardList
+  ClipboardList,
+  FileUp
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -40,6 +41,7 @@ const DashboardLayout = () => {
   const navigation = user?.role === 'admin'
     ? [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Uploaded Files', href: '/files', icon: FileUp },
         { name: 'System Logs', href: '/logs', icon: ClipboardList },
       ]
     : [
@@ -48,6 +50,7 @@ const DashboardLayout = () => {
         { name: 'Courses', href: '/courses', icon: BookOpen },
         { name: 'Schedules & Rooms', href: '/routines', icon: Calendar },
         { name: 'Broadcasting Targets', href: '/platforms', icon: Radio },
+        { name: 'Uploaded Files', href: '/files', icon: FileUp },
         { name: 'Delivery Logs', href: '/logs', icon: ClipboardList },
       ];
 

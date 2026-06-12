@@ -10,10 +10,39 @@ router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (r
             return res.status(400).json({ error: 'No file uploaded' });
         }
         
-        const fileRecord = await fileService.uploadFile(req.file, req.user.id);
+        const overwrite = req.query.overwrite === 'true';
+        const fileRecord = await fileService.uploadFile(req.file, req.user.id, { overwrite });
         return res.status(201).json(fileRecord);
     } catch (err) {
         console.error('File upload route error:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/check-duplicate', authMiddleware, async (req, res) => {
+    try {
+        const { filename } = req.body;
+        if (!filename) {
+            return res.status(400).json({ error: 'filename is required' });
+        }
+        const duplicate = await fileService.checkDuplicate(filename);
+        return res.json({ duplicate: !!duplicate, file: duplicate });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/', authMiddleware, async (req, res) => {
+    try {
+        const { page, limit, search, userId } = req.query;
+        const result = await fileService.listFiles({
+            page: parseInt(page) || 1,
+            limit: Math.min(parseInt(limit) || 50, 200),
+            search,
+            userId: userId || req.user.id,
+        });
+        return res.json(result);
+    } catch (err) {
         return res.status(500).json({ error: err.message });
     }
 });

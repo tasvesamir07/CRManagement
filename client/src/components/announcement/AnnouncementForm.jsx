@@ -389,9 +389,16 @@ const AnnouncementForm = () => {
       if (f.size > 50 * 1024 * 1024) { toast.error(`"${f.name}" exceeds 50MB.`); continue; }
       try {
         setUploadProgress(0);
-        const record = await filesAPI.upload(f, (pe) => setUploadProgress(Math.round((pe.loaded * 100) / pe.total)));
+        const dupCheck = await filesAPI.checkDuplicate(f.name);
+        let overwrite = false;
+        if (dupCheck.duplicate) {
+          overwrite = window.confirm(`"${f.name}" already exists. Overwrite?`);
+          if (!overwrite) continue;
+        }
+        const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
+        const record = await uploadFn(f, (pe) => setUploadProgress(Math.round((pe.loaded * 100) / pe.total)));
         setUploadedFiles(prev => [...prev, record]);
-        toast.success('Attachment uploaded!');
+        toast.success(overwrite ? 'File overwritten!' : 'Attachment uploaded!');
         fetchStorageUsage();
       } catch (e) { toast.error(`Upload failed for "${f.name}": ${e.response?.data?.error || e.message}`); }
     }

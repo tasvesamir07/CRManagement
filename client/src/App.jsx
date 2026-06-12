@@ -18,6 +18,7 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import Profile from './components/profile/Profile';
 import AdminUsers from './components/admin/AdminUsers';
 import LogsManager from './components/logs/LogsManager';
+import FilesManager from './components/files/FilesManager';
 
 // Loading Spinner helper
 const LoadingPage = () => (
@@ -113,6 +114,7 @@ function App() {
             <Route path="courses" element={<RoleRoute allowedRole="cr"><CourseManager /></RoleRoute>} />
             <Route path="routines" element={<RoleRoute allowedRole="cr"><RoutineManager /></RoleRoute>} />
             <Route path="platforms" element={<RoleRoute allowedRole="cr"><PlatformManager /></RoleRoute>} />
+            <Route path="files" element={<RoleRoute allowedRole="cr"><FilesManager /></RoleRoute>} />
             <Route path="logs" element={<LogsManager />} />
             <Route path="profile" element={<Profile />} />
             <Route path="admin/users" element={<RoleRoute allowedRole="admin"><AdminUsers /></RoleRoute>} />

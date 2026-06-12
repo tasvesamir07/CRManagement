@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { routinesAPI, coursesAPI } from '../../services/api';
 import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Clock, Download } from 'lucide-react';
 import { TimePicker } from '../ui/time-picker';
-import { toPng } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 
 const DAYS_OF_WEEK = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -235,32 +235,38 @@ const RoutineManager = () => {
     }
   };
 
-  const handleDownloadImage = () => {
+  const handleDownloadImage = async () => {
     const node = document.getElementById('routine-table-container');
     if (!node) return;
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     
-    toPng(node, {
-      filter: (el) => {
-        return !el.classList?.contains('no-export');
-      },
-      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-      style: {
-        borderRadius: '0px',
-      }
-    })
-      .then((dataUrl) => {
-        const link = document.createElement('a');
-        const fileName = `routine-${semesterTitle.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'schedule'}.png`;
-        link.download = fileName;
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch((err) => {
-        console.error('Failed to export image:', err);
-        alert('Failed to export routine as image. Please try again.');
+    const origOverflow = node.style.overflow;
+    node.style.overflow = 'visible';
+
+    try {
+      const canvas = await toCanvas(node, {
+        filter: (el) => !el.classList?.contains('no-export'),
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        style: { borderRadius: '0px' },
       });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Canvas toBlob failed');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = `routine-${semesterTitle.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'schedule'}.png`;
+      link.download = fileName;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      alert('Failed to export routine as image. Please try again.');
+    } finally {
+      node.style.overflow = origOverflow;
+    }
   };
 
   return (

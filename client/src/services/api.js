@@ -214,6 +214,17 @@ export const filesAPI = {
         });
         return res.data;
     },
+    uploadWithOverwrite: async (fileObject, onUploadProgress) => {
+        const formData = new FormData();
+        formData.append('file', fileObject);
+        const res = await api.post('/files/upload?overwrite=true', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress
+        });
+        return res.data;
+    },
     getDownloadUrl: async (id) => {
         const res = await api.get(`/files/${id}`);
         return res.data;
@@ -224,6 +235,14 @@ export const filesAPI = {
     },
     delete: async (id) => {
         const res = await api.delete(`/files/${id}`);
+        return res.data;
+    },
+    list: async (params = {}) => {
+        const res = await api.get('/files', { params });
+        return res.data;
+    },
+    checkDuplicate: async (filename) => {
+        const res = await api.post('/files/check-duplicate', { filename });
         return res.data;
     }
 };
