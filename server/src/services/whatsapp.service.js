@@ -113,7 +113,14 @@ async function initWhatsApp() {
 
     try {
         const { state, saveCreds } = await useDbAuthState();
-        const { version } = await fetchLatestBaileysVersion();
+        
+        let version = [2, 3000, 1015941307];
+        try {
+            const latest = await fetchLatestBaileysVersion();
+            version = latest.version;
+        } catch (verErr) {
+            console.warn('⚠️ Failed to fetch latest Baileys version, using fallback:', verErr.message);
+        }
 
         sock = makeWASocket({
             auth: state,
