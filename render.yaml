@@ -1,0 +1,79 @@
+services:
+  # ──────────────────────────────────────────────
+  # Backend API — Express.js (Docker)
+  # ──────────────────────────────────────────────
+  - type: web
+    name: announcement-server
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CORS_ORIGIN
+        value: https://announcement-client.onrender.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET_NAME
+        value: Course
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: FILE_EXPIRY_DAYS
+        value: "15"
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+
+  # ──────────────────────────────────────────────
+  # Frontend — React SPA (Static Site)
+  # ──────────────────────────────────────────────
+  - type: web
+    name: announcement-client
+    runtime: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: VITE_API_URL
+        value: https://announcement-server.onrender.com/api
+      - key: VITE_WS_URL
+        value: wss://announcement-server.onrender.com
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
