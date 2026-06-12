@@ -439,7 +439,7 @@ const CRDashboard = ({ navigate }) => {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        {ann.status !== 'sent' && ann.status !== 'partial' && (
+                        {(ann.status === 'draft' || ann.status === 'scheduled') && (
                           <button
                             onClick={(e) => handleEditClick(ann, e)}
                             className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block mr-1"
