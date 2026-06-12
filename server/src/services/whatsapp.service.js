@@ -79,7 +79,15 @@ async function initWhatsApp() {
             connectTimeoutMs: 60000
         });
 
-        sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('creds.update', (update) => {
+            const wasQrReady = connectionStatus === 'QR_READY';
+            saveCreds(update);
+            if (wasQrReady) {
+                console.log('WhatsApp QR scanned, authenticating...');
+                connectionStatus = 'CONNECTING';
+                broadcastStatus();
+            }
+        });
 
         sock.ev.on('connection.update', (update) => {
             const { connection, lastDisconnect, qr } = update;
