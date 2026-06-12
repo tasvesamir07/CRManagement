@@ -128,6 +128,16 @@ export default function MessageBuilder({
   const removeTopic = (i) => setTopics(prev => prev.filter((_, idx) => idx !== i));
   const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, { text: currentNote.trim(), type: noteType }]); setCurrentNote(''); } };
   const removeNote = (i) => setNotes(prev => prev.filter((_, idx) => idx !== i));
+  const handleNoteTypeChange = (index, type) => {
+    setNotes(prev => prev.map((note, idx) => {
+      if (idx === index) {
+        const isObj = typeof note === 'object' && note !== null;
+        const text = isObj ? note.text : note;
+        return { text, type };
+      }
+      return note;
+    }));
+  };
 
   const formatTime12 = (t) => {
     if (!t) return '';
@@ -453,6 +463,9 @@ export default function MessageBuilder({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
+                      draggable={false}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
                       className="bg-transparent border-none p-0 text-[10px] font-bold uppercase cursor-pointer focus:outline-none hover:underline mr-0.5 flex items-center gap-1"
                       style={{ color: 'inherit', fontInherit: true }}
                     >
@@ -460,19 +473,40 @@ export default function MessageBuilder({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
-                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem
+                      onSelect={() => handleNoteTypeChange(i, 'note')}
+                      onClick={() => handleNoteTypeChange(i, 'note')}
+                      className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                    >
                       <StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem
+                      onSelect={() => handleNoteTypeChange(i, 'instruction')}
+                      onClick={() => handleNoteTypeChange(i, 'instruction')}
+                      className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                    >
                       <BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                    <DropdownMenuItem
+                      onSelect={() => handleNoteTypeChange(i, 'important')}
+                      onClick={() => handleNoteTypeChange(i, 'important')}
+                      className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                    >
                       <AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <span>{text}</span>
-                <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3 h-3" /></button>
+                <button
+                  type="button"
+                  draggable={false}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => removeNote(i)}
+                  className="text-ink-mute hover:text-accent-tomato cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             );
           })}

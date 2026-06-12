@@ -439,6 +439,16 @@ const AnnouncementForm = () => {
   const removeTopic = (i) => setTopics(prev => prev.filter((_, idx) => idx !== i));
   const addNote = () => { if (currentNote.trim()) { setNotes(prev => [...prev, { text: currentNote.trim(), type: noteType }]); setCurrentNote(''); } };
   const removeNote = (i) => setNotes(prev => prev.filter((_, idx) => idx !== i));
+  const handleNoteTypeChange = (index, type) => {
+    setNotes(prev => prev.map((note, idx) => {
+      if (idx === index) {
+        const isObj = typeof note === 'object' && note !== null;
+        const text = isObj ? note.text : note;
+        return { text, type };
+      }
+      return note;
+    }));
+  };
 
   const validateForm = () => {
     if (broadcastMode === 'share_file') { if (uploadedFiles.length === 0) { toast.error('Please upload at least one file.'); return false; } }
@@ -877,6 +887,9 @@ const AnnouncementForm = () => {
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
+                                  draggable={false}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
                                   className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none`}
                                 >
                                   <BadgeIcon className="w-2.5 h-2.5" />
@@ -884,20 +897,41 @@ const AnnouncementForm = () => {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
-                                <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'note' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                <DropdownMenuItem
+                                  onSelect={() => handleNoteTypeChange(i, 'note')}
+                                  onClick={() => handleNoteTypeChange(i, 'note')}
+                                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                                >
                                   <StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'instruction' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                <DropdownMenuItem
+                                  onSelect={() => handleNoteTypeChange(i, 'instruction')}
+                                  onClick={() => handleNoteTypeChange(i, 'instruction')}
+                                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                                >
                                   <BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setNotes(prev => prev.map((note, idx) => idx === i ? { ...note, type: 'important' } : note))} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold">
+                                <DropdownMenuItem
+                                  onSelect={() => handleNoteTypeChange(i, 'important')}
+                                  onClick={() => handleNoteTypeChange(i, 'important')}
+                                  className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"
+                                >
                                   <AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                             <span className="truncate">{text}</span>
                           </span>
-                          <button type="button" onClick={() => removeNote(i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                          <button
+                            type="button"
+                            draggable={false}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => removeNote(i)}
+                            className="text-ink-mute hover:text-accent-tomato cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       );
                     })}
