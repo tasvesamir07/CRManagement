@@ -96,6 +96,7 @@ const AnnouncementForm = () => {
   const [title, setTitle] = useState(() => getInitialValue('title', 'Quiz - 1'));
   const [category, setCategory] = useState(() => getInitialValue('category', 'quiz'));
   const [selectedCourseId, setSelectedCourseId] = useState(() => getInitialValue('selectedCourseId', ''));
+  const [fileCaption, setFileCaption] = useState(() => getInitialValue('fileCaption', ''));
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => getInitialValue('selectedDate', ''));
 
@@ -183,7 +184,7 @@ const AnnouncementForm = () => {
   const isSectionsRestored = useRef(false);
 
   const compiledMessage = (() => {
-    if (broadcastMode === 'share_file') return '';
+    if (broadcastMode === 'share_file') return fileCaption;
     const course = courses.find(c => c.id === parseInt(selectedCourseId));
     let msg = title.trim() ? `📢 *${title}*\n\n` : '📢 *Title*\n\n';
 
@@ -355,7 +356,7 @@ const AnnouncementForm = () => {
       : (title.trim() || (uploadedFiles[0] ? uploadedFiles[0].original_name : 'Shared File(s)'));
     return {
       title: finalTitle,
-      content: broadcastMode === 'share_file' ? 'Shared File(s)' : compiledMessage,
+      content: broadcastMode === 'share_file' ? (fileCaption.trim() || 'Shared File(s)') : compiledMessage,
       category: finalCategory,
       course_id: (broadcastMode === 'share_file' || !selectedCourseId) ? null : parseInt(selectedCourseId),
       custom_room: broadcastMode === 'share_file' ? null : (sections[0]?.room || null),
@@ -528,9 +529,9 @@ const AnnouncementForm = () => {
   }, [title, titlePreset, broadcastMode]);
 
   useEffect(() => {
-    const draft = { broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText };
+    const draft = { broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption };
     sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
-  }, [broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText]);
+  }, [broadcastMode, titlePreset, title, category, selectedCourseId, selectedDate, sections, topics, notes, closingText, selectedPlatforms, uploadedFiles, makeupStatus, customMakeupText, fileCaption]);
 
   useEffect(() => { if (!showTopics) setTopics([]); }, [showTopics]);
 
@@ -592,6 +593,11 @@ const AnnouncementForm = () => {
         setAnnouncementId(ann.id);
         if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
         setTitle(ann.title); setCategory(ann.category); setBroadcastMode(ann.category === 'share_file' ? 'share_file' : 'notice');
+        if (ann.category === 'share_file') {
+          setFileCaption(ann.content === 'Shared File(s)' ? '' : (ann.content || ''));
+        } else {
+          setFileCaption('');
+        }
         setSelectedCourseId(ann.course_id ? String(ann.course_id) : '');
         if (ann.file_ids?.length > 0 || ann.file_id) setUploadedFiles(ann.files || []);
         if (ann.delivery?.length > 0) setSelectedPlatforms(ann.delivery.map(d => d.platform_id));
@@ -679,6 +685,19 @@ const AnnouncementForm = () => {
             <button type="button" onClick={() => setBroadcastMode('notice')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'notice' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📢 Announcement Notice</button>
             <button type="button" onClick={() => setBroadcastMode('share_file')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'share_file' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📎 Share File Only</button>
           </div>
+
+          {broadcastMode === 'share_file' && (
+            <div>
+              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Message / Caption (Optional)</label>
+              <textarea
+                value={fileCaption}
+                onChange={(e) => setFileCaption(e.target.value)}
+                placeholder="Type an optional message to accompany the file(s)..."
+                rows={4}
+                className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150 resize-y min-h-[80px]"
+              />
+            </div>
+          )}
 
           {broadcastMode === 'notice' && (
             <>

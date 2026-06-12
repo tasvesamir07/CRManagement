@@ -52,7 +52,7 @@ async function createAnnouncement({ title, content, category, course_id, custom_
 // Format message for WhatsApp (returns the pre-compiled frontend content to avoid repetition)
 function formatWhatsApp(announcement, _course) {
     if (announcement.category === 'share_file') {
-        return '';
+        return announcement.content === 'Shared File(s)' ? '' : (announcement.content || '');
     }
     return announcement.content;
 }
@@ -60,7 +60,7 @@ function formatWhatsApp(announcement, _course) {
 // Format message for Telegram (returns the pre-compiled frontend content to avoid repetition)
 function formatTelegram(announcement, _course) {
     if (announcement.category === 'share_file') {
-        return '';
+        return announcement.content === 'Shared File(s)' ? '' : (announcement.content || '');
     }
     return announcement.content;
 }
@@ -68,7 +68,7 @@ function formatTelegram(announcement, _course) {
 // Format message for Messenger
 function formatMessenger(announcement, _course) {
     if (announcement.category === 'share_file') {
-        return '';
+        return announcement.content === 'Shared File(s)' ? '' : (announcement.content || '');
     }
     return announcement.content;
 }
