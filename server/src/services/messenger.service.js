@@ -48,25 +48,15 @@ async function getBot() {
         { appState: appStateData },
         { listenEvents: false }
     );
+    botReady = true;
 
-    return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-            resetBot();
-            reject(new Error('Messenger bot login timed out after 30s'));
-        }, 30000);
-
-        botInstance.on("ready", () => {
-            clearTimeout(timeout);
-            botReady = true;
-            resolve(botInstance);
-        });
-
-        botInstance.on("error", (err) => {
-            clearTimeout(timeout);
-            resetBot();
-            reject(err);
-        });
+    // Attach runtime error listener to reset on connection drop
+    botInstance.on("error", (err) => {
+        console.error("Messenger bot runtime error:", err.message);
+        resetBot();
     });
+
+    return botInstance;
 }
 
 async function sendMessageToGroup(chatId, message, filePath = null) {

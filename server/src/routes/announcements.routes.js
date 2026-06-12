@@ -104,12 +104,13 @@ router.post('/:id/send', authMiddleware, sendLimiter, async (req, res) => {
         if (!ann) return res.status(404).json({ error: 'Announcement not found' });
 
         const totalFiles = (ann.file_ids?.length || (ann.file_id ? 1 : 0));
-        const totalPlatforms = ann.delivery?.length || 0;
+        // Only count platforms that are not yet successfully notified (unsent/failed/pending)
+        const totalPlatforms = ann.delivery?.filter(d => d.platform_status !== 'sent').length || 0;
 
-        if (totalFiles > 0 && totalFiles * totalPlatforms > 10) {
+        if (totalFiles > 0 && totalFiles * totalPlatforms > 25) {
             return res.status(400).json({
                 error: 'Large broadcast detected. Please schedule instead of sending immediately.',
-                hint: 'This announcement has many file attachments and platforms. Use the schedule feature.'
+                hint: 'This announcement has many file attachments and remaining target channels. Use the schedule feature.'
             });
         }
 
