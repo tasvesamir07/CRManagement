@@ -101,41 +101,57 @@ const FilesManager = () => {
   };
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('File size exceeds the 50MB limit.');
+    let currentUsage = { usedBytes: 0, limitBytes: 104857600 };
+    try {
+      currentUsage = await filesAPI.getStorageUsage();
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (currentUsage.usedBytes >= currentUsage.limitBytes) {
+      toast.error('Upload failed: Storage limit reached.');
       return;
     }
 
     setUploading(true);
-    setUploadProgress(0);
+    let uploadedCount = 0;
 
-    try {
-      const dupCheck = await filesAPI.checkDuplicate(file.name);
-      let overwrite = false;
-      if (dupCheck.duplicate) {
-        if (!window.confirm(`A file named "${file.name}" already exists. Do you want to overwrite it?`)) {
-          setUploading(false);
-          return;
-        }
-        overwrite = true;
+    for (const file of Array.from(fileList)) {
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error(`"${file.name}" exceeds the 50MB limit.`);
+        continue;
       }
 
-      const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
-      await uploadFn(file, (pe) => {
-        setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
-      });
+      try {
+        setUploadProgress(0);
+        const dupCheck = await filesAPI.checkDuplicate(file.name);
+        let overwrite = false;
+        if (dupCheck.duplicate) {
+          if (!window.confirm(`A file named "${file.name}" already exists. Do you want to overwrite it?`)) {
+            continue;
+          }
+          overwrite = true;
+        }
 
-      toast.success('File uploaded successfully!');
-      fetchFiles();
-    } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+        const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
+        await uploadFn(file, (pe) => {
+          setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
+        });
+        uploadedCount++;
+      } catch (err) {
+        toast.error(`Upload failed for "${file.name}": ${err.response?.data?.error || err.message}`);
+      }
     }
+
+    if (uploadedCount > 0) {
+      toast.success(`Successfully uploaded ${uploadedCount} file(s)!`);
+      fetchFiles();
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDownload = async (file) => {
@@ -203,6 +219,7 @@ const FilesManager = () => {
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             onChange={handleUpload}
             className="hidden"
           />

@@ -87,14 +87,15 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
     let storagePath = '';
     
     if (supabase) {
-        const uniqueName = `${Date.now()}-${originalName.replace(/\s+/g, '_')}`;
+        const uniqueName = originalName;
         const fileBuffer = fs.readFileSync(file.path);
         
         const { data, error } = await supabase.storage
             .from(bucketName)
             .upload(uniqueName, fileBuffer, {
                 contentType: fileType,
-                duplex: 'half'
+                duplex: 'half',
+                upsert: true
             });
             
         if (error) {
@@ -102,7 +103,7 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
             throw new Error(`Supabase upload failed: ${error.message}`);
         }
         
-        storagePath = data.path;
+        storagePath = data?.path || uniqueName;
         
         try {
             fs.unlinkSync(file.path);
@@ -110,9 +111,16 @@ async function uploadFile(file, userId, { overwrite = false } = {}) {
             console.error('Failed to delete temp multer file:', err);
         }
     } else {
-        const uniqueName = `${Date.now()}-${originalName.replace(/\s+/g, '_')}`;
+        const uniqueName = originalName;
         const finalPath = path.join(uploadsDir, uniqueName);
         
+        if (fs.existsSync(finalPath)) {
+            try {
+                fs.unlinkSync(finalPath);
+            } catch (err) {
+                console.error('Failed to remove old file for overwrite:', err.message);
+            }
+        }
         fs.renameSync(file.path, finalPath);
         storagePath = uniqueName;
     }
