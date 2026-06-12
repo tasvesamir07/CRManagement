@@ -54,17 +54,7 @@ async function initWhatsApp() {
         return;
     }
 
-    // Early-exit detection: check if running on Windows with known crypto issues
-    if (process.platform === 'win32') {
-        console.warn('⚠️ WhatsApp (Baileys) has known native dependency issues on Windows.');
-        console.warn('   Pairing/connection may fail due to crypto polyfill limitations.');
-        console.warn('   For full WhatsApp support, deploy on Linux/macOS or use Docker.');
-        console.warn('   Falling back to Mock Mode. Messages will be logged but not sent.');
-        isMockMode = true;
-        connectionStatus = 'DISCONNECTED';
-        broadcastStatus();
-        return;
-    }
+
 
     console.log('Initializing WhatsApp Client (Baileys)...');
     connectionStatus = 'CONNECTING';

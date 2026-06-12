@@ -4,10 +4,13 @@ const path = require('path');
 
 let pool = null;
 let useJsonDb = false;
-const jsonDbPath = path.join(__dirname, '../../../db.json');
+let dbInitDone = false;
+let dbInitError = null;
+const isVercel = !!process.env.VERCEL;
+const jsonDbPath = isVercel ? '/tmp/db.json' : path.join(__dirname, '../../../db.json');
 
 // Simple file lock for concurrent-write safety on db.json
-const dbLockPath = path.join(__dirname, '../../../db.lock');
+const dbLockPath = isVercel ? '/tmp/db.lock' : path.join(__dirname, '../../../db.lock');
 let lockAcquired = false;
 
 function acquireLock() {
@@ -1212,38 +1215,57 @@ async function simulateQuery(text, params = []) {
 }
 
 // Check database URL config
-if (process.env.DATABASE_URL) {
-    console.log('PostgreSQL database URL detected. Initializing database pool...');
-    pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL.includes('supabase') || process.env.DATABASE_URL.includes('render')
-            ? { rejectUnauthorized: false }
-            : false
-    });
-    
-    // Quick test connection
-    pool.connect((err, client, release) => {
-        if (err) {
-            console.error('⚠️ Database connection failed. Falling back to local JSON database (db.json)...', err.message);
+async function initDatabase() {
+    if (process.env.DATABASE_URL) {
+        console.log('PostgreSQL database URL detected. Initializing database pool...');
+        pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.DATABASE_URL.includes('supabase') || process.env.DATABASE_URL.includes('render')
+                ? { rejectUnauthorized: false }
+                : false,
+            connectionTimeoutMillis: 15000,
+            idleTimeoutMillis: 30000,
+            max: 3
+        });
+
+        try {
+            const client = await pool.connect();
+            console.log('✅ PostgreSQL database connected successfully.');
+            client.release();
+        } catch (err) {
+            if (isVercel) {
+                console.error('⚠️ PostgreSQL connection failed on Vercel. Falling back to JSON DB.', err.message);
+                useJsonDb = true;
+                initJsonDb();
+            } else {
+                console.error('⚠️ Database connection failed. Falling back to local JSON database (db.json)...', err.message);
+                useJsonDb = true;
+                initJsonDb();
+            }
+        }
+    } else {
+        if (isVercel) {
+            console.error('⚠️ DATABASE_URL not set. Required on Vercel.');
+            dbInitError = new Error('DATABASE_URL is required on Vercel');
+        } else {
+            console.log('⚠️ DATABASE_URL not set. Using local JSON database (db.json) fallback.');
             useJsonDb = true;
             initJsonDb();
-        } else {
-            console.log('✅ PostgreSQL database connected successfully.');
-            release();
         }
-    });
-} else {
-    console.log('⚠️ DATABASE_URL not set. Using local JSON database (db.json) fallback.');
-    useJsonDb = true;
-    initJsonDb();
+    }
+    dbInitDone = true;
 }
+
+let initPromise = initDatabase();
 
 module.exports = {
     query: (text, params) => {
+        if (dbInitError) throw dbInitError;
         if (useJsonDb) {
             return simulateQuery(text, params);
         }
         return pool.query(text, params);
     },
-    useJsonDb: () => useJsonDb
+    useJsonDb: () => useJsonDb,
+    waitForInit: () => initPromise
 };

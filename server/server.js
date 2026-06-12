@@ -3,10 +3,16 @@ require('dotenv').config();
 // === Environment Validation ===
 const REQUIRED_ENV_VARS = ['JWT_SECRET'];
 const OPTIONAL_BUT_WARN = ['DATABASE_URL', 'TELEGRAM_BOT_TOKEN', 'SMTP_HOST'];
+let envError = null;
 for (const key of REQUIRED_ENV_VARS) {
     if (!process.env[key]) {
-        console.error(`FATAL: Required environment variable ${key} is not set.`);
-        process.exit(1);
+        const msg = `FATAL: Required environment variable ${key} is not set.`;
+        console.error(msg);
+        if (process.env.VERCEL) {
+            envError = new Error(msg);
+        } else {
+            process.exit(1);
+        }
     }
 }
 for (const key of OPTIONAL_BUT_WARN) {
@@ -24,6 +30,7 @@ const nodeCron = require('node-cron');
 
 // Import services & configs
 const logger = require('./src/config/logger');
+const db = require('./src/config/database');
 const whatsappService = require('./src/services/whatsapp.service');
 const telegramService = require('./src/services/telegram.service');
 const fileService = require('./src/services/file.service');
@@ -49,8 +56,9 @@ app.use(helmet({
     },
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: corsOrigin === '*' ? '*' : corsOrigin,
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -58,6 +66,26 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static route for locally uploaded files
 app.use('/uploads', express.static(fileService.uploadsDir));
+
+// On Vercel: check startup errors first
+app.use((req, res, next) => {
+    if (!process.env.VERCEL) return next();
+    if (envError) {
+        return res.status(500).json({ error: envError.message });
+    }
+    next();
+});
+
+// Wait for DB init (critical on Vercel cold starts)
+app.use(async (req, res, next) => {
+    if (!process.env.VERCEL) return next();
+    try {
+        await db.waitForInit();
+        next();
+    } catch (err) {
+        res.status(500).json({ error: 'Database initialization failed', details: err.message });
+    }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -207,53 +235,57 @@ if (!isVercel) {
     processScheduledAnnouncements();
 }
 
-// Start listening
-server.listen(PORT, () => {
-    logger.info({ port: PORT }, 'CR Announcement Server started');
-});
+// Start listening (skipped on Vercel — @vercel/node runtime handles this)
+if (!isVercel) {
+    server.listen(PORT, () => {
+        logger.info({ port: PORT }, 'CR Announcement Server started');
+    });
+}
 
 // Export Express app for Vercel
+if (isVercel) {
+    console.log('✅ CR Announcement server loaded on Vercel');
+}
 module.exports = app;
 
 // Graceful shutdown helper
 const gracefulShutdown = async (signal) => {
     logger.info({ signal }, 'Shutting down gracefully...');
     
-    // Clear the scheduled announcement scheduler
-    if (schedulerTimeout) {
-        clearTimeout(schedulerTimeout);
-        schedulerTimeout = null;
-        logger.info('Scheduled announcement checker stopped.');
-    }
-    
-    // Stop the cron jobs
-    const cronTasks = nodeCron.getTasks();
-    cronTasks.forEach(task => task.stop());
-    logger.info('Cron jobs stopped.');
-    
     try {
-        await whatsappService.destroyWhatsApp();
-        logger.info('WhatsApp client closed.');
+        // Stop cron jobs
+        try {
+            const cronTasks = nodeCron.getTasks();
+            cronTasks.forEach(task => task.stop());
+            logger.info('Cron jobs stopped.');
+        } catch (_) {}
+        
+        try {
+            await whatsappService.destroyWhatsApp();
+            logger.info('WhatsApp client closed.');
+        } catch (err) {
+            logger.error({ err }, 'Error during WhatsApp client destruction');
+        }
+        
+        if (wss) {
+            try {
+                wss.close(() => logger.info('WebSocket server closed.'));
+            } catch (_) {}
+        }
+        
+        server.close(() => {
+            logger.info('HTTP server closed.');
+            process.exit(0);
+        });
+        
+        setTimeout(() => {
+            logger.error('Forced shutdown after timeout.');
+            process.exit(1);
+        }, 10000);
     } catch (err) {
-        logger.error({ err }, 'Error during WhatsApp client destruction');
-    }
-    
-    // Close WebSocket server
-    wss.close(() => {
-        logger.info('WebSocket server closed.');
-    });
-    
-    // Close HTTP server
-    server.close(() => {
-        logger.info('HTTP server closed.');
-        process.exit(0);
-    });
-    
-    // Force exit if graceful shutdown takes too long
-    setTimeout(() => {
-        logger.error('Forced shutdown after timeout.');
+        logger.error({ err }, 'Error during graceful shutdown');
         process.exit(1);
-    }, 10000);
+    }
 };
 
 // Listen for termination signals
