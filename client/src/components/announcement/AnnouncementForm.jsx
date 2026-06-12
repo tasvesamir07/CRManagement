@@ -25,7 +25,8 @@ import {
   ChevronDown,
   Calendar,
   Clipboard,
-  GripVertical
+  GripVertical,
+  FolderClosed
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 
@@ -106,6 +107,10 @@ const AnnouncementForm = () => {
   const [libSearch, setLibSearch] = useState('');
   const [libPage, setLibPage] = useState(1);
   const [libSelectedIds, setLibSelectedIds] = useState([]);
+  const [libCurrentFolderId, setLibCurrentFolderId] = useState(null);
+  const [libCurrentFolderName, setLibCurrentFolderName] = useState('');
+  const [libFolders, setLibFolders] = useState([]);
+  const [libFoldersLoading, setLibFoldersLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => getInitialValue('selectedDate', ''));
 
@@ -429,6 +434,8 @@ const AnnouncementForm = () => {
     setLibSelectedIds([]);
     setLibSearch('');
     setLibPage(1);
+    setLibCurrentFolderId(null);
+    setLibCurrentFolderName('');
     setShowLibraryModal(true);
   };
 
@@ -441,21 +448,46 @@ const AnnouncementForm = () => {
     toast.success(`${newFiles.length} file(s) attached!`);
   };
 
+  const fetchLibFolders = useCallback(async () => {
+    setLibFoldersLoading(true);
+    try {
+      const folders = await filesAPI.listFolders();
+      setLibFolders(folders);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load folders');
+    } finally {
+      setLibFoldersLoading(false);
+    }
+  }, []);
+
+  const fetchLibFiles = useCallback(async () => {
+    setLibLoading(true);
+    try {
+      const res = await filesAPI.list({
+        page: libPage,
+        limit: 30,
+        search: libSearch || undefined,
+        folderId: libCurrentFolderId || undefined
+      });
+      setLibFiles(res.files || []);
+    } catch (err) {
+      toast.error('Failed to load library files');
+    } finally {
+      setLibLoading(false);
+    }
+  }, [libPage, libSearch, libCurrentFolderId]);
+
   useEffect(() => {
     if (!showLibraryModal) return;
-    const fetchLibFiles = async () => {
-      setLibLoading(true);
-      try {
-        const res = await filesAPI.list({ page: libPage, limit: 30, search: libSearch });
-        setLibFiles(res.files || []);
-      } catch (err) {
-        toast.error('Failed to load library files');
-      } finally {
-        setLibLoading(false);
-      }
-    };
     fetchLibFiles();
-  }, [showLibraryModal, libSearch, libPage]);
+  }, [showLibraryModal, fetchLibFiles]);
+
+  useEffect(() => {
+    if (showLibraryModal && libCurrentFolderId === null) {
+      fetchLibFolders();
+    }
+  }, [showLibraryModal, libCurrentFolderId, fetchLibFolders]);
 
   const handlePlatformToggle = (id) => {
     if (id === 'clear') { setSelectedPlatforms([]); return; }
@@ -1160,6 +1192,54 @@ const AnnouncementForm = () => {
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 min-h-[250px] space-y-2">
+              {/* Breadcrumbs for navigated folder in modal */}
+              {libCurrentFolderId !== null && (
+                <div className="flex items-center gap-1.5 text-xs text-ink-mute font-sans bg-canvas-soft border border-hairline rounded px-2.5 py-1 mb-2.5 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLibCurrentFolderId(null);
+                      setLibCurrentFolderName('');
+                      setLibPage(1);
+                    }}
+                    className="text-primary font-semibold hover:underline cursor-pointer"
+                  >
+                    Root
+                  </button>
+                  <span>/</span>
+                  <span className="font-semibold text-ink">{libCurrentFolderName}</span>
+                </div>
+              )}
+
+              {/* Folders grid in modal when at Root */}
+              {libCurrentFolderId === null && !libSearch && libFolders.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <h4 className="text-[10px] font-semibold text-ink-mute uppercase tracking-wider font-sans">Folders</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {libFolders.map(folder => (
+                      <div
+                        key={folder.id}
+                        onClick={() => {
+                          setLibCurrentFolderId(folder.id);
+                          setLibCurrentFolderName(folder.name);
+                          setLibPage(1);
+                        }}
+                        className="flex items-center gap-2.5 p-2 bg-canvas border border-hairline hover:border-primary/40 hover:bg-canvas-soft rounded-sm cursor-pointer transition-all duration-150"
+                      >
+                        <div className="w-7 h-7 rounded-sm bg-primary/10 flex items-center justify-center shrink-0">
+                          <FolderClosed className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-ink truncate block font-sans">{folder.name}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {libCurrentFolderId === null && !libSearch && libFolders.length > 0 && <h4 className="text-[10px] font-semibold text-ink-mute uppercase tracking-wider font-sans mt-4 mb-2">Files</h4>}
+
               {libLoading ? (
                 <div className="flex justify-center items-center h-full py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>
               ) : libFiles.length === 0 ? (

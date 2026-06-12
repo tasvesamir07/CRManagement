@@ -64,8 +64,14 @@ async function ensureCourseFolders(userId) {
 }
 
 async function listFolders(userId) {
+    let isAdmin = false;
     if (userId) {
         await ensureCourseFolders(userId);
+        const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+        const userRole = userResult.rows[0]?.role;
+        if (userRole === 'admin') {
+            isAdmin = true;
+        }
     }
     
     const result = await db.query(
@@ -73,7 +79,7 @@ async function listFolders(userId) {
     );
     
     let filteredFolders = result.rows;
-    if (userId) {
+    if (userId && !isAdmin) {
         const { getCourses } = require('./course.service');
         const courses = await getCourses(userId);
         const userCourseIds = courses.map(c => parseInt(c.id));
@@ -267,7 +273,16 @@ async function listFiles({ page = 1, limit = 50, search, userId, folderId } = {}
     const params = [];
     let paramIndex = 1;
 
+    let isAdmin = false;
     if (userId) {
+        const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+        const userRole = userResult.rows[0]?.role;
+        if (userRole === 'admin') {
+            isAdmin = true;
+        }
+    }
+
+    if (userId && !isAdmin) {
         conditions.push(`f.uploaded_by = $${paramIndex++}`);
         params.push(userId);
     }
