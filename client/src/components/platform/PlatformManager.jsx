@@ -397,8 +397,8 @@ const PlatformManager = () => {
                   <p className="text-xs font-semibold text-ink">WhatsApp Engine is in Mock Mode</p>
                 </div>
                 <p className="text-xs text-ink-mute">
-                  Vercel uses Serverless Functions which cannot maintain the persistent 24/7 connection required by WhatsApp (Baileys). 
-                  To connect your real WhatsApp account:
+                  The WhatsApp engine falls back to Mock Mode in serverless environments or if the client fails to connect. 
+                  To connect your real WhatsApp account, ensure your persistent backend on Render is running and properly connected to the database.
                 </p>
                 <ul className="text-xs text-ink-mute list-disc pl-4 space-y-1">
                   <li><strong>Locally:</strong> Run both the frontend and backend locally on your computer.</li>
