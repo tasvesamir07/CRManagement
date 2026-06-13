@@ -48,6 +48,7 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
   const [isWaMock, setIsWaMock] = useState(false);
   const [waGroups, setWaGroups] = useState([]);
   const [syncingGroups, setSyncingGroups] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
 
   // Telegram connection states
   const [tgStatus, setTgStatus] = useState('DISCONNECTED');
@@ -587,17 +588,31 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
               </button>
               
               {waGroups.length > 0 && (
-                <div className="max-h-[150px] overflow-y-auto border border-hairline rounded-sm divide-y divide-hairline-cool p-1 bg-canvas-soft">
-                  <p className="text-[10px] uppercase font-semibold text-ink-mute px-2.5 py-1">Synced Groups</p>
-                  {waGroups.map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => handleSelectGroup(g)}
-                      className="w-full text-left px-2.5 py-1.5 text-xs text-ink-secondary hover:bg-canvas hover:text-ink truncate block"
-                    >
-                      {g.name}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Search synced groups..."
+                    value={groupSearchQuery}
+                    onChange={(e) => setGroupSearchQuery(e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink placeholder-ink-mute/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                  />
+                  <div className="max-h-[150px] overflow-y-auto border border-hairline rounded-sm divide-y divide-hairline-cool p-1 bg-canvas-soft">
+                    <p className="text-[10px] uppercase font-semibold text-ink-mute px-2.5 py-1">Synced Groups</p>
+                    {waGroups
+                      .filter((g) => g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+                      .map((g) => (
+                        <button
+                          key={g.id}
+                          onClick={() => handleSelectGroup(g)}
+                          className="w-full text-left px-2.5 py-1.5 text-xs text-ink-secondary hover:bg-canvas hover:text-ink truncate block"
+                        >
+                          {g.name}
+                        </button>
+                      ))}
+                    {waGroups.filter((g) => g.name.toLowerCase().includes(groupSearchQuery.toLowerCase())).length === 0 && (
+                      <p className="text-center py-3 text-xs text-ink-mute">No matching groups found.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
