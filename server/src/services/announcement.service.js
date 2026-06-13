@@ -170,11 +170,10 @@ async function sendAnnouncement(id, _hostUrl = '') {
     let overallSuccessCount = 0;
     let overallFailureCount = 0;
 
-    // 4. Broadcaster to selected platforms
-    for (const p of platforms) {
+    // 4. Broadcaster to selected platforms in parallel
+    const activeBroadcastPromises = platforms.map(async (p) => {
         if (p.platform_status === 'sent') {
-            overallSuccessCount++;
-            continue;
+            return { platform_id: p.platform_id, status: 'sent', skipped: true };
         }
         try {
             await db.query(
@@ -205,7 +204,6 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 'UPDATE announcement_platforms SET platform_status = $1, sent_at = NOW() WHERE announcement_id = $2 AND platform_id = $3',
                 ['sent', id, p.platform_id]
             );
-            overallSuccessCount++;
 
             // Log successful delivery to audit logs
             await auditService.log(
@@ -220,13 +218,14 @@ async function sendAnnouncement(id, _hostUrl = '') {
                     chat_id: p.chat_id
                 }
             );
+
+            return { platform_id: p.platform_id, status: 'sent', skipped: false };
         } catch (err) {
             console.error(`Failed delivery to platform ID ${p.platform_id}:`, err.message);
             await db.query(
                 'UPDATE announcement_platforms SET platform_status = $1, error_message = $2 WHERE announcement_id = $3 AND platform_id = $4',
                 ['failed', err.message, id, p.platform_id]
             );
-            overallFailureCount++;
 
             // Log delivery failure to audit logs
             await auditService.log(
@@ -242,6 +241,18 @@ async function sendAnnouncement(id, _hostUrl = '') {
                     error: err.message
                 }
             );
+
+            return { platform_id: p.platform_id, status: 'failed', skipped: false, error: err.message };
+        }
+    });
+
+    const results = await Promise.all(activeBroadcastPromises);
+
+    for (const res of results) {
+        if (res.status === 'sent') {
+            overallSuccessCount++;
+        } else if (res.status === 'failed') {
+            overallFailureCount++;
         }
     }
 

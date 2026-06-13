@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckSquare, Square, CheckCircle } from 'lucide-react';
-import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
+import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 
 export default function PlatformSelector({ platforms, selectedPlatforms, onToggle, waStatus, alreadySentPlatforms = [] }) {
   if (platforms.length === 0) {
@@ -86,7 +86,13 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
                 )}
               </div>
               <div className="w-8 h-8 rounded-sm flex items-center justify-center border border-hairline bg-canvas-soft shrink-0">
-                {p.platform_type === 'whatsapp' ? <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} /> : <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />}
+                {p.platform_type === 'whatsapp' ? (
+                  <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} />
+                ) : p.platform_type === 'telegram' ? (
+                  <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />
+                ) : (
+                  <FaFacebookMessenger className="w-4 h-4" style={{ color: '#00B2FF' }} />
+                )}
               </div>
               <div className="min-w-0">
                 <h4 className="text-sm font-medium text-ink truncate">{p.platform_name}</h4>

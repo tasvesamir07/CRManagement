@@ -16,7 +16,7 @@ import {
   X,
   Download
 } from 'lucide-react';
-import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
+import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
 
 const troubleshootError = (errorStr) => {
@@ -308,10 +308,13 @@ const AnnouncementDetail = () => {
               <div key={i} className="flex items-center justify-between p-3 border border-hairline rounded-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-sm bg-canvas-soft flex items-center justify-center border border-hairline">
-                    {d.platform_type === 'whatsapp' 
-                      ? <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} /> 
-                      : <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />
-                    }
+                    {d.platform_type === 'whatsapp' ? (
+                      <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} /> 
+                    ) : d.platform_type === 'telegram' ? (
+                      <FaTelegram className="w-4 h-4" style={{ color: '#0088CC' }} />
+                    ) : (
+                      <FaFacebookMessenger className="w-4 h-4" style={{ color: '#00B2FF' }} />
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ink">{d.platform_name}</p>

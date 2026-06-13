@@ -22,7 +22,7 @@ import {
   LayoutDashboard,
   Activity
 } from 'lucide-react';
-import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
+import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 
 const getUniquePlatformDeliveries = (deliveryList) => {
   if (!deliveryList) return [];
@@ -419,10 +419,13 @@ const CRDashboard = ({ navigate }) => {
                               }`}
                               title={d.title}
                             >
-                              {d.platform_type === 'whatsapp' 
-                                ? <FaWhatsapp className={`w-3.5 h-3.5 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#25D366' }} /> 
-                                : <FaTelegram className={`w-3.5 h-3.5 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#0088CC' }} />
-                              }
+                              {d.platform_type === 'whatsapp' ? (
+                                <FaWhatsapp className={`w-3.5 h-3.5 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#25D366' }} /> 
+                              ) : d.platform_type === 'telegram' ? (
+                                <FaTelegram className={`w-3.5 h-3.5 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#0088CC' }} />
+                              ) : (
+                                <FaFacebookMessenger className={`w-3.5 h-3.5 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#00B2FF' }} />
+                              )}
                             </span>
                           ))}
                         </div>
