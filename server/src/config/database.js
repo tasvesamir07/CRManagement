@@ -1492,45 +1492,61 @@ async function initDatabase() {
             max: 3
         });
 
-        try {
-            const client = await pool.connect();
-            console.log('✅ PostgreSQL database connected successfully.');
-            // Dynamically alter check constraint to allow 'messenger' platform type
-            await client.query(`
-                ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_platform_type_check;
-                ALTER TABLE platforms ADD CONSTRAINT platforms_platform_type_check CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger'));
-                CREATE TABLE IF NOT EXISTS folders (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
-                    created_by INTEGER,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                ALTER TABLE files ADD COLUMN IF NOT EXISTS folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL;
-                
-                -- Add course_id to platforms table for course association
-                ALTER TABLE platforms ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
-                -- Add default_platform_ids to courses table for global defaults per course
-                ALTER TABLE courses ADD COLUMN IF NOT EXISTS default_platform_ids INTEGER[] DEFAULT '{}';
-                -- Create index for faster lookups
-                CREATE INDEX IF NOT EXISTS idx_platforms_course_id ON platforms(course_id);
+        const maxRetries = 5;
+        let attempt = 0;
+        let lastError = null;
 
-                -- Fix announcements file foreign key constraint (002_fix_file_fk.sql)
-                ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_file_id_fkey;
-                ALTER TABLE announcements ADD CONSTRAINT announcements_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE SET NULL;
-            `);
-            client.release();
-        } catch (err) {
-            if (isVercel) {
-                console.error('⚠️ PostgreSQL connection failed on Vercel. Falling back to JSON DB.', err.message);
-                useJsonDb = true;
-                initJsonDb();
-            } else {
-                console.error('⚠️ Database connection failed. Falling back to local JSON database (db.json)...', err.message);
-                useJsonDb = true;
-                initJsonDb();
+        while (attempt < maxRetries) {
+            try {
+                attempt++;
+                const client = await pool.connect();
+                console.log(`✅ PostgreSQL database connected successfully (attempt ${attempt}/${maxRetries}).`);
+                
+                // Dynamically alter check constraint to allow 'messenger' platform type
+                await client.query(`
+                    ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_platform_type_check;
+                    ALTER TABLE platforms ADD CONSTRAINT platforms_platform_type_check CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger'));
+                    CREATE TABLE IF NOT EXISTS folders (
+                        id SERIAL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+                        created_by INTEGER,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                    ALTER TABLE files ADD COLUMN IF NOT EXISTS folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL;
+                    
+                    -- Add course_id to platforms table for course association
+                    ALTER TABLE platforms ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
+                    -- Add default_platform_ids to courses table for global defaults per course
+                    ALTER TABLE courses ADD COLUMN IF NOT EXISTS default_platform_ids INTEGER[] DEFAULT '{}';
+                    -- Create index for faster lookups
+                    CREATE INDEX IF NOT EXISTS idx_platforms_course_id ON platforms(course_id);
+
+                    -- Fix announcements file foreign key constraint (002_fix_file_fk.sql)
+                    ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_file_id_fkey;
+                    ALTER TABLE announcements ADD CONSTRAINT announcements_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE SET NULL;
+                `);
+                
+                client.release();
+                useJsonDb = false;
+                dbInitError = null;
+                dbInitDone = true;
+                return;
+            } catch (err) {
+                lastError = err;
+                console.warn(`⚠️ Database initialization attempt ${attempt}/${maxRetries} failed: ${err.message}`);
+                
+                if (attempt < maxRetries) {
+                    const delay = 1000 + Math.random() * 2000;
+                    console.log(`Waiting ${Math.round(delay)}ms before next attempt...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
             }
         }
+
+        console.error('❌ All database initialization attempts failed.');
+        dbInitError = lastError;
+        useJsonDb = false;
     } else {
         if (isVercel) {
             console.error('⚠️ DATABASE_URL not set. Required on Vercel.');
