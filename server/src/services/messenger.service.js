@@ -87,30 +87,37 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
     try {
         const bot = await getBot();
 
-        return new Promise((resolve, reject) => {
-            const sendTimeout = setTimeout(() => {
-                reject(new Error('Messenger send timed out after 30s'));
-            }, 30000);
+        const msgPayload = { body: message };
+        if (files.length > 0 && fs.existsSync(files[0].path)) {
+            msgPayload.attachment = fs.createReadStream(files[0].path);
+        }
 
-            const msgPayload = { body: message };
-
-            if (files.length > 0 && fs.existsSync(files[0].path)) {
-                msgPayload.attachment = fs.createReadStream(files[0].path);
-            }
-
-            bot.api.sendMessage(msgPayload, chatId, (err, messageInfo) => {
-                clearTimeout(sendTimeout);
-                if (err) {
-                    console.error("FCA sendMessage failed:", err);
-                    resetBot();
-                    reject(err);
-                } else {
-                    resolve({ success: true, messageId: messageInfo?.messageID || 'fca-msg-id' });
-                }
+        // Helper to send a single message with promise wrapper
+        const sendMsgPromise = (payload) => {
+            return new Promise((resolve, reject) => {
+                bot.api.sendMessage(payload, chatId, (err, messageInfo) => {
+                    if (err) reject(err);
+                    else resolve(messageInfo);
+                });
             });
-        });
+        };
+
+        const firstResult = await sendMsgPromise(msgPayload);
+
+        // Send subsequent files one-by-one
+        for (let i = 1; i < files.length; i++) {
+            const fi = files[i];
+            if (fs.existsSync(fi.path)) {
+                await sendMsgPromise({
+                    attachment: fs.createReadStream(fi.path)
+                });
+            }
+        }
+
+        return { success: true, messageId: firstResult?.messageID || 'fca-msg-id' };
     } catch (err) {
         console.error(`Error sending Messenger message to ${chatId}:`, err.message);
+        resetBot();
         throw err;
     }
 }

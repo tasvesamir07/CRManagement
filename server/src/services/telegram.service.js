@@ -74,60 +74,47 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 
     try {
         let sentMsg;
-        if (files.length === 1 && fs.existsSync(files[0].path)) {
-            const ext = path.extname(files[0].path).toLowerCase();
-            const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
-            if (isImage) {
-                sentMsg = await bot.sendPhoto(finalChatId, fs.createReadStream(files[0].path), {
-                    caption: caption,
-                    parse_mode: parseMode,
-                    message_thread_id: threadId
-                });
-            } else {
-                sentMsg = await bot.sendDocument(finalChatId, fs.createReadStream(files[0].path), {
-                    caption: caption,
-                    parse_mode: parseMode,
-                    message_thread_id: threadId
-                }, {
-                    filename: files[0].originalName
-                });
+        if (files.length > 0) {
+            // Send the first file with the caption
+            const f0 = files[0];
+            if (fs.existsSync(f0.path)) {
+                const ext = path.extname(f0.path).toLowerCase();
+                const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
+                if (isImage) {
+                    sentMsg = await bot.sendPhoto(finalChatId, fs.createReadStream(f0.path), {
+                        caption: caption,
+                        parse_mode: parseMode,
+                        message_thread_id: threadId
+                    });
+                } else {
+                    sentMsg = await bot.sendDocument(finalChatId, fs.createReadStream(f0.path), {
+                        caption: caption,
+                        parse_mode: parseMode,
+                        message_thread_id: threadId
+                    }, {
+                        filename: f0.originalName
+                    });
+                }
             }
-        } else if (files.length > 1) {
-            // Check if all are images
-            const allImages = files.every(f => {
-                const ext = path.extname(f.path).toLowerCase();
-                return ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
-            });
-            
-            if (allImages) {
-                const media = files.map((f, index) => ({
-                    type: 'photo',
-                    media: fs.createReadStream(f.path),
-                    caption: index === 0 ? caption : undefined,
-                    parse_mode: index === 0 ? parseMode : undefined,
-                    fileOptions: {
-                        filename: f.originalName
+
+            // Send remaining files one-by-one without caption
+            for (let i = 1; i < files.length; i++) {
+                const fi = files[i];
+                if (fs.existsSync(fi.path)) {
+                    const ext = path.extname(fi.path).toLowerCase();
+                    const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
+                    if (isImage) {
+                        await bot.sendPhoto(finalChatId, fs.createReadStream(fi.path), {
+                            message_thread_id: threadId
+                        });
+                    } else {
+                        await bot.sendDocument(finalChatId, fs.createReadStream(fi.path), {
+                            message_thread_id: threadId
+                        }, {
+                            filename: fi.originalName
+                        });
                     }
-                }));
-                const msgs = await bot.sendMediaGroup(finalChatId, media, {
-                    message_thread_id: threadId
-                });
-                sentMsg = msgs[0];
-            } else {
-                // All as documents
-                const media = files.map((f, index) => ({
-                    type: 'document',
-                    media: fs.createReadStream(f.path),
-                    caption: index === 0 ? caption : undefined,
-                    parse_mode: index === 0 ? parseMode : undefined,
-                    fileOptions: {
-                        filename: f.originalName
-                    }
-                }));
-                const msgs = await bot.sendMediaGroup(finalChatId, media, {
-                    message_thread_id: threadId
-                });
-                sentMsg = msgs[0];
+                }
             }
         } else {
             sentMsg = await bot.sendMessage(finalChatId, message, {
