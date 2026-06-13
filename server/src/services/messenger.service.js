@@ -38,6 +38,12 @@ function initMessenger() {
 let loginPromise = null;
 
 function resetBot() {
+    if (botInstance) {
+        const oldBot = botInstance;
+        if (typeof oldBot.stop === 'function') {
+            oldBot.stop().catch(err => console.error("Error stopping Messenger bot during reset:", err.message));
+        }
+    }
     botInstance = null;
     botReady = false;
     loginPromise = null;
