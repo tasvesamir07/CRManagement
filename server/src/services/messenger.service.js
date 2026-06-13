@@ -58,7 +58,7 @@ async function getBot() {
             const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
             const instance = await createMessengerBot(
                 { appState: appStateData },
-                { listenEvents: false, autoListen: false }
+                { listenEvents: false, autoListen: true, autoReconnect: false }
             );
             botInstance = instance;
             botReady = true;
