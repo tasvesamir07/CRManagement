@@ -102,37 +102,39 @@ async function sendAnnouncement(id, _hostUrl = '') {
         }
     }
 
-    for (const f of files) {
-        let localFilePath = null;
-        if (!process.env.SUPABASE_URL) {
-            localFilePath = path.join(fileService.uploadsDir, f.storage_path);
-            if (!fs.existsSync(localFilePath)) {
-                throw new Error(`Attachment file "${f.original_name}" was not found on local disk. (Fallback mode)`);
-            }
-        } else {
-            try {
-                const { url } = await fileService.getFileUrl(f.id);
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 30000);
-                const response = await fetch(url, { signal: controller.signal });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    if (files.length > 0) {
+        const downloadPromises = files.map(async (f) => {
+            let localFilePath = null;
+            if (!process.env.SUPABASE_URL) {
+                localFilePath = path.join(fileService.uploadsDir, f.storage_path);
+                if (!fs.existsSync(localFilePath)) {
+                    throw new Error(`Attachment file "${f.original_name}" was not found on local disk. (Fallback mode)`);
                 }
-                clearTimeout(timeout);
-                const tempPath = path.join(fileService.uploadsDir, `temp-${f.storage_path}`);
-                const arrayBuffer = await response.arrayBuffer();
-                fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
-                localFilePath = tempPath;
-            } catch (e) {
-                throw new Error(`Failed to download attachment "${f.original_name}" from Supabase: ${e.message}`);
+            } else {
+                try {
+                    const { url } = await fileService.getFileUrl(f.id);
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 30000);
+                    const response = await fetch(url, { signal: controller.signal });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                    }
+                    clearTimeout(timeout);
+                    const tempPath = path.join(fileService.uploadsDir, `temp-${f.storage_path}`);
+                    const arrayBuffer = await response.arrayBuffer();
+                    fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
+                    localFilePath = tempPath;
+                } catch (e) {
+                    throw new Error(`Failed to download attachment "${f.original_name}" from Supabase: ${e.message}`);
+                }
             }
-        }
-        if (localFilePath) {
-            attachmentFiles.push({
+            return {
                 path: localFilePath,
                 originalName: f.original_name
-            });
-        }
+            };
+        });
+        const downloaded = await Promise.all(downloadPromises);
+        attachmentFiles.push(...downloaded.filter(item => item.path !== null));
     }
 
     // 3. Fetch targeted platforms

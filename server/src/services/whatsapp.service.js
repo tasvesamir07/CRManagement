@@ -478,30 +478,39 @@ if (isRelayMode) {
                     });
                 }
 
+                // Send remaining files in parallel
+                const extraPromises = [];
                 for (let i = 1; i < files.length; i++) {
-                    if (fs.existsSync(files[i].path)) {
-                        try {
-                            const extraData = fs.readFileSync(files[i].path);
-                            const extraExt = path.extname(files[i].path).toLowerCase();
-                            const extraMime = extraExt === '.png' ? 'image/png'
-                                : extraExt === '.jpg' || extraExt === '.jpeg' ? 'image/jpeg'
-                                : extraExt === '.gif' ? 'image/gif'
-                                : extraExt === '.pdf' ? 'application/pdf'
-                                : 'application/octet-stream';
+                    const fi = files[i];
+                    if (fs.existsSync(fi.path)) {
+                        const sendExtraFile = async (file) => {
+                            try {
+                                const extraData = fs.readFileSync(file.path);
+                                const extraExt = path.extname(file.path).toLowerCase();
+                                const extraMime = extraExt === '.png' ? 'image/png'
+                                    : extraExt === '.jpg' || extraExt === '.jpeg' ? 'image/jpeg'
+                                    : extraExt === '.gif' ? 'image/gif'
+                                    : extraExt === '.pdf' ? 'application/pdf'
+                                    : 'application/octet-stream';
 
-                            if (extraMime.startsWith('image/')) {
-                                await sock.sendMessage(targetId, { image: extraData });
-                            } else {
-                                await sock.sendMessage(targetId, {
-                                    document: extraData,
-                                    mimetype: extraMime,
-                                    fileName: files[i].originalName
-                                });
+                                if (extraMime.startsWith('image/')) {
+                                    await sock.sendMessage(targetId, { image: extraData });
+                                } else {
+                                    await sock.sendMessage(targetId, {
+                                        document: extraData,
+                                        mimetype: extraMime,
+                                        fileName: file.originalName
+                                    });
+                                }
+                            } catch (err) {
+                                console.error(`Failed to send extra file ${file.path} to WhatsApp:`, err.message);
                             }
-                        } catch (err) {
-                            console.error(`Failed to send extra file ${files[i].path} to WhatsApp:`, err.message);
-                        }
+                        };
+                        extraPromises.push(sendExtraFile(fi));
                     }
+                }
+                if (extraPromises.length > 0) {
+                    await Promise.all(extraPromises);
                 }
             } else {
                 sentMsg = await sock.sendMessage(targetId, { text: message });

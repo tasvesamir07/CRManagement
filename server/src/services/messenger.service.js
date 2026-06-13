@@ -35,28 +35,42 @@ function initMessenger() {
     }
 }
 
+let loginPromise = null;
+
 function resetBot() {
     botInstance = null;
     botReady = false;
+    loginPromise = null;
 }
 
 async function getBot() {
     if (botInstance) return botInstance;
+    if (loginPromise) return loginPromise;
 
-    const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
-    botInstance = await createMessengerBot(
-        { appState: appStateData },
-        { listenEvents: false }
-    );
-    botReady = true;
+    loginPromise = (async () => {
+        try {
+            const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+            const instance = await createMessengerBot(
+                { appState: appStateData },
+                { listenEvents: false, autoListen: false }
+            );
+            botInstance = instance;
+            botReady = true;
 
-    // Attach runtime error listener to reset on connection drop
-    botInstance.on("error", (err) => {
-        console.error("Messenger bot runtime error:", err.message);
-        resetBot();
-    });
+            // Attach runtime error listener to reset on connection drop
+            instance.on("error", (err) => {
+                console.error("Messenger bot runtime error:", err.message);
+                resetBot();
+            });
 
-    return botInstance;
+            return instance;
+        } catch (err) {
+            loginPromise = null;
+            throw err;
+        }
+    })();
+
+    return loginPromise;
 }
 
 async function sendMessageToGroup(chatId, message, filePath = null) {
@@ -88,33 +102,34 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         const bot = await getBot();
 
         const msgPayload = { body: message };
-        if (files.length > 0 && fs.existsSync(files[0].path)) {
-            msgPayload.attachment = fs.createReadStream(files[0].path);
+        if (files.length > 0) {
+            const streams = [];
+            for (const f of files) {
+                if (fs.existsSync(f.path)) {
+                    streams.push(fs.createReadStream(f.path));
+                }
+            }
+            if (streams.length > 0) {
+                msgPayload.attachment = streams.length === 1 ? streams[0] : streams;
+            }
         }
 
         // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
             return new Promise((resolve, reject) => {
                 bot.api.sendMessage(payload, chatId, (err, messageInfo) => {
-                    if (err) reject(err);
-                    else resolve(messageInfo);
+                    if (err) {
+                        const errMsg = err.message || err.error || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Unknown FCA error';
+                        reject(new Error(errMsg));
+                    } else {
+                        resolve(messageInfo);
+                    }
                 });
             });
         };
 
-        const firstResult = await sendMsgPromise(msgPayload);
-
-        // Send subsequent files one-by-one
-        for (let i = 1; i < files.length; i++) {
-            const fi = files[i];
-            if (fs.existsSync(fi.path)) {
-                await sendMsgPromise({
-                    attachment: fs.createReadStream(fi.path)
-                });
-            }
-        }
-
-        return { success: true, messageId: firstResult?.messageID || 'fca-msg-id' };
+        const result = await sendMsgPromise(msgPayload);
+        return { success: true, messageId: result?.messageID || 'fca-msg-id' };
     } catch (err) {
         console.error(`Error sending Messenger message to ${chatId}:`, err.message);
         resetBot();
