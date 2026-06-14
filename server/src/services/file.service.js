@@ -518,44 +518,64 @@ async function getStorageUsage() {
     }
     
     // Calculate category-wise breakdown
-    const filesQuery = await db.query(
-        "SELECT file_type, file_size FROM files WHERE is_deleted = false"
-    );
-    
     let breakdown = {
         images: 0,
         documents: 0,
         archives: 0,
         others: 0
     };
-    
-    for (const row of filesQuery.rows) {
-        const size = parseInt(row.file_size || 0);
+
+    let breakdownRows = [];
+    if (supabase) {
+        try {
+            const result = await db.query(
+                "SELECT metadata->>'mimetype' as file_type, (metadata->>'size')::bigint as file_size, name as original_name FROM storage.objects WHERE bucket_id = $1",
+                [bucketName]
+            );
+            breakdownRows = result.rows;
+        } catch (err) {
+            console.error('Failed to get Supabase breakdown from storage.objects, falling back to files table:', err.message);
+            const result = await db.query("SELECT file_type, file_size FROM files WHERE is_deleted = false");
+            breakdownRows = result.rows;
+        }
+    } else {
+        const result = await db.query("SELECT file_type, file_size FROM files WHERE is_deleted = false");
+        breakdownRows = result.rows;
+    }
+
+    for (const row of breakdownRows) {
+        const size = parseInt(row.file_size || 0, 10);
         const mime = (row.file_type || '').toLowerCase();
-        
-        if (mime.startsWith('image/')) {
+        const name = (row.original_name || '').toLowerCase();
+
+        const isImage = mime.startsWith('image/') ||
+                        ['.jpg', '.jpeg', '.png', '.webp', '.gif'].some(ext => name.endsWith(ext));
+
+        const isDoc = mime.includes('pdf') ||
+                      mime.includes('word') ||
+                      mime.includes('excel') ||
+                      mime.includes('powerpoint') ||
+                      mime.includes('presentation') ||
+                      mime.includes('sheet') ||
+                      mime.includes('text/') ||
+                      mime.includes('csv') ||
+                      mime.includes('msword') ||
+                      mime.includes('officedocument') ||
+                      mime.includes('epub') ||
+                      ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv'].some(ext => name.endsWith(ext));
+
+        const isArc = mime.includes('zip') ||
+                      mime.includes('rar') ||
+                      mime.includes('tar') ||
+                      mime.includes('compressed') ||
+                      mime.includes('7z') ||
+                      ['.zip', '.rar', '.tar', '.gz', '.7z'].some(ext => name.endsWith(ext));
+
+        if (isImage) {
             breakdown.images += size;
-        } else if (
-            mime.includes('pdf') || 
-            mime.includes('word') || 
-            mime.includes('excel') || 
-            mime.includes('powerpoint') || 
-            mime.includes('presentation') || 
-            mime.includes('sheet') || 
-            mime.includes('text/') || 
-            mime.includes('csv') ||
-            mime.includes('msword') ||
-            mime.includes('officedocument') ||
-            mime.includes('epub')
-        ) {
+        } else if (isDoc) {
             breakdown.documents += size;
-        } else if (
-            mime.includes('zip') || 
-            mime.includes('rar') || 
-            mime.includes('tar') || 
-            mime.includes('compressed') ||
-            mime.includes('7z')
-        ) {
+        } else if (isArc) {
             breakdown.archives += size;
         } else {
             breakdown.others += size;
