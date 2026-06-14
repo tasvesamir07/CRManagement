@@ -822,7 +822,19 @@ const AnnouncementForm = () => {
   };
 
   const compiledMessage = (() => {
-    if (broadcastMode === 'custom') return customText;
+    if (broadcastMode === 'custom') {
+      let msg = '';
+      const titleVal = notices[0]?.title?.trim();
+      if (titleVal) {
+        msg += `📢 *${titleVal}*\n\n`;
+      }
+      const course = courses.find(c => c.id === parseInt(notices[0]?.selectedCourseId));
+      if (course) {
+        msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n\n`;
+      }
+      msg += customText;
+      return msg;
+    }
     if (broadcastMode === 'share_file') return fileCaption;
     
     let msg = notices.map(compileSingleNotice).join('\n━━━━━━━━━━━━━━━━━━━━\n\n');
