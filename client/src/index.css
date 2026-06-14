@@ -26,6 +26,7 @@
 
   --color-accent-purple: #6b01c2;
   --color-accent-violet: #644fc1;
+  --color-accent-indigo: #6366f1;
   --color-accent-yellow: #ffdb13;
   --color-accent-tomato: #ff2201;
 
@@ -174,6 +175,7 @@
 
   --color-accent-purple: #a855f7;
   --color-accent-violet: #818cf8;
+  --color-accent-indigo: #818cf8;
   --color-accent-yellow: #facc15;
   --color-accent-tomato: #ff4444;
 }

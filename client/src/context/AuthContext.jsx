@@ -43,6 +43,11 @@ export const AuthProvider = ({ children }) => {
                 // Immediately stop loading state
                 setLoading(false);
 
+                // Offline bypass: if offline and cached user exists, skip background validation
+                if (navigator.onLine === false && cachedUserStr) {
+                    return;
+                }
+
                 // Revalidate session silently in background
                 try {
                     const data = await authAPI.me();
@@ -50,9 +55,12 @@ export const AuthProvider = ({ children }) => {
                     localStorage.setItem('cr_user', JSON.stringify(data.user));
                 } catch (err) {
                     console.error('Session restore failed:', err.message);
-                    localStorage.removeItem('cr_token');
-                    localStorage.removeItem('cr_user');
-                    setUser(null);
+                    // Only log out if it is an explicit auth error (e.g. 401/403/invalid token), not a network/connection error
+                    if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                        localStorage.removeItem('cr_token');
+                        localStorage.removeItem('cr_user');
+                        setUser(null);
+                    }
                 }
             } else {
                 setLoading(false);

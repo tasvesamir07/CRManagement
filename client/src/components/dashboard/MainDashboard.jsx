@@ -23,8 +23,10 @@ import {
   LayoutDashboard,
   Activity,
   Filter,
-  X
+  X,
+  WifiOff
 } from 'lucide-react';
+import { OfflineDrafts } from '../../services/offline';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import { StatCardSkeleton, TableSkeleton } from '../ui/LoadingSkeleton';
 
@@ -80,6 +82,41 @@ const CRDashboard = ({ navigate }) => {
     announcementsCount: 0,
     deliveredCount: 0
   });
+
+  const [offlineDrafts, setOfflineDrafts] = useState([]);
+
+  const fetchOfflineDrafts = async () => {
+    try {
+      const list = await OfflineDrafts.list();
+      setOfflineDrafts(list);
+    } catch (e) {
+      console.error('Failed to load offline drafts:', e);
+    }
+  };
+
+  const deleteOfflineDraft = async (draftId) => {
+    if (!window.confirm('Are you sure you want to delete this local offline draft?')) return;
+    try {
+      await OfflineDrafts.delete(draftId);
+      toast.success('Local draft deleted');
+      fetchOfflineDrafts();
+    } catch (err) {
+      toast.error('Failed to delete local draft');
+    }
+  };
+
+  useEffect(() => {
+    fetchOfflineDrafts();
+  }, []);
+
+  useEffect(() => {
+    const handleSync = () => {
+      fetchOfflineDrafts();
+      fetchData(true);
+    };
+    window.addEventListener('offline-drafts-synced', handleSync);
+    return () => window.removeEventListener('offline-drafts-synced', handleSync);
+  }, []);
 
   const fetchData = async (silent = false) => {
     try {
@@ -296,6 +333,30 @@ const CRDashboard = ({ navigate }) => {
           </div>
         </div>
       </div>
+
+      {offlineDrafts.length > 0 && (
+        <div className="bg-accent-yellow/5 border border-accent-yellow/20 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <WifiOff className="w-4 h-4 text-accent-yellow" />
+            Offline Drafts ({offlineDrafts.length})
+            <span className="text-xs text-ink-mute font-normal">— not yet synced</span>
+          </div>
+          <div className="divide-y divide-hairline-cool/60">
+            {offlineDrafts.map(draft => (
+              <div key={draft.id} className="py-3 flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-ink">{draft.title || 'Untitled'}</span>
+                  <span className="text-xs text-ink-mute ml-2">{new Date(draft.updatedAt).toLocaleString()}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Link to={`/announcement/edit/${draft.id}`} className="text-xs px-2.5 py-1 border border-hairline rounded hover:bg-canvas-soft text-ink font-semibold">Edit</Link>
+                  <button onClick={() => deleteOfflineDraft(draft.id)} className="text-xs px-2.5 py-1 border border-accent-tomato/20 text-accent-tomato rounded hover:bg-accent-tomato/5 font-semibold">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="w-full bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-hairline-cool pb-4">

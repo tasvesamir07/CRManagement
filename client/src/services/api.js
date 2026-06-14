@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { OfflineCache, SyncQueue } from './offline';
 
 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 if (!API_URL.endsWith('/api')) {
@@ -23,17 +24,74 @@ api.interceptors.request.use(
     }
 );
 
+// Response interceptor to catch network errors and handle cache/queue when offline
+api.interceptors.response.use(
+    (response) => {
+        // Automatically cache successful GET requests for critical endpoints
+        const url = response.config.url;
+        const method = response.config.method?.toLowerCase();
+        if (method === 'get' && (url === '/courses' || url === '/platforms' || url === '/templates')) {
+            OfflineCache.set(url, response.data).catch(err => console.error('Failed to cache response:', err));
+        }
+        return response;
+    },
+    async (error) => {
+        if (!error.response && typeof navigator !== 'undefined' && navigator.onLine === false) {
+            const config = error.config;
+            const method = config.method?.toLowerCase();
+            
+            // Offline: try to serve from cache for GET requests
+            if (method === 'get') {
+                const cached = await OfflineCache.get(config.url);
+                if (cached) {
+                    return { data: cached, config, headers: {}, status: 200, statusText: 'OK' };
+                }
+            }
+            
+            // For write operations, queue them
+            if (['post', 'put', 'patch', 'delete'].includes(method)) {
+                await SyncQueue.add({
+                    method: config.method,
+                    url: config.url,
+                    data: config.data ? JSON.parse(JSON.stringify(config.data)) : null,
+                    headers: config.headers
+                });
+                return Promise.reject(new Error('OFFLINE_QUEUED'));
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const authAPI = {
     login: async (username, password) => {
         const res = await api.post('/auth/login', { username, password });
+        if (res.data && !res.data.requiresTwoFactor) {
+            Promise.all([
+                api.get('/courses').then(r => OfflineCache.set('/courses', r.data)),
+                api.get('/platforms').then(r => OfflineCache.set('/platforms', r.data))
+            ]).catch(() => {});
+        }
         return res.data;
     },
     login2FA: async (userId, token) => {
         const res = await api.post('/auth/login-2fa', { userId, token });
+        if (res.data) {
+            Promise.all([
+                api.get('/courses').then(r => OfflineCache.set('/courses', r.data)),
+                api.get('/platforms').then(r => OfflineCache.set('/platforms', r.data))
+            ]).catch(() => {});
+        }
         return res.data;
     },
     register: async (username, email, password, displayName) => {
         const res = await api.post('/auth/register', { username, email, password, displayName });
+        if (res.data) {
+            Promise.all([
+                api.get('/courses').then(r => OfflineCache.set('/courses', r.data)),
+                api.get('/platforms').then(r => OfflineCache.set('/platforms', r.data))
+            ]).catch(() => {});
+        }
         return res.data;
     },
     me: async () => {

@@ -31,8 +31,11 @@ import {
   File,
   Download,
   Sparkles,
-  Trash2
+  Trash2,
+  WifiOff
 } from 'lucide-react';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { OfflineCache, OfflineDrafts } from '../../services/offline';
 import { FaWhatsapp, FaTelegram } from 'react-icons/fa6';
 
 import MessageBuilder from './MessageBuilder';
@@ -93,6 +96,7 @@ const AnnouncementForm = () => {
   const location = useLocation();
   const fileInputRef = useRef(null);
   const isEditMode = !!editId;
+  const isOnline = useOnlineStatus();
 
   const [courses, setCourses] = useState([]);
   const [platforms, setPlatforms] = useState([]);
@@ -1055,13 +1059,53 @@ const AnnouncementForm = () => {
       }
     }
     setSubmitting(true);
-    try {
-      const payload = buildPayload();
-      if (announcementId) { await announcementsAPI.update(announcementId, payload); toast.success('Draft updated!'); }
-      else { const ann = await announcementsAPI.create(payload); setAnnouncementId(ann.id); toast.success('Draft saved!'); }
-      sessionStorage.removeItem('announcement_draft');
-    } catch (error) { toast.error(error.response?.data?.error || error.message || 'Failed to save draft'); }
-    finally { setSubmitting(false); }
+    const payload = buildPayload();
+    if (isOnline) {
+      try {
+        if (announcementId && !String(announcementId).startsWith('local_')) {
+          await announcementsAPI.update(announcementId, payload);
+          toast.success('Draft updated!');
+        } else {
+          const ann = await announcementsAPI.create(payload);
+          setAnnouncementId(ann.id);
+          if (announcementId && String(announcementId).startsWith('local_')) {
+            await OfflineDrafts.delete(announcementId);
+          }
+          toast.success('Draft saved!');
+        }
+        sessionStorage.removeItem('announcement_draft');
+      } catch (error) {
+        toast.error('Network save failed. Saving locally...');
+        await saveDraftLocally(payload);
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      await saveDraftLocally(payload);
+      toast.success('Draft saved offline (will sync when online)');
+      setSubmitting(false);
+    }
+  };
+
+  const saveDraftLocally = async (payload) => {
+    const draftId = announcementId || `local_${Date.now()}`;
+    await OfflineDrafts.save(draftId, {
+      title: payload.title,
+      content: payload.content,
+      category: payload.category,
+      course_id: payload.course_id,
+      sections: notices[0]?.sections || [],
+      platform_ids: payload.platform_ids,
+      scheduled_at: payload.scheduled_at || null,
+      status: 'draft',
+      files: uploadedFiles,
+      broadcastMode,
+      customText,
+      fileCaption,
+      closingText,
+      notices
+    });
+    if (!announcementId) setAnnouncementId(draftId);
   };
 
   const handleScheduleBroadcast = async () => {
@@ -1079,6 +1123,11 @@ const AnnouncementForm = () => {
 
   const handleConfirmBroadcast = () => {
     if (!validateForm()) return;
+    if (!isOnline) {
+      toast.error('Cannot broadcast while offline. Saving notice as a local draft...');
+      handleSaveDraft();
+      return;
+    }
     setShowConfirmModal(true);
   };
 
@@ -1145,29 +1194,54 @@ const AnnouncementForm = () => {
 
   useEffect(() => {
     const init = async () => {
+      setLoadingData(true);
+      let cData = [], pData = [];
       try {
-        setLoadingData(true);
-        const [cData, pData, sData, waData, tplData] = await Promise.all([
-          coursesAPI.list(), platformsAPI.list(), filesAPI.getStorageUsage(),
-          platformsAPI.getWhatsAppStatus().catch(() => ({ status: 'DISCONNECTED' })),
-          templatesAPI.list().catch(() => [])
-        ]);
-        setCourses(cData); setPlatforms(pData); setStorageUsage(sData || { usedBytes: 0, limitBytes: 104857600, percentage: 0 });
-        setWaStatus(waData.status); setTemplates(tplData);
-        if (isEditMode) return;
-        const draftStr = sessionStorage.getItem('announcement_draft');
-        if (!draftStr && pData.length > 0) {
-          const prefStr = localStorage.getItem('preferred_platforms');
-          if (prefStr) { try { const prefIds = JSON.parse(prefStr); setSelectedPlatforms(prefIds.filter(id => pData.some(p => p.id === id))); } catch (_) { setSelectedPlatforms(pData.map(p => p.id)); } }
-          else setSelectedPlatforms(pData.map(p => p.id));
+        if (isOnline) {
+          [cData, pData] = await Promise.all([
+            coursesAPI.list(),
+            platformsAPI.list()
+          ]);
+          OfflineCache.set('/courses', cData);
+          OfflineCache.set('/platforms', pData);
+        } else {
+          cData = await OfflineCache.get('/courses') || [];
+          pData = await OfflineCache.get('/platforms') || [];
         }
-      } catch (e) { console.error('Init failed:', e); }
-      finally { setLoadingData(false); }
+      } catch (e) {
+        cData = await OfflineCache.get('/courses') || [];
+        pData = await OfflineCache.get('/platforms') || [];
+      }
+      setCourses(cData);
+      setPlatforms(pData);
+
+      if (isOnline) {
+        filesAPI.getStorageUsage().then(setStorageUsage).catch(() => {});
+        platformsAPI.getWhatsAppStatus().then(r => setWaStatus(r.status)).catch(() => {});
+        templatesAPI.list().then(setTemplates).catch(() => {});
+      } else {
+        setWaStatus('DISCONNECTED');
+      }
+
+      if (isEditMode) {
+        setLoadingData(false);
+        return;
+      }
+      const draftStr = sessionStorage.getItem('announcement_draft');
+      if (!draftStr && pData.length > 0) {
+        const prefStr = localStorage.getItem('preferred_platforms');
+        if (prefStr) { try { const prefIds = JSON.parse(prefStr); setSelectedPlatforms(prefIds.filter(id => pData.some(p => p.id === id))); } catch (_) { setSelectedPlatforms(pData.map(p => p.id)); } }
+        else setSelectedPlatforms(pData.map(p => p.id));
+      }
+      setLoadingData(false);
     };
     init();
-    const pollInterval = setInterval(async () => { try { const res = await platformsAPI.getWhatsAppStatus(); setWaStatus(res.status); } catch (_) {} }, 7000);
-    return () => clearInterval(pollInterval);
-  }, []);
+
+    if (isOnline) {
+      const pollInterval = setInterval(async () => { try { const res = await platformsAPI.getWhatsAppStatus(); setWaStatus(res.status); } catch (_) {} }, 7000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [isOnline]);
 
   const handleWsMessage = useCallback((payload) => {
     if (payload.type === 'whatsapp_status') setWaStatus(payload.data.status);
@@ -1196,9 +1270,20 @@ const AnnouncementForm = () => {
     const loadAnn = async () => {
       try {
         setLoadingData(true);
-        const ann = await announcementsAPI.get(editId);
+        let ann;
+        if (String(editId).startsWith('local_')) {
+          ann = await OfflineDrafts.get(editId);
+        } else {
+          ann = await announcementsAPI.get(editId);
+        }
+        if (!ann) {
+          toast.error('Notice draft not found.');
+          setLoadingData(false);
+          navigate('/dashboard');
+          return;
+        }
         if (ann.status !== 'draft' && ann.status !== 'scheduled' && ann.status !== 'partial' && ann.status !== 'failed') { toast.error('Cannot edit this notice.'); setLoadingData(false); navigate('/dashboard'); return; }
-        setAnnouncementId(ann.id);
+        setAnnouncementId(ann.id || editId);
         if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
         if (ann.metadata && typeof ann.metadata === 'object') {
           const meta = ann.metadata;
@@ -1283,6 +1368,12 @@ const AnnouncementForm = () => {
 
   return (
     <div className="space-y-8">
+      {!isOnline && (
+        <div className="bg-accent-yellow/10 border border-accent-yellow/20 rounded-sm px-3 py-2 text-xs text-ink flex items-center gap-2 animate-in fade-in">
+          <WifiOff className="w-3.5 h-3.5 text-ink-mute" />
+          Offline — this notice will be saved locally and broadcast when you reconnect
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => navigate('/dashboard')} className="p-2 -ml-2 text-ink-mute hover:text-ink hover:bg-canvas-soft rounded-sm transition-colors cursor-pointer" title="Back to Dashboard"><ArrowLeft className="w-5 h-5" /></button>

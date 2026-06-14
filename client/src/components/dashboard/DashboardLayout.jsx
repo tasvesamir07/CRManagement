@@ -16,14 +16,74 @@ import {
   Sun,
   Moon,
   ClipboardList,
-  FileUp
+  FileUp,
+  WifiOff
 } from 'lucide-react';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { OfflineDrafts } from '../../services/offline';
+import { announcementsAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isOnline = useOnlineStatus();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // Auto-sync on reconnect
+  useEffect(() => {
+    if (isOnline) {
+      const syncDrafts = async () => {
+        try {
+          const unsynced = await OfflineDrafts.getAllUnsynced();
+          if (unsynced.length === 0) return;
+          
+          toast.loading(`Back online! Syncing ${unsynced.length} offline draft(s)...`, { id: 'sync-toast' });
+          
+          let successCount = 0;
+          for (const draft of unsynced) {
+            try {
+              const payload = {
+                title: draft.title,
+                content: draft.content,
+                category: draft.category || 'general',
+                course_id: draft.course_id || null,
+                sections: draft.sections || [],
+                platform_ids: draft.platform_ids || [],
+                scheduled_at: draft.scheduled_at || null,
+                status: draft.status || 'draft',
+                files: draft.files || []
+              };
+              
+              if (draft.id && !draft.id.startsWith('local_')) {
+                await announcementsAPI.update(draft.id, payload);
+              } else {
+                await announcementsAPI.create(payload);
+              }
+              
+              await OfflineDrafts.delete(draft.id);
+              successCount++;
+            } catch (err) {
+              console.error('Failed to sync draft:', draft.id, err);
+            }
+          }
+          
+          if (successCount > 0) {
+            toast.success(`${successCount} offline draft(s) synced successfully!`, { id: 'sync-toast' });
+            window.dispatchEvent(new CustomEvent('offline-drafts-synced'));
+          } else {
+            toast.dismiss('sync-toast');
+          }
+        } catch (err) {
+          console.error('Sync drafts failed:', err);
+          toast.dismiss('sync-toast');
+        }
+      };
+      
+      syncDrafts();
+    }
+  }, [isOnline]);
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('cr_theme') || 'light';
@@ -256,6 +316,12 @@ const DashboardLayout = () => {
           </nav>
 
           {/* Footer User Info */}
+          {!isOnline && (
+            <div className="px-4 py-2 bg-accent-yellow/10 border-t border-accent-yellow/20 flex items-center gap-2 text-xs text-ink font-medium">
+              <WifiOff className="w-3.5 h-3.5 text-ink-mute" />
+              Offline Mode
+            </div>
+          )}
           <div className="flex-shrink-0 flex flex-col p-4 border-t border-hairline bg-canvas-soft">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-9 h-9 rounded-full bg-hairline-strong flex items-center justify-center text-ink-secondary">
@@ -286,6 +352,12 @@ const DashboardLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen pb-16 md:pb-0">
+        {!isOnline && (
+          <div className="md:hidden bg-accent-yellow/90 text-ink text-xs text-center py-1.5 px-4 font-medium sticky top-0 z-50 backdrop-blur-sm flex items-center justify-center gap-2">
+            <WifiOff className="w-3.5 h-3.5" />
+            You're offline — drafts will be saved locally and synced when reconnected
+          </div>
+        )}
         <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
           <ErrorBoundary>
             <div key={location.pathname} className="route-enter-active">
