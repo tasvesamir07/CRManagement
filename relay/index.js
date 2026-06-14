@@ -140,15 +140,17 @@ app.post('/send-message', auth, async (req, res) => {
         let sentMsg;
 
         if (files && files.length > 0) {
-            for (const file of files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 const data = file.data ? Buffer.from(file.data, 'base64') : null;
                 if (!data) continue;
                 const mime = file.mimetype || '';
+                const caption = i === 0 ? message : undefined;
                 const msgContent = mime.startsWith('image/')
-                    ? { image: data, caption: message, mimetype: mime }
+                    ? { image: data, caption: caption, mimetype: mime }
                     : mime.startsWith('video/')
-                    ? { video: data, caption: message, mimetype: mime }
-                    : { document: data, mimetype: mime || 'application/octet-stream', fileName: file.name || 'file', caption: message };
+                    ? { video: data, caption: caption, mimetype: mime }
+                    : { document: data, mimetype: mime || 'application/octet-stream', fileName: file.name || 'file', caption: caption };
                 sentMsg = await sock.sendMessage(targetId, msgContent);
             }
         } else {

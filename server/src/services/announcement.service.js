@@ -102,7 +102,14 @@ async function sendAnnouncement(id, _hostUrl = '') {
     
     if (announcement.file_ids && announcement.file_ids.length > 0) {
         const filesRes = await db.query('SELECT * FROM files WHERE id = ANY($1) AND is_deleted = false', [announcement.file_ids]);
-        files = filesRes.rows;
+        // Preserve selection order from file_ids array
+        const fileMap = {};
+        for (const file of filesRes.rows) {
+            fileMap[file.id] = file;
+        }
+        files = announcement.file_ids
+            .map(fid => fileMap[fid])
+            .filter(Boolean);
     } else if (announcement.file_id) {
         const fileRes = await db.query('SELECT * FROM files WHERE id = $1 AND is_deleted = false', [announcement.file_id]);
         if (fileRes.rows.length > 0) {

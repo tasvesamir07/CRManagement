@@ -247,10 +247,25 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 console.log("Successfully uploaded attachments:", uploadedIds);
 
                 // Map results to [filename, fbid] tuples
-                attachmentTuples = uploadedIds.map(file => {
+                const unorderedTuples = uploadedIds.map(file => {
                     const key = Object.keys(file).find(k => k !== 'filename' && k !== 'filetype' && k !== 'thumbnail_src');
                     return [file.filename || 'file', String(file[key])];
                 });
+
+                // Reorder attachmentTuples to match the exact order of the original files array (handling potential duplicates)
+                attachmentTuples = [];
+                const remainingTuples = [...unorderedTuples];
+                for (const f of files) {
+                    const index = remainingTuples.findIndex(t => t[0] === f.originalName);
+                    if (index !== -1) {
+                        attachmentTuples.push(remainingTuples[index]);
+                        remainingTuples.splice(index, 1);
+                    }
+                }
+                // Append any remaining/fallback tuples that couldn't be matched by name
+                if (remainingTuples.length > 0) {
+                    attachmentTuples.push(...remainingTuples);
+                }
             }
         }
 
@@ -259,12 +274,10 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} in parallel...`);
-            const sendPromises = attachmentTuples.map(tuple => {
-                return sendMsgPromise({ attachment: tuple });
-            });
-            const results = await Promise.all(sendPromises);
-            lastResult = results[results.length - 1];
+            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} sequentially...`);
+            for (const tuple of attachmentTuples) {
+                lastResult = await sendMsgPromise({ attachment: tuple });
+            }
         }
 
         // 3. Save refreshed appState to persistent storage
