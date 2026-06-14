@@ -47,6 +47,38 @@ async function saveAppState(appState) {
         console.error("Failed to save appState to DB:", err.message);
     }
 }
+async function checkConnection() {
+    if (isMockMode) return false;
+    try {
+        console.log("Running proactive Messenger connection check...");
+        const bot = await getBot();
+        
+        const isMqttConnected = !!(bot.ctx && bot.ctx.mqttClient && bot.ctx.mqttClient.connected);
+        if (!isMqttConnected) {
+            throw new Error("Underlying MQTT client is disconnected");
+        }
+
+        const myId = bot.api.getCurrentUserID();
+        if (!myId) {
+            throw new Error("No user ID returned from Messenger API");
+        }
+
+        await new Promise((resolve, reject) => {
+            bot.api.getUserInfo([myId], (err, info) => {
+                if (err) reject(err);
+                else resolve(info);
+            });
+        });
+
+        console.log(`✅ Messenger connection check passed. Active User ID: ${myId}`);
+        return true;
+    } catch (err) {
+        console.warn(`❌ Messenger connection check failed: ${err.message}. Transitioning to Mock Mode.`);
+        resetBot();
+        isMockMode = true;
+        return false;
+    }
+}
 
 async function initMessenger() {
     try {
@@ -79,10 +111,28 @@ async function initMessenger() {
         if (appStateData) {
             isMockMode = false;
             console.log('✅ Messenger Bot service is ready for broadcasting.');
+            
+            setTimeout(async () => {
+                try {
+                    await checkConnection();
+                } catch (err) {
+                    console.error("Initial Messenger connection check failed:", err.message);
+                }
+            }, 5000);
         } else {
             console.log('⚠️ No Messenger appState found in DB/env/file. Messenger service will run in Mock Mode.');
             isMockMode = true;
         }
+
+        setInterval(async () => {
+            if (!isMockMode) {
+                try {
+                    await checkConnection();
+                } catch (err) {
+                    console.error("Scheduled Messenger connection check error:", err.message);
+                }
+            }
+        }, 6 * 60 * 60 * 1000);
     } catch (err) {
         console.error('⚠️ Failed to initialize Messenger. Running in Mock Mode.', err.message);
         isMockMode = true;
@@ -304,5 +354,6 @@ module.exports = {
     sendMessageToGroup,
     saveAppState,
     resetBot,
+    checkConnection,
     isMock: () => isMockMode
 };
