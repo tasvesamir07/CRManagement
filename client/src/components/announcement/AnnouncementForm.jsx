@@ -1221,9 +1221,10 @@ const AnnouncementForm = () => {
 
   const [currentCourseRoutines, setCurrentCourseRoutines] = useState([]);
   useEffect(() => {
-    if (!selectedCourseId) { setCurrentCourseRoutines([]); return; }
-    coursesAPI.get(parseInt(selectedCourseId)).then(fc => setCurrentCourseRoutines(fc.routines || [])).catch(() => {});
-  }, [selectedCourseId]);
+    const firstCourseId = notices[0]?.selectedCourseId;
+    if (!firstCourseId) { setCurrentCourseRoutines([]); return; }
+    coursesAPI.get(parseInt(firstCourseId)).then(fc => setCurrentCourseRoutines(fc.routines || [])).catch(() => {});
+  }, [notices[0]?.selectedCourseId]);
 
   // Auto-fill platforms from course defaults when course is selected
   // Course routines auto-fills are handled inline on course/date change.
@@ -1295,8 +1296,8 @@ const AnnouncementForm = () => {
                   <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Target Course (Optional)</label>
                   <div className="custom-select-wrapper">
                     <select
-                      value={selectedCourseId}
-                      onChange={(e) => setSelectedCourseId(e.target.value)}
+                      value={notices[0]?.selectedCourseId || ''}
+                      onChange={(e) => handleCourseChange(0, e.target.value)}
                       className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150"
                     >
                       <option value="">General Notice (No Course)</option>
