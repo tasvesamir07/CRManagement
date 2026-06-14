@@ -796,6 +796,7 @@ async function simulateQuery(text, params = []) {
                 file_ids: params[7] || [],
                 created_by: parseInt(params[8]),
                 status: params[9] || 'draft',
+                metadata: params[10] ? (typeof params[10] === 'string' ? JSON.parse(params[10]) : params[10]) : null,
                 scheduled_at: null,
                 sent_at: null,
                 created_at: new Date().toISOString(),
@@ -916,8 +917,8 @@ async function simulateQuery(text, params = []) {
     }
 
     if (normalizedText.includes('UPDATE announcements SET title')) {
-        // UPDATE announcements SET title=$1, content=$2, category=$3, course_id=$4, custom_room=$5, custom_time=$6, file_id=$7, file_ids=$8, updated_at=NOW() WHERE id=$9 RETURNING *
-        const id = parseInt(params[8]);
+        // UPDATE announcements SET title=$1, content=$2, category=$3, course_id=$4, custom_room=$5, custom_time=$6, file_id=$7, file_ids=$8, metadata=$9, updated_at=NOW() WHERE id=$10 RETURNING *
+        const id = parseInt(params[9]);
         let idx = -1;
         for (let i = db.announcements.length - 1; i >= 0; i--) {
             if (db.announcements[i].id === id) { idx = i; break; }
@@ -931,6 +932,7 @@ async function simulateQuery(text, params = []) {
             db.announcements[idx].custom_time = params[5] || null;
             db.announcements[idx].file_id = params[6] ? parseInt(params[6]) : null;
             db.announcements[idx].file_ids = params[7] || [];
+            db.announcements[idx].metadata = params[8] ? (typeof params[8] === 'string' ? JSON.parse(params[8]) : params[8]) : null;
             db.announcements[idx].updated_at = new Date().toISOString();
             writeJsonDb(db);
             return { rows: [db.announcements[idx]] };
@@ -1526,6 +1528,9 @@ async function initDatabase() {
                     -- Fix announcements file foreign key constraint (002_fix_file_fk.sql)
                     ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_file_id_fkey;
                     ALTER TABLE announcements ADD CONSTRAINT announcements_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE SET NULL;
+                    
+                    -- Add metadata JSONB column to announcements table
+                    ALTER TABLE announcements ADD COLUMN IF NOT EXISTS metadata JSONB;
                 `);
                 
                 client.release();

@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     status TEXT DEFAULT 'draft',
     scheduled_at TIMESTAMPTZ,
     sent_at TIMESTAMPTZ,
+    metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

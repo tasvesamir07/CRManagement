@@ -846,7 +846,14 @@ const AnnouncementForm = () => {
       custom_time: null,
       file_id: uploadedFiles[0] ? uploadedFiles[0].id : null,
       file_ids: uploadedFiles.map(f => f.id),
-      platform_ids: selectedPlatforms
+      platform_ids: selectedPlatforms,
+      metadata: {
+        notices,
+        broadcastMode,
+        customText,
+        fileCaption,
+        closingText
+      }
     };
   };
 
@@ -1181,30 +1188,59 @@ const AnnouncementForm = () => {
         if (ann.status !== 'draft' && ann.status !== 'scheduled' && ann.status !== 'partial' && ann.status !== 'failed') { toast.error('Cannot edit this notice.'); setLoadingData(false); navigate('/dashboard'); return; }
         setAnnouncementId(ann.id);
         if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
-        setBroadcastMode(ann.category === 'share_file' ? 'share_file' : (ann.category === 'custom' ? 'custom' : 'notice'));
-        if (ann.category === 'share_file') {
-          setFileCaption(ann.content === 'Shared File(s)' ? '' : (ann.content || ''));
-        } else if (ann.category === 'custom') {
-          setCustomText(ann.content || '');
+        if (ann.metadata && typeof ann.metadata === 'object') {
+          const meta = ann.metadata;
+          if (meta.broadcastMode) setBroadcastMode(meta.broadcastMode);
+          if (meta.customText !== undefined) setCustomText(meta.customText);
+          if (meta.fileCaption !== undefined) setFileCaption(meta.fileCaption);
+          if (meta.closingText !== undefined) setClosingText(meta.closingText);
+          if (meta.notices && Array.isArray(meta.notices)) {
+            setNotices(meta.notices);
+          }
         } else {
-          const initialNotice = {
-            id: Date.now(),
-            titlePreset: 'Custom',
-            title: ann.title || '',
-            category: ann.category || 'notice',
-            selectedCourseId: ann.course_id ? String(ann.course_id) : '',
-            selectedDate: '',
-            sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }],
-            topics: [],
-            notes: [],
-            makeupStatus: 'later',
-            customMakeupText: '',
-            currentTopic: '',
-            currentNote: '',
-            noteType: 'note',
-            isExpanded: true
-          };
-          setNotices([initialNotice]);
+          setBroadcastMode(ann.category === 'share_file' ? 'share_file' : (ann.category === 'custom' ? 'custom' : 'notice'));
+          if (ann.category === 'share_file') {
+            setFileCaption(ann.content === 'Shared File(s)' ? '' : (ann.content || ''));
+          } else if (ann.category === 'custom') {
+            setCustomText(ann.content || '');
+            const initialNotice = {
+              id: Date.now(),
+              titlePreset: 'Custom',
+              title: ann.title || '',
+              category: 'custom',
+              selectedCourseId: ann.course_id ? String(ann.course_id) : '',
+              selectedDate: '',
+              sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }],
+              topics: [],
+              notes: [],
+              makeupStatus: 'later',
+              customMakeupText: '',
+              currentTopic: '',
+              currentNote: '',
+              noteType: 'note',
+              isExpanded: true
+            };
+            setNotices([initialNotice]);
+          } else {
+            const initialNotice = {
+              id: Date.now(),
+              titlePreset: 'Custom',
+              title: ann.title || '',
+              category: ann.category || 'notice',
+              selectedCourseId: ann.course_id ? String(ann.course_id) : '',
+              selectedDate: '',
+              sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }],
+              topics: [],
+              notes: [],
+              makeupStatus: 'later',
+              customMakeupText: '',
+              currentTopic: '',
+              currentNote: '',
+              noteType: 'note',
+              isExpanded: true
+            };
+            setNotices([initialNotice]);
+          }
         }
         if (ann.file_ids?.length > 0 || ann.file_id) setUploadedFiles(ann.files || []);
         if (ann.delivery?.length > 0) {
@@ -1286,8 +1322,8 @@ const AnnouncementForm = () => {
                   <input
                     type="text"
                     required
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    value={notices[0]?.title || ''}
+                    onChange={(e) => handleTitleChange(0, e.target.value)}
                     placeholder="e.g. Makeup Class Announcement"
                     className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150"
                   />
@@ -1338,7 +1374,7 @@ const AnnouncementForm = () => {
                       key={preset.title}
                       type="button"
                       onClick={() => {
-                        setTitle(preset.title);
+                        handleTitleChange(0, preset.title);
                         setCustomText(preset.body);
                         toast.success(`Preset "${preset.title}" loaded`);
                       }}
@@ -2178,7 +2214,7 @@ const AnnouncementForm = () => {
                         if (firstLine.startsWith('📢')) {
                           const cleanTitle = firstLine.replace(/📢\s*\**\s*/, '').replace(/\**$/, '').trim();
                           if (cleanTitle) {
-                            setTitle(cleanTitle);
+                            handleTitleChange(0, cleanTitle);
                           }
                         }
                         setShowAIModal(false);

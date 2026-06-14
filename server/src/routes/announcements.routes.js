@@ -33,7 +33,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids } = req.body;
+        const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata } = req.body;
         
         if (!title || !content || !category) {
             return res.status(400).json({ error: 'title, content, and category are required' });
@@ -49,7 +49,8 @@ router.post('/', authMiddleware, async (req, res) => {
             file_id,
             file_ids,
             created_by: req.user.id,
-            platform_ids
+            platform_ids,
+            metadata
         });
         
         return res.status(201).json(announcement);
@@ -72,12 +73,12 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
-        const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids } = req.body;
+        const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata } = req.body;
         if (!title || !content || !category) {
             return res.status(400).json({ error: 'title, content, and category are required' });
         }
         const announcement = await announcementService.updateAnnouncement(req.params.id, {
-            title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids
+            title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata
         });
         return res.json(announcement);
     } catch (err) {

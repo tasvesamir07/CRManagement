@@ -12,11 +12,21 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
     );
   }
 
-  const availablePlatforms = platforms.filter(p => {
+  const displayPlatforms = platforms.filter(p => !alreadySentPlatforms.includes(p.id));
+
+  if (displayPlatforms.length === 0) {
+    return (
+      <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-400 rounded-sm p-4 text-center text-sm font-semibold flex items-center justify-center gap-2">
+        <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+        All target channels have successfully received this broadcast.
+      </div>
+    );
+  }
+
+  const availablePlatforms = displayPlatforms.filter(p => {
     const engineUnavailable = p.service_available === false || p.is_active === false;
     const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
-    const alreadySent = alreadySentPlatforms.includes(p.id);
-    return !(engineUnavailable || needsPairing || alreadySent);
+    return !(engineUnavailable || needsPairing);
   });
 
   const allSelected = availablePlatforms.length > 0 && availablePlatforms.every(p => selectedPlatforms.includes(p.id));
@@ -40,8 +50,8 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
           {allSelected ? 'Deselect All' : 'Select All'}
         </button>
       </div>
-      {platforms.map(p => {
-        const alreadySent = alreadySentPlatforms.includes(p.id);
+      {displayPlatforms.map(p => {
+        const alreadySent = false; // Already filtered out, kept as false for backward compatibility in styling if needed
         const isSelected = selectedPlatforms.includes(p.id);
         const engineUnavailable = p.service_available === false || p.is_active === false;
         const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';

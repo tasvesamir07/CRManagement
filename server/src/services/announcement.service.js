@@ -27,12 +27,12 @@ function broadcastAnnouncementStatus(announcementId, status, sentAt, delivery = 
     }
 }
 
-async function createAnnouncement({ title, content, category, course_id, custom_room, custom_time, file_id, file_ids, created_by, platform_ids }) {
+async function createAnnouncement({ title, content, category, course_id, custom_room, custom_time, file_id, file_ids, created_by, platform_ids, metadata }) {
     // 1. Insert announcement
     const result = await db.query(
-        'INSERT INTO announcements (title, content, category, course_id, custom_room, custom_time, file_id, file_ids, created_by, status) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], created_by, 'draft']
+        'INSERT INTO announcements (title, content, category, course_id, custom_room, custom_time, file_id, file_ids, created_by, status, metadata) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], created_by, 'draft', metadata ? JSON.stringify(metadata) : null]
     );
     const announcement = result.rows[0];
 
@@ -479,7 +479,7 @@ async function getAnnouncementById(id) {
     return ann;
 }
 
-async function updateAnnouncement(id, { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids }) {
+async function updateAnnouncement(id, { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata }) {
     // Only allow updating draft, scheduled, partial, or failed announcements
     const check = await db.query('SELECT status FROM announcements WHERE id = $1', [id]);
     if (check.rows.length === 0) {
@@ -491,8 +491,8 @@ async function updateAnnouncement(id, { title, content, category, course_id, cus
     }
 
     const result = await db.query(
-        'UPDATE announcements SET title=$1, content=$2, category=$3, course_id=$4, custom_room=$5, custom_time=$6, file_id=$7, file_ids=$8, updated_at=NOW() WHERE id=$9 RETURNING *',
-        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], id]
+        'UPDATE announcements SET title=$1, content=$2, category=$3, course_id=$4, custom_room=$5, custom_time=$6, file_id=$7, file_ids=$8, metadata=$9, updated_at=NOW() WHERE id=$10 RETURNING *',
+        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], metadata ? JSON.stringify(metadata) : null, id]
     );
     const announcement = result.rows[0];
 
