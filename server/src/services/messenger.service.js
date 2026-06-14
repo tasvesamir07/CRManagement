@@ -254,17 +254,15 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             }
         }
 
-        // 2. Send text and attachments together in a single consolidated message payload
-        const payload = {};
+        // 2. Send text and attachments separately: text first, then files
         if (message && message.trim()) {
-            payload.body = message;
+            lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            payload.attachment = attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples;
-        }
-
-        if (payload.body || payload.attachment) {
-            lastResult = await sendMsgPromise(payload);
+            const attachmentPayload = {
+                attachment: attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples
+            };
+            lastResult = await sendMsgPromise(attachmentPayload);
         }
 
         // 3. Save refreshed appState to persistent storage
