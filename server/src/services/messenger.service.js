@@ -126,7 +126,7 @@ async function getBot() {
 
             const instance = await createMessengerBot(
                 { appState: appStateData },
-                { listenEvents: false, autoListen: false, autoReconnect: false, online: false }
+                { listenEvents: false, autoListen: true, autoReconnect: true, online: false }
             );
             botInstance = instance;
             botReady = true;
