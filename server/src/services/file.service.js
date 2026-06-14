@@ -81,6 +81,14 @@ async function createFolder(name, courseId, userId) {
 async function deleteFolder(folderId, _deleteFiles) {
     const id = parseInt(folderId);
     
+    // Fetch folder name to clean up local disk folder if in local mode
+    let folderName = '';
+    const folderRes = await db.query('SELECT name FROM folders WHERE id = $1', [id]);
+    if (folderRes.rows.length > 0) {
+        folderName = folderRes.rows[0].name;
+    }
+    const cleanFolderName = folderName ? folderName.replace(/[\/\\?%*:|"<>]/g, '_') : '';
+
     // Fetch and delete all files in the folder
     const filesResult = await db.query(
         'SELECT * FROM files WHERE folder_id = $1',
@@ -95,6 +103,19 @@ async function deleteFolder(folderId, _deleteFiles) {
         'DELETE FROM folders WHERE id = $1',
         [id]
     );
+    
+    // Clean up empty local directory if it exists on disk
+    if (cleanFolderName && !supabase) {
+        const folderDirPath = path.join(uploadsDir, cleanFolderName);
+        if (fs.existsSync(folderDirPath)) {
+            try {
+                fs.rmSync(folderDirPath, { recursive: true, force: true });
+            } catch (err) {
+                console.error(`Failed to delete local folder directory: ${err.message}`);
+            }
+        }
+    }
+
     return result.rowCount > 0;
 }
 
