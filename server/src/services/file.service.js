@@ -71,17 +71,48 @@ async function listFolders(userId) {
 }
 
 async function createFolder(name, courseId, userId) {
+    // Trim and normalize name
+    const normalizedName = (name || '').trim().replace(/\s+/g, ' ');
     const result = await db.query(
         'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3) RETURNING *',
-        [name, courseId ? parseInt(courseId) : null, userId]
+        [normalizedName, courseId ? parseInt(courseId) : null, userId]
     );
-    return result.rows[0];
+    const folder = result.rows[0];
+
+    const cleanFolderName = normalizedName ? normalizedName.replace(/[\/\\?%*:|"<>]/g, '_') : '';
+    if (cleanFolderName) {
+        if (supabase) {
+            try {
+                // Upload an empty folder placeholder to Supabase bucket
+                const placeholderPath = `${cleanFolderName}/.emptyFolderPlaceholder`;
+                await supabase.storage
+                    .from(bucketName)
+                    .upload(placeholderPath, Buffer.from(''), {
+                        contentType: 'application/octet-stream',
+                        upsert: true
+                    });
+            } catch (err) {
+                console.error('Failed to create folder placeholder in Supabase:', err.message);
+            }
+        } else {
+            try {
+                const folderDirPath = path.join(uploadsDir, cleanFolderName);
+                if (!fs.existsSync(folderDirPath)) {
+                    fs.mkdirSync(folderDirPath, { recursive: true });
+                }
+            } catch (err) {
+                console.error('Failed to create folder directory on disk:', err.message);
+            }
+        }
+    }
+
+    return folder;
 }
 
 async function deleteFolder(folderId, _deleteFiles) {
     const id = parseInt(folderId);
     
-    // Fetch folder name to clean up local disk folder if in local mode
+    // Fetch folder name to clean up bucket/disk folder
     let folderName = '';
     const folderRes = await db.query('SELECT name FROM folders WHERE id = $1', [id]);
     if (folderRes.rows.length > 0) {
@@ -89,7 +120,7 @@ async function deleteFolder(folderId, _deleteFiles) {
     }
     const cleanFolderName = folderName ? folderName.replace(/[\/\\?%*:|"<>]/g, '_') : '';
 
-    // Fetch and delete all files in the folder
+    // Fetch and delete all files in the folder (from files table)
     const filesResult = await db.query(
         'SELECT * FROM files WHERE folder_id = $1',
         [id]
@@ -104,6 +135,30 @@ async function deleteFolder(folderId, _deleteFiles) {
         [id]
     );
     
+    // Clean up Supabase folder contents and placeholder
+    if (supabase && cleanFolderName) {
+        try {
+            // List all files in the folder from Supabase storage
+            const { data: bucketFiles, error: listError } = await supabase.storage
+                .from(bucketName)
+                .list(cleanFolderName);
+            
+            if (!listError && bucketFiles && bucketFiles.length > 0) {
+                const pathsToDelete = bucketFiles.map(f => `${cleanFolderName}/${f.name}`);
+                await supabase.storage
+                    .from(bucketName)
+                    .remove(pathsToDelete);
+            }
+            
+            // Also explicitly delete the placeholder and directory name itself
+            await supabase.storage
+                .from(bucketName)
+                .remove([`${cleanFolderName}/.emptyFolderPlaceholder`]);
+        } catch (err) {
+            console.error('Failed to clean up Supabase folder contents:', err.message);
+        }
+    }
+
     // Clean up empty local directory if it exists on disk
     if (cleanFolderName && !supabase) {
         const folderDirPath = path.join(uploadsDir, cleanFolderName);

@@ -1,9 +1,15 @@
 const db = require('../config/database');
 
 async function createCourse({ course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids }) {
+    // Trim and sanitize input values to remove tab characters and multiple whitespaces
+    const sanitizedId = (course_id || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    const sanitizedName = (course_name || '').trim().replace(/\s+/g, ' ');
+    const sanitizedTeacherName = (teacher_name || '').trim().replace(/\s+/g, ' ');
+    const sanitizedTeacherInitials = (teacher_initials || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
     const result = await db.query(
         'INSERT INTO courses (course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids || []]
+        [sanitizedId, sanitizedName, sanitizedTeacherName, sanitizedTeacherInitials, created_by, default_platform_ids || []]
     );
     const newCourse = result.rows[0];
     
@@ -18,10 +24,8 @@ async function createCourse({ course_id, course_name, teacher_name, teacher_init
     // Automatically create a folder for the course when it is created
     if (newCourse) {
         const folderName = `${newCourse.course_id} - ${newCourse.course_name}`;
-        await db.query(
-            'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3)',
-            [folderName, newCourse.id, created_by || null]
-        );
+        const fileService = require('./file.service');
+        await fileService.createFolder(folderName, newCourse.id, created_by || null);
     }
     
     return newCourse;
@@ -85,9 +89,14 @@ async function setDefaultPlatforms(courseId, platformIds, userId, userRole) {
 }
 
 async function updateCourse(id, { course_id, course_name, teacher_name, teacher_initials, default_platform_ids }) {
+    const sanitizedId = (course_id || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    const sanitizedName = (course_name || '').trim().replace(/\s+/g, ' ');
+    const sanitizedTeacherName = (teacher_name || '').trim().replace(/\s+/g, ' ');
+    const sanitizedTeacherInitials = (teacher_initials || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
     const result = await db.query(
         'UPDATE courses SET course_id=$1, course_name=$2, teacher_name=$3, teacher_initials=$4, default_platform_ids=$5 WHERE id=$6 RETURNING *',
-        [course_id, course_name, teacher_name, teacher_initials, default_platform_ids || [], id]
+        [sanitizedId, sanitizedName, sanitizedTeacherName, sanitizedTeacherInitials, default_platform_ids || [], id]
     );
     return result.rows[0];
 }
