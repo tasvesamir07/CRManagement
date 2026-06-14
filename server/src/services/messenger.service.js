@@ -107,19 +107,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
     try {
         const bot = await getBot();
 
-        const msgPayload = { body: message };
-        if (files.length > 0) {
-            const streams = [];
-            for (const f of files) {
-                if (fs.existsSync(f.path)) {
-                    streams.push(fs.createReadStream(f.path));
-                }
-            }
-            if (streams.length > 0) {
-                msgPayload.attachment = streams.length === 1 ? streams[0] : streams;
-            }
-        }
-
         // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
             return new Promise((resolve, reject) => {
@@ -134,8 +121,31 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             });
         };
 
-        const result = await sendMsgPromise(msgPayload);
-        return { success: true, messageId: result?.messageID || 'fca-msg-id' };
+        let lastResult = null;
+
+        // 1. Send the text message body if present
+        if (message && message.trim()) {
+            lastResult = await sendMsgPromise({ body: message });
+        }
+
+        // 2. Send the files/attachments separately (required due to Facebook Messenger API limitations)
+        if (files.length > 0) {
+            const streams = [];
+            for (const f of files) {
+                if (fs.existsSync(f.path)) {
+                    streams.push(fs.createReadStream(f.path));
+                }
+            }
+            if (streams.length > 0) {
+                const attachPayload = {
+                    body: "",
+                    attachment: streams.length === 1 ? streams[0] : streams
+                };
+                lastResult = await sendMsgPromise(attachPayload);
+            }
+        }
+
+        return { success: true, messageId: lastResult?.messageID || 'fca-msg-id' };
     } catch (err) {
         console.error(`Error sending Messenger message to ${chatId}:`, err.message);
         resetBot();
