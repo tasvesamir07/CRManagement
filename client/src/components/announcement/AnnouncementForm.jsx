@@ -1719,7 +1719,7 @@ const AnnouncementForm = () => {
               {/* Global Closing Remarks */}
               <div className="bg-canvas border border-hairline rounded-md p-4 space-y-2">
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider">Global Closing / Remarks Text (Optional)</label>
-                <input type="text" value={closingText} onChange={(e) => setClosingText(e.target.value)} placeholder="e.g. Please be prepared and attend on time. Good luck! 🍀📖" className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink font-sans" />
+                <textarea value={closingText} onChange={(e) => setClosingText(e.target.value)} placeholder="e.g. Please be prepared and attend on time. Good luck! 🍀📖" rows={3} className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink font-sans resize-y min-h-[60px]" />
               </div>
             </div>
           )}
