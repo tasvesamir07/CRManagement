@@ -231,18 +231,33 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 
         // 2. Send the files/attachments separately (required due to Facebook Messenger API limitations)
         if (files.length > 0) {
-            const streams = [];
+            const uploadInputs = [];
             for (const f of files) {
                 if (fs.existsSync(f.path)) {
-                    streams.push(fs.createReadStream(f.path));
+                    uploadInputs.push({
+                        path: f.path,
+                        filename: f.originalName
+                    });
                 }
             }
-            if (streams.length > 0) {
-                const attachPayload = {
-                    body: "",
-                    attachment: streams.length === 1 ? streams[0] : streams
-                };
-                lastResult = await sendMsgPromise(attachPayload);
+            if (uploadInputs.length > 0) {
+                console.log(`Uploading ${uploadInputs.length} attachment(s) to Facebook...`);
+                const uploadedIds = await bot.api.uploadAttachment(uploadInputs);
+                console.log("Successfully uploaded attachments:", uploadedIds);
+
+                // Map results to [filename, fbid] tuples
+                const attachmentTuples = uploadedIds.map(file => {
+                    const key = Object.keys(file).find(k => k !== 'filename' && k !== 'filetype' && k !== 'thumbnail_src');
+                    return [file.filename || 'file', String(file[key])];
+                });
+
+                if (attachmentTuples.length > 0) {
+                    const attachPayload = {
+                        body: "",
+                        attachment: attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples
+                    };
+                    lastResult = await sendMsgPromise(attachPayload);
+                }
             }
         }
 
