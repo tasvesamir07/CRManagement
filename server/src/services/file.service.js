@@ -78,23 +78,19 @@ async function createFolder(name, courseId, userId) {
     return result.rows[0];
 }
 
-async function deleteFolder(folderId, deleteFiles) {
+async function deleteFolder(folderId, _deleteFiles) {
     const id = parseInt(folderId);
-    const shouldDeleteFiles = String(deleteFiles) === 'true';
     
-    if (shouldDeleteFiles) {
-        // Fetch and delete all files in the folder
-        const filesResult = await db.query(
-            'SELECT * FROM files WHERE folder_id = $1 AND is_deleted = false',
-            [id]
-        );
-        for (const file of filesResult.rows) {
-            await deleteFile(file.id);
-        }
+    // Fetch and delete all files in the folder
+    const filesResult = await db.query(
+        'SELECT * FROM files WHERE folder_id = $1',
+        [id]
+    );
+    for (const file of filesResult.rows) {
+        await deleteFile(file.id);
     }
     
     // Now delete the folder record
-    // ON DELETE SET NULL constraint will automatically set any remaining files' folder_id to NULL
     const result = await db.query(
         'DELETE FROM folders WHERE id = $1',
         [id]
@@ -440,7 +436,7 @@ async function getFileUrl(fileId, hostUrl = '') {
 }
 
 async function deleteFile(fileId) {
-    const result = await db.query('SELECT * FROM files WHERE id = $1 AND is_deleted = false', [fileId]);
+    const result = await db.query('SELECT * FROM files WHERE id = $1', [fileId]);
     if (result.rows.length === 0) {
         return false;
     }
@@ -470,7 +466,7 @@ async function deleteFile(fileId) {
         }
     }
     
-    await db.query('UPDATE files SET is_deleted = true WHERE id = $1', [fileId]);
+    await db.query('DELETE FROM files WHERE id = $1', [fileId]);
     return true;
 }
 

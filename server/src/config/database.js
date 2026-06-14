@@ -676,7 +676,6 @@ async function simulateQuery(text, params = []) {
     }
 
     if (normalizedText.includes('INSERT INTO files')) {
-        // INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
         const newFile = {
             id: db.files.reduce((max, f) => Math.max(max, f.id || 0), 0) + 1,
             original_name: params[0],
@@ -685,6 +684,7 @@ async function simulateQuery(text, params = []) {
             file_size: parseInt(params[3]),
             uploaded_by: params[4],
             expires_at: params[5],
+            folder_id: params[6] ? parseInt(params[6]) : null,
             uploaded_at: new Date().toISOString(),
             is_deleted: false
         };
@@ -704,6 +704,12 @@ async function simulateQuery(text, params = []) {
         return { rows: file ? [file] : [] };
     }
 
+    if (normalizedText.includes('SELECT * FROM files WHERE folder_id =')) {
+        const folderId = parseInt(params[0]);
+        const matched = db.files.filter(f => f.folder_id === folderId);
+        return { rows: matched };
+    }
+
     if (normalizedText.includes('UPDATE files SET is_deleted = true') || normalizedText.includes('UPDATE files SET is_deleted = TRUE')) {
         const id = parseInt(params[0]);
         const idx = db.files.findIndex(f => f.id === id);
@@ -713,6 +719,13 @@ async function simulateQuery(text, params = []) {
             return { rows: [db.files[idx]] };
         }
         return { rows: [] };
+    }
+
+    if (normalizedText.includes('DELETE FROM files WHERE id =')) {
+        const id = parseInt(params[0]);
+        db.files = db.files.filter(f => f.id !== id);
+        writeJsonDb(db);
+        return { rowCount: 1 };
     }
 
     if (normalizedText.includes('UPDATE files SET expires_at =')) {
@@ -1471,7 +1484,7 @@ async function simulateQuery(text, params = []) {
     if (normalizedText.includes('DELETE FROM folders WHERE id =')) {
         const id = parseInt(params[0]);
         db.folders = db.folders.filter(f => f.id !== id);
-        db.files = db.files.map(f => f.folder_id === id ? { ...f, folder_id: null } : f);
+        db.files = db.files.filter(f => f.folder_id !== id);
         writeJsonDb(db);
         return { rowCount: 1 };
     }

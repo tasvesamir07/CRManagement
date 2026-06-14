@@ -53,6 +53,48 @@ describe('File Service', () => {
       const found = folders.find(f => f.id === created.id);
       expect(found).toBeUndefined();
     });
+
+    it('should physically delete a file record when deleteFile is called', async () => {
+      const fileResult = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        ['to_delete.txt', 'to_delete.txt', 'text/plain', 100, mockUserId, new Date().toISOString()]
+      );
+      const file = fileResult.rows[0];
+      expect(file).toBeDefined();
+
+      const deleteSuccess = await fileService.deleteFile(file.id);
+      expect(deleteSuccess).toBe(true);
+
+      // Verify it is physically deleted (not just is_deleted=true)
+      const selectResult = await db.query('SELECT * FROM files WHERE id = $1', [file.id]);
+      expect(selectResult.rows.length).toBe(0);
+    });
+
+    it('should delete all files in a folder when deleteFolder is called', async () => {
+      const folder = await fileService.createFolder('Parent Folder', null, mockUserId);
+      
+      const file1Result = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        ['nested1.txt', 'nested1.txt', 'text/plain', 100, mockUserId, new Date().toISOString(), folder.id]
+      );
+      const file2Result = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        ['nested2.txt', 'nested2.txt', 'text/plain', 100, mockUserId, new Date().toISOString(), folder.id]
+      );
+
+      const file1 = file1Result.rows[0];
+      const file2 = file2Result.rows[0];
+
+      // Delete the folder (should delete all files inside as well)
+      const deleteSuccess = await fileService.deleteFolder(folder.id);
+      expect(deleteSuccess).toBe(true);
+
+      // Verify files are deleted from the database
+      const select1 = await db.query('SELECT * FROM files WHERE id = $1', [file1.id]);
+      const select2 = await db.query('SELECT * FROM files WHERE id = $1', [file2.id]);
+      expect(select1.rows.length).toBe(0);
+      expect(select2.rows.length).toBe(0);
+    });
   });
 
   describe('File Expiry and Update Operations', () => {
