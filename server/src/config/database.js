@@ -112,8 +112,13 @@ function initJsonDb() {
 // Read JSON DB
 function readJsonDb() {
     initJsonDb();
-    const data = fs.readFileSync(jsonDbPath, 'utf8');
-    return JSON.parse(data);
+    acquireLock();
+    try {
+        const data = fs.readFileSync(jsonDbPath, 'utf8');
+        return JSON.parse(data);
+    } finally {
+        releaseLock();
+    }
 }
 
 // Write JSON DB with lock

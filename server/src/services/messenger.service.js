@@ -143,7 +143,12 @@ async function getBot() {
             console.log("Waiting for Messenger MQTT connection to establish...");
             let attempts = 0;
             while (attempts < 20) { // 20 * 500ms = 10s
-                if (instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected) {
+                const hasCtx = !!instance.ctx;
+                const hasMqtt = !!(instance.ctx && instance.ctx.mqttClient);
+                const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
+                console.log(`[MQTT Check] attempt ${attempts}: hasCtx=${hasCtx}, hasMqtt=${hasMqtt}, isConnected=${isConnected}`);
+
+                if (isConnected) {
                     console.log("✅ Messenger MQTT client is fully connected and initialized.");
                     break;
                 }
@@ -223,13 +228,9 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         };
 
         let lastResult = null;
+        let attachmentTuples = [];
 
-        // 1. Send the text message body if present
-        if (message && message.trim()) {
-            lastResult = await sendMsgPromise({ body: message });
-        }
-
-        // 2. Send the files/attachments separately (required due to Facebook Messenger API limitations)
+        // 1. Upload files first to get the FBIDs with correct extensions
         if (files.length > 0) {
             const uploadInputs = [];
             for (const f of files) {
@@ -246,19 +247,24 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 console.log("Successfully uploaded attachments:", uploadedIds);
 
                 // Map results to [filename, fbid] tuples
-                const attachmentTuples = uploadedIds.map(file => {
+                attachmentTuples = uploadedIds.map(file => {
                     const key = Object.keys(file).find(k => k !== 'filename' && k !== 'filetype' && k !== 'thumbnail_src');
                     return [file.filename || 'file', String(file[key])];
                 });
-
-                if (attachmentTuples.length > 0) {
-                    const attachPayload = {
-                        body: "",
-                        attachment: attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples
-                    };
-                    lastResult = await sendMsgPromise(attachPayload);
-                }
             }
+        }
+
+        // 2. Send text and attachments together in a single consolidated message payload
+        const payload = {};
+        if (message && message.trim()) {
+            payload.body = message;
+        }
+        if (attachmentTuples.length > 0) {
+            payload.attachment = attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples;
+        }
+
+        if (payload.body || payload.attachment) {
+            lastResult = await sendMsgPromise(payload);
         }
 
         // 3. Save refreshed appState to persistent storage
