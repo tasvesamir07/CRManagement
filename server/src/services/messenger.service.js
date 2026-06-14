@@ -254,15 +254,17 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             }
         }
 
-        // 2. Send text and attachments separately: text first, then files
+        // 2. Send text and attachments separately: text first, then files in parallel
         if (message && message.trim()) {
             lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            const attachmentPayload = {
-                attachment: attachmentTuples.length === 1 ? attachmentTuples[0] : attachmentTuples
-            };
-            lastResult = await sendMsgPromise(attachmentPayload);
+            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} in parallel...`);
+            const sendPromises = attachmentTuples.map(tuple => {
+                return sendMsgPromise({ attachment: tuple });
+            });
+            const results = await Promise.all(sendPromises);
+            lastResult = results[results.length - 1];
         }
 
         // 3. Save refreshed appState to persistent storage
