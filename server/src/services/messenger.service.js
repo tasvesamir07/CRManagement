@@ -62,9 +62,7 @@ async function checkConnection() {
         const bot = await getBot();
         
         const isMqttConnected = !!(bot.ctx && bot.ctx.mqttClient && bot.ctx.mqttClient.connected);
-        if (!isMqttConnected) {
-            throw new Error("Underlying MQTT client is disconnected");
-        }
+        console.log(`Messenger connection check info - MQTT connected: ${isMqttConnected}`);
 
         const myId = bot.api.getCurrentUserID();
         if (!myId) {
@@ -197,25 +195,20 @@ async function getBot() {
             botInstance = instance;
             botReady = true;
 
-            // Wait for MQTT client to connect (max 10 seconds)
-            console.log("Waiting for Messenger MQTT connection to establish...");
-            let attempts = 0;
-            while (attempts < 20) { // 20 * 500ms = 10s
-                const hasCtx = !!instance.ctx;
-                const hasMqtt = !!(instance.ctx && instance.ctx.mqttClient);
-                const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
-                console.log(`[MQTT Check] attempt ${attempts}: hasCtx=${hasCtx}, hasMqtt=${hasMqtt}, isConnected=${isConnected}`);
-
-                if (isConnected) {
-                    console.log("✅ Messenger MQTT client is fully connected and initialized.");
-                    break;
+            // Check MQTT client connection in background (non-blocking)
+            (async () => {
+                let attempts = 0;
+                while (attempts < 20) { // 20 * 500ms = 10s
+                    const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
+                    if (isConnected) {
+                        console.log("✅ Messenger MQTT client is fully connected and initialized.");
+                        return;
+                    }
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
-                attempts++;
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            if (!instance.ctx || !instance.ctx.mqttClient || !instance.ctx.mqttClient.connected) {
-                console.warn("⚠️ Messenger MQTT client failed to connect within timeout. Messages may fail.");
-            }
+                console.warn("⚠️ Messenger MQTT client failed to connect in background within timeout. Messages may still work via HTTP.");
+            })();
 
             // Save fresh login appState (may contain refreshed/new cookies)
             try {

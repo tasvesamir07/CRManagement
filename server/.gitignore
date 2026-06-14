@@ -6,3 +6,5 @@ uploads/
 *.log
 
 .vercel
+Fca_Database/
+.wwebjs_cache/
