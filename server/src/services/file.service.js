@@ -38,35 +38,9 @@ function getExpiryDate() {
     return date.toISOString();
 }
 
-// Ensure course folders are synced/seeded for the user's active courses
-async function ensureCourseFolders(userId) {
-    if (!userId) return;
-    try {
-        const { getCourses } = require('./course.service');
-        const courses = await getCourses(userId);
-        
-        // Get existing folders with courses
-        const existingFoldersResult = await db.query('SELECT * FROM folders WHERE course_id IS NOT NULL');
-        const existingCourseIds = existingFoldersResult.rows.map(f => parseInt(f.course_id));
-        
-        for (const course of courses) {
-            if (!existingCourseIds.includes(parseInt(course.id))) {
-                const folderName = `${course.course_id} - ${course.course_name}`;
-                await db.query(
-                    'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3)',
-                    [folderName, course.id, userId]
-                );
-            }
-        }
-    } catch (err) {
-        console.error('Failed to seed course folders:', err.message);
-    }
-}
-
 async function listFolders(userId) {
     let isAdmin = false;
     if (userId) {
-        await ensureCourseFolders(userId);
         const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
         const userRole = userResult.rows[0]?.role;
         if (userRole === 'admin') {

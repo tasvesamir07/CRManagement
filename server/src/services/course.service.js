@@ -15,6 +15,15 @@ async function createCourse({ course_id, course_name, teacher_name, teacher_init
         );
     }
     
+    // Automatically create a folder for the course when it is created
+    if (newCourse) {
+        const folderName = `${newCourse.course_id} - ${newCourse.course_name}`;
+        await db.query(
+            'INSERT INTO folders (name, course_id, created_by) VALUES ($1, $2, $3)',
+            [folderName, newCourse.id, created_by || null]
+        );
+    }
+    
     return newCourse;
 }
 

@@ -1463,6 +1463,7 @@ async function simulateQuery(text, params = []) {
         return { rowCount: 1 };
     }
 
+
     if (normalizedText.includes('SELECT * FROM folders WHERE course_id =')) {
         const courseId = parseInt(params[0]);
         const matched = db.folders.filter(f => f.course_id === courseId);

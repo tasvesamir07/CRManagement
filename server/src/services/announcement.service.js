@@ -120,7 +120,13 @@ async function sendAnnouncement(id, _hostUrl = '') {
                         throw new Error(`HTTP ${response.status} ${response.statusText}`);
                     }
                     clearTimeout(timeout);
-                    const tempPath = path.join(fileService.uploadsDir, `temp-${f.storage_path}`);
+                    const dirName = path.dirname(f.storage_path);
+                    const baseName = path.basename(f.storage_path);
+                    const destDir = path.join(fileService.uploadsDir, dirName);
+                    if (!fs.existsSync(destDir)) {
+                        fs.mkdirSync(destDir, { recursive: true });
+                    }
+                    const tempPath = path.join(destDir, `temp-${baseName}`);
                     const arrayBuffer = await response.arrayBuffer();
                     fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
                     localFilePath = tempPath;
