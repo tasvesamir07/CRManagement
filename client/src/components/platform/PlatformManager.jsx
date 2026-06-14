@@ -269,10 +269,12 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
       return;
     }
     try {
+      setPlatforms(prev => prev.filter(p => p.id !== id));
       await platformsAPI.delete(id);
       fetchPlatforms();
     } catch (e) {
       alert('Delete failed');
+      fetchPlatforms();
     }
   };
 

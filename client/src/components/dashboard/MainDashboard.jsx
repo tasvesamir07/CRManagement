@@ -166,10 +166,12 @@ const CRDashboard = ({ navigate }) => {
       return;
     }
     try {
+      setAnnouncements(prev => prev.filter(ann => ann.id !== id));
       await announcementsAPI.delete(id);
-      fetchData();
+      fetchData(true);
     } catch (e) {
       alert('Delete failed: ' + (e.response?.data?.error || e.message));
+      fetchData();
     }
   };
 
@@ -448,7 +450,10 @@ const CRDashboard = ({ navigate }) => {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAnnouncement(ann.id);
+                          }}
                           className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer"
                           title="Delete Broadcast Notice"
                         >

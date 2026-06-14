@@ -1164,6 +1164,8 @@ const FilesManager = () => {
                       setShowDeleteFolderModal(false);
                       setFolderToDelete(null);
                       fetchFolders();
+                      fetchFiles();
+                      fetchStorageUsage();
                     } catch (err) {
                       toast.error(err.response?.data?.error || 'Failed to delete folder');
                     }
@@ -1181,6 +1183,8 @@ const FilesManager = () => {
                       setShowDeleteFolderModal(false);
                       setFolderToDelete(null);
                       fetchFolders();
+                      fetchFiles();
+                      fetchStorageUsage();
                     } catch (err) {
                       toast.error(err.response?.data?.error || 'Failed to delete folder');
                     }

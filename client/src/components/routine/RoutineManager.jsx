@@ -97,9 +97,9 @@ const RoutineManager = () => {
     });
   };
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [routinesData, coursesData] = await Promise.all([
         routinesAPI.list(),
         coursesAPI.list()
@@ -107,13 +107,13 @@ const RoutineManager = () => {
       setRoutines(routinesData);
       setCourses(coursesData);
       
-      if (coursesData.length > 0) {
+      if (coursesData.length > 0 && !courseId) {
         setCourseId(coursesData[0].id.toString());
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -153,10 +153,12 @@ const RoutineManager = () => {
       return;
     }
     try {
+      setRoutines(prev => prev.filter(r => r.id !== id));
       await routinesAPI.delete(id);
-      fetchData();
+      fetchData(true);
     } catch (e) {
       alert('Delete failed: ' + (e.response?.data?.error || e.message));
+      fetchData();
     }
   };
 

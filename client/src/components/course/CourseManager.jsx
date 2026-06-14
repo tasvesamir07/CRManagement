@@ -17,15 +17,15 @@ const CourseManager = () => {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [err, setErr] = useState('');
 
-  const fetchCourses = async () => {
+  const fetchCourses = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await coursesAPI.list();
       setCourses(data);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -69,10 +69,12 @@ const CourseManager = () => {
       return;
     }
     try {
+      setCourses(prev => prev.filter(c => c.id !== id));
       await coursesAPI.delete(id);
-      fetchCourses();
+      fetchCourses(true);
     } catch (e) {
       alert('Delete failed: ' + (e.response?.data?.error || e.message));
+      fetchCourses();
     }
   };
 

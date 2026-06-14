@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { logsAPI, announcementsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -41,32 +41,33 @@ const LogsManager = () => {
   const [selectedLog, setSelectedLog] = useState(null);
 
   // Fetch logs
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      try {
-        const params = {
-          page,
-          limit: 15,
-          action: actionFilter || undefined,
-          entityType: entityTypeFilter || undefined,
-          userId: searchUserId || undefined
-        };
-        const data = await logsAPI.list(params);
-        setLogs(data.logs || []);
-        if (data.pagination) {
-          setTotalPages(data.pagination.totalPages || 1);
-          setTotalLogs(data.pagination.total || 0);
-        }
-      } catch (err) {
-        toast.error('Failed to load logs');
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const fetchLogs = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const params = {
+        page,
+        limit: 15,
+        action: actionFilter || undefined,
+        entityType: entityTypeFilter || undefined,
+        userId: searchUserId || undefined
+      };
+      const data = await logsAPI.list(params);
+      setLogs(data.logs || []);
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages || 1);
+        setTotalLogs(data.pagination.total || 0);
       }
-    };
+    } catch (err) {
+      toast.error('Failed to load logs');
+      console.error(err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [page, actionFilter, entityTypeFilter, searchUserId]);
+
+  useEffect(() => {
     fetchLogs();
-  }, [page, actionFilter, entityTypeFilter, searchUserId, refreshTrigger]);
+  }, [fetchLogs, refreshTrigger]);
 
   const handleRefresh = () => {
     setPage(1);
@@ -85,15 +86,17 @@ const LogsManager = () => {
     event.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this log entry?')) return;
     try {
+      setLogs(prev => prev.filter(l => l.id !== logId));
       await logsAPI.delete(logId);
       toast.success('Log entry deleted');
       if (logs.length === 1 && page > 1) {
         setPage(prev => prev - 1);
       } else {
-        setRefreshTrigger(prev => prev + 1);
+        fetchLogs(true);
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete log');
+      fetchLogs();
     }
   };
 
