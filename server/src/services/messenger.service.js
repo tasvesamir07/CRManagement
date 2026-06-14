@@ -1,6 +1,7 @@
 const { createMessengerBot } = require("@dongdev/fca-unofficial");
 const fs = require("fs");
 const path = require("path");
+const db = require("../config/database");
 
 let isMockMode = false;
 let botInstance = null;
@@ -9,28 +10,80 @@ let pendingSends = [];
 
 const APPSTATE_PATH = path.join(__dirname, '../../../appstate.json');
 
-function initMessenger() {
-    const appStateEnv = process.env.MESSENGER_APPSTATE;
-    if (appStateEnv) {
-        console.log('Facebook MESSENGER_APPSTATE env variable detected. Initializing...');
-        try {
-            fs.writeFileSync(APPSTATE_PATH, appStateEnv, 'utf8');
-        } catch (err) {
-            console.error('Failed to write appstate.json from env:', err.message);
+async function loadAppState() {
+    try {
+        const res = await db.query("SELECT value FROM system_settings WHERE key = $1", ['messenger_appstate']);
+        if (res.rows && res.rows.length > 0) {
+            return JSON.parse(res.rows[0].value);
         }
+    } catch (err) {
+        console.error("Failed to load appState from DB:", err.message);
     }
+    return null;
+}
 
-    if (fs.existsSync(APPSTATE_PATH)) {
-        console.log('Facebook appstate.json detected. Initializing Messenger bot...');
+async function saveAppState(appState) {
+    if (!appState) return;
+    try {
+        const serialized = JSON.stringify(appState);
+        // Save to DB
+        await db.query(
+            `INSERT INTO system_settings (key, value) 
+             VALUES ($1, $2) 
+             ON CONFLICT (key) 
+             DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            ['messenger_appstate', serialized]
+        );
+        console.log("✅ Messenger appState successfully persisted to database.");
+
+        // Local file backup
         try {
+            fs.writeFileSync(APPSTATE_PATH, serialized, 'utf8');
+        } catch (fileErr) {
+            // Ignore file write error
+        }
+    } catch (err) {
+        console.error("Failed to save appState to DB:", err.message);
+    }
+}
+
+async function initMessenger() {
+    try {
+        await db.waitForInit();
+        let appStateData = await loadAppState();
+
+        if (!appStateData) {
+            const appStateEnv = process.env.MESSENGER_APPSTATE;
+            if (appStateEnv) {
+                console.log('Facebook MESSENGER_APPSTATE env variable detected. Initializing...');
+                try {
+                    appStateData = JSON.parse(appStateEnv);
+                    await saveAppState(appStateData);
+                } catch (err) {
+                    console.error('Failed to parse appState from env:', err.message);
+                }
+            }
+        }
+
+        if (!appStateData && fs.existsSync(APPSTATE_PATH)) {
+            console.log('Facebook appstate.json file detected. Initializing...');
+            try {
+                appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+                await saveAppState(appStateData);
+            } catch (err) {
+                console.error('Failed to parse appstate.json file:', err.message);
+            }
+        }
+
+        if (appStateData) {
             isMockMode = false;
             console.log('✅ Messenger Bot service is ready for broadcasting.');
-        } catch (err) {
-            console.error('⚠️ Failed to verify appstate.json. Running in Mock Mode.', err.message);
+        } else {
+            console.log('⚠️ No Messenger appState found in DB/env/file. Messenger service will run in Mock Mode.');
             isMockMode = true;
         }
-    } else {
-        console.log('⚠️ appstate.json not found in root/env. Messenger service will run in Mock Mode.');
+    } catch (err) {
+        console.error('⚠️ Failed to initialize Messenger. Running in Mock Mode.', err.message);
         isMockMode = true;
     }
 }
@@ -55,13 +108,38 @@ async function getBot() {
 
     loginPromise = (async () => {
         try {
-            const appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+            await db.waitForInit();
+            let appStateData = await loadAppState();
+
+            if (!appStateData) {
+                // Fallback to local file or env
+                if (fs.existsSync(APPSTATE_PATH)) {
+                    appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+                } else if (process.env.MESSENGER_APPSTATE) {
+                    appStateData = JSON.parse(process.env.MESSENGER_APPSTATE);
+                }
+            }
+
+            if (!appStateData) {
+                throw new Error("No appState credentials found to log in to Messenger.");
+            }
+
             const instance = await createMessengerBot(
                 { appState: appStateData },
                 { listenEvents: false, autoListen: false, autoReconnect: false, online: false }
             );
             botInstance = instance;
             botReady = true;
+
+            // Save fresh login appState (may contain refreshed/new cookies)
+            try {
+                const freshAppState = instance.api.getAppState();
+                if (freshAppState) {
+                    await saveAppState(freshAppState);
+                }
+            } catch (saveErr) {
+                console.error("Failed to save refreshed appState on login:", saveErr.message);
+            }
 
             // Attach runtime error listener to reset on connection drop
             instance.on("error", (err) => {
@@ -143,6 +221,16 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 };
                 lastResult = await sendMsgPromise(attachPayload);
             }
+        }
+
+        // 3. Save refreshed appState to persistent storage
+        try {
+            const freshAppState = bot.api.getAppState();
+            if (freshAppState) {
+                await saveAppState(freshAppState);
+            }
+        } catch (saveErr) {
+            console.error("Failed to save rotated appState after broadcast:", saveErr.message);
         }
 
         return { success: true, messageId: lastResult?.messageID || 'fca-msg-id' };

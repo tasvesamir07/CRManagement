@@ -24,7 +24,12 @@ function acquireLock() {
             if (e.code === 'EEXIST') {
                 // Lock exists, wait and retry
                 for (let i = 0; i < 50; i++) {
-                    const stat = fs.statSync(dbLockPath);
+                    let stat;
+                    try {
+                        stat = fs.statSync(dbLockPath);
+                    } catch (_) {
+                        break; // lock was probably unlinked/released, retry loop
+                    }
                     // If lock file older than 1s, break it
                     if (Date.now() - stat.mtimeMs > 1000) {
                         try { fs.unlinkSync(dbLockPath); } catch (_) {}
@@ -62,7 +67,8 @@ const JSON_DB_SCHEMA = {
     audit_logs: [],
     analytics_events: [],
     announcement_templates: [],
-    folders: []
+    folders: [],
+    system_settings: []
 };
 
 // Initialize local JSON Database if it doesn't exist
@@ -1478,6 +1484,34 @@ async function simulateQuery(text, params = []) {
         return { rows: matched ? [matched] : [] };
     }
 
+    // System Settings Queries
+    if (normalizedText.includes('SELECT value FROM system_settings WHERE key =')) {
+        const key = params[0];
+        const matched = db.system_settings ? db.system_settings.find(s => s.key === key) : null;
+        return { rows: matched ? [{ value: matched.value }] : [] };
+    }
+
+    if (normalizedText.includes('INSERT INTO system_settings') || normalizedText.includes('UPDATE system_settings')) {
+        const key = params[0];
+        const value = params[1];
+        if (!db.system_settings) {
+            db.system_settings = [];
+        }
+        const existing = db.system_settings.find(s => s.key === key);
+        if (existing) {
+            existing.value = value;
+            existing.updated_at = new Date().toISOString();
+        } else {
+            db.system_settings.push({
+                key,
+                value,
+                updated_at: new Date().toISOString()
+            });
+        }
+        writeJsonDb(db);
+        return { rowCount: 1 };
+    }
+
     return { rows: [] };
 }
 
@@ -1531,6 +1565,13 @@ async function initDatabase() {
                     
                     -- Add metadata JSONB column to announcements table
                     ALTER TABLE announcements ADD COLUMN IF NOT EXISTS metadata JSONB;
+
+                    -- Create system_settings table to persist credentials / appstate
+                    CREATE TABLE IF NOT EXISTS system_settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
                 `);
                 
                 client.release();

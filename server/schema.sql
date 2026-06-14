@@ -164,6 +164,14 @@ CREATE TABLE IF NOT EXISTS whatsapp_creds (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 14. System settings (e.g. messenger appState, config)
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
 -- ============================================================
 -- Seed: Default admin user
 -- Password: admin123 (bcrypt hash)
