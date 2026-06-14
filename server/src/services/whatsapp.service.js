@@ -81,24 +81,23 @@ if (isRelayMode) {
             console.log(`[Mock] WhatsApp message sent to ${chatId}: ${message}`);
             return { success: true, messageId: 'mock_msg_id' };
         }
-        const files = [];
-        if (filePath) {
-            const rawFiles = Array.isArray(filePath) ? filePath : [filePath];
-            for (const f of rawFiles) {
-                const fp = typeof f === 'string' ? f : f.path;
-                if (fs.existsSync(fp)) {
-                    const data = fs.readFileSync(fp).toString('base64');
-                    const ext = path.extname(fp).toLowerCase();
-                    const mimetype = ext === '.png' ? 'image/png'
-                        : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-                        : ext === '.gif' ? 'image/gif'
-                        : ext === '.pdf' ? 'application/pdf'
-                        : ext === '.mp4' ? 'video/mp4'
-                        : 'application/octet-stream';
-                    files.push({ data, mimetype, name: path.basename(fp) });
-                }
+        const rawFiles = filePath ? (Array.isArray(filePath) ? filePath : [filePath]) : [];
+        const fileReads = rawFiles.map(async (f) => {
+            const fp = typeof f === 'string' ? f : f.path;
+            if (fs.existsSync(fp)) {
+                const data = await fs.promises.readFile(fp, { encoding: 'base64' });
+                const ext = path.extname(fp).toLowerCase();
+                const mimetype = ext === '.png' ? 'image/png'
+                    : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+                    : ext === '.gif' ? 'image/gif'
+                    : ext === '.pdf' ? 'application/pdf'
+                    : ext === '.mp4' ? 'video/mp4'
+                    : 'application/octet-stream';
+                return { data, mimetype, name: path.basename(fp) };
             }
-        }
+            return null;
+        });
+        const files = (await Promise.all(fileReads)).filter(Boolean);
         const data = await relayFetch('/send-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -478,37 +477,31 @@ if (isRelayMode) {
                     });
                 }
 
-                // Send remaining files sequentially to preserve order
-                for (let i = 1; i < files.length; i++) {
-                    const fi = files[i];
-                    if (fs.existsSync(fi.path)) {
-                        try {
-                            const extraData = fs.readFileSync(fi.path);
-                            const extraExt = path.extname(fi.path).toLowerCase();
-                            const extraMime = extraExt === '.png' ? 'image/png'
-                                : extraExt === '.jpg' || extraExt === '.jpeg' ? 'image/jpeg'
-                                : extraExt === '.gif' ? 'image/gif'
-                                : extraExt === '.pdf' ? 'application/pdf'
-                                : extraExt === '.doc' || extraExt === '.docx' ? 'application/msword'
-                                : extraExt === '.mp4' ? 'video/mp4'
-                                : 'application/octet-stream';
-
-                            if (extraMime.startsWith('image/')) {
-                                await sock.sendMessage(targetId, { image: extraData });
-                            } else if (extraMime.startsWith('video/')) {
-                                await sock.sendMessage(targetId, { video: extraData });
-                            } else {
-                                await sock.sendMessage(targetId, {
-                                    document: extraData,
-                                    mimetype: extraMime,
-                                    fileName: fi.originalName
-                                });
-                            }
-                        } catch (err) {
-                            console.error(`Failed to send extra file ${fi.path} to WhatsApp:`, err.message);
+                // Send remaining files in parallel (user chose speed over order)
+                const remainderSends = files.slice(1).map(async (fi) => {
+                    if (!fs.existsSync(fi.path)) return;
+                    const extraData = fs.readFileSync(fi.path);
+                    const extraExt = path.extname(fi.path).toLowerCase();
+                    const extraMime = extraExt === '.png' ? 'image/png'
+                        : extraExt === '.jpg' || extraExt === '.jpeg' ? 'image/jpeg'
+                        : extraExt === '.gif' ? 'image/gif'
+                        : extraExt === '.pdf' ? 'application/pdf'
+                        : extraExt === '.doc' || extraExt === '.docx' ? 'application/msword'
+                        : extraExt === '.mp4' ? 'video/mp4'
+                        : 'application/octet-stream';
+                    try {
+                        if (extraMime.startsWith('image/')) {
+                            await sock.sendMessage(targetId, { image: extraData });
+                        } else if (extraMime.startsWith('video/')) {
+                            await sock.sendMessage(targetId, { video: extraData });
+                        } else {
+                            await sock.sendMessage(targetId, { document: extraData, mimetype: extraMime, fileName: fi.originalName });
                         }
+                    } catch (err) {
+                        console.error(`Failed to send extra file ${fi.path} to WhatsApp:`, err.message);
                     }
-                }
+                });
+                await Promise.all(remainderSends);
             } else {
                 sentMsg = await sock.sendMessage(targetId, { text: message });
             }

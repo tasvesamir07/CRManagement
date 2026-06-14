@@ -247,23 +247,21 @@ if (!isVercel) {
         scheduledProcessing = true;
         try {
             const due = await announcementService.getDueScheduledAnnouncements();
-            for (const ann of due) {
+            await Promise.all(due.map(async (ann) => {
                 try {
-                    // Mark as sending immediately to prevent re-pickup by a concurrent tick
                     await announcementService.markAnnouncementSending(ann.id);
                     logger.info({ annId: ann.id, title: ann.title }, 'Sending scheduled announcement');
                     await announcementService.sendAnnouncement(ann.id);
                     logger.info({ annId: ann.id }, 'Scheduled announcement sent successfully');
                 } catch (sendErr) {
                     logger.error({ annId: ann.id, err: sendErr }, 'Failed to send scheduled announcement');
-                    // Mark as failed so it won't be retried forever
                     try {
                         await announcementService.markAnnouncementFailed(ann.id);
                     } catch (markErr) {
                         logger.error({ annId: ann.id, err: markErr }, 'Failed to mark announcement as failed');
                     }
                 }
-            }
+            }));
         } catch (err) {
             logger.error({ err }, 'Error processing scheduled announcements');
         } finally {

@@ -6,8 +6,8 @@ const authMiddleware = require('../middleware/auth.middleware');
 
 const sendLimiter = rateLimit({
     windowMs: 5 * 1000,
-    max: 1,
-    message: { error: 'Please wait before sending another broadcast. Only 1 send per 5 seconds allowed.' },
+    max: 3,
+    message: { error: 'Please wait before sending another broadcast. Only 3 sends per 5 seconds allowed.' },
     standardHeaders: true,
     legacyHeaders: false
 });

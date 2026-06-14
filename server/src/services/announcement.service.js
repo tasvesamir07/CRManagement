@@ -269,7 +269,13 @@ async function sendAnnouncement(id, _hostUrl = '') {
         }
     });
 
-    const results = await Promise.all(activeBroadcastPromises);
+    const settledResults = await Promise.allSettled(activeBroadcastPromises);
+    const results = settledResults.map(r => r.status === 'fulfilled' ? r.value : {
+        platform_id: 'unknown',
+        status: 'failed',
+        skipped: false,
+        error: r.reason?.message || 'Platform send crashed unexpectedly'
+    });
 
     for (const res of results) {
         if (res.status === 'sent') {

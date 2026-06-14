@@ -60,8 +60,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             console.log(`[MOCK TELEGRAM] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
         });
         
-        // Simulating delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
         return { success: true, messageId: `mock-tg-id-${Date.now()}` };
     }
 
@@ -121,7 +119,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                     });
                 }
             } else {
-                // Multiple files: send text message first, then files sequentially to preserve order
+                // Multiple files: send text message first, then files in parallel
                 if (caption) {
                     sentMsg = await bot.sendMessage(finalChatId, caption, {
                         parse_mode: parseMode,
@@ -129,7 +127,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                     });
                 }
 
-                for (const f of existingFiles) {
+                const fileSends = existingFiles.map(async (f) => {
                     const ext = path.extname(f.path).toLowerCase();
                     const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
                     const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext);
@@ -155,8 +153,10 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                             filename: f.originalName
                         });
                     }
-                    if (!sentMsg) sentMsg = tempMsg;
-                }
+                    return tempMsg;
+                });
+                const results = await Promise.all(fileSends);
+                sentMsg = results.find(r => r) || sentMsg;
             }
         } else {
             sentMsg = await bot.sendMessage(finalChatId, message, {

@@ -257,7 +257,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             console.log(`[MOCK MESSENGER] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
         return { success: true, messageId: `mock-msg-id-${Date.now()}` };
     }
 
@@ -325,10 +324,11 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} sequentially...`);
-            for (const tuple of attachmentTuples) {
-                lastResult = await sendMsgPromise({ attachment: tuple });
-            }
+            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} in parallel...`);
+            const attachmentResults = await Promise.all(
+                attachmentTuples.map(tuple => sendMsgPromise({ attachment: tuple }))
+            );
+            lastResult = attachmentResults[attachmentResults.length - 1] || lastResult;
         }
 
         // 3. Save refreshed appState to persistent storage
