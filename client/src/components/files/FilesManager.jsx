@@ -9,6 +9,7 @@ import {
   Eye, Calendar, FolderOpen
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useUpload } from '../../context/UploadContext';
 
 const TYPE_ICONS = {
   'image': Image,
@@ -47,14 +48,12 @@ const FilesManager = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 50 });
   const [deleting, setDeleting] = useState(new Set());
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
   const [dragActive, setDragActive] = useState(false);
-  const [queue, setQueue] = useState([]);
-  const [queueTotal, setQueueTotal] = useState(0);
-  const [queueCurrent, setQueueCurrent] = useState(0);
   const fileInputRef = useRef(null);
+
+  const { uploadFiles, uploads } = useUpload();
+  const prevCompletedCountRef = useRef(0);
 
   const [storageUsage, setStorageUsage] = useState({ usedBytes: 0, limitBytes: 104857600, percentage: 0 });
 
@@ -413,6 +412,19 @@ const FilesManager = () => {
     fetchFiles(); 
   }, [fetchFiles]);
 
+  // Refresh files list when a global upload finishes for the current folder
+  useEffect(() => {
+    const completedUploadsCount = uploads.filter(
+      u => u.status === 'completed' && u.folderId === currentFolderId
+    ).length;
+    
+    if (prevCompletedCountRef.current !== completedUploadsCount) {
+      prevCompletedCountRef.current = completedUploadsCount;
+      fetchFiles();
+      fetchStorageUsage();
+    }
+  }, [uploads, currentFolderId, fetchFiles, fetchStorageUsage]);
+
   useEffect(() => {
     if (currentFolderId === null) {
       fetchFolders();
@@ -449,84 +461,7 @@ const FilesManager = () => {
 
   const processFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
-
-    let currentUsage = { usedBytes: 0, limitBytes: 104857600 };
-    try {
-      currentUsage = await filesAPI.getStorageUsage();
-    } catch (err) {
-      console.error(err);
-    }
-
-    if (currentUsage.usedBytes >= currentUsage.limitBytes) {
-      toast.error('Upload failed: Storage limit reached.');
-      return;
-    }
-
-    const filesArray = Array.from(fileList);
-    setQueueTotal(filesArray.length);
-    setQueueCurrent(1);
-    setUploading(true);
-
-    const initialQueue = filesArray.map((file, idx) => ({
-      id: `${file.name}-${idx}-${Date.now()}`,
-      name: file.name,
-      size: file.size,
-      progress: 0,
-      status: 'pending'
-    }));
-    setQueue(initialQueue);
-
-    let uploadedCount = 0;
-
-    for (let i = 0; i < filesArray.length; i++) {
-      const file = filesArray[i];
-      setQueueCurrent(i + 1);
-
-      setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading' } : item));
-
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error(`"${file.name}" exceeds the 50MB limit.`);
-        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
-        continue;
-      }
-
-      try {
-        setUploadProgress(0);
-        const dupCheck = await filesAPI.checkDuplicate(file.name, currentFolderId);
-        let overwrite = false;
-        if (dupCheck.duplicate) {
-          if (!window.confirm(`A file named "${file.name}" already exists in this folder. Do you want to overwrite it?`)) {
-            setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
-            continue;
-          }
-          overwrite = true;
-        }
-
-        const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
-        await uploadFn(file, currentFolderId, (pe) => {
-          const pct = Math.round((pe.loaded * 100) / pe.total);
-          setUploadProgress(pct);
-          setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, progress: pct } : item));
-        });
-
-        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'completed', progress: 100 } : item));
-        uploadedCount++;
-      } catch (err) {
-        toast.error(`Upload failed for "${file.name}": ${err.response?.data?.error || err.message}`);
-        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'failed' } : item));
-      }
-    }
-
-    if (uploadedCount > 0) {
-      toast.success(`Successfully uploaded ${uploadedCount} file(s)!`);
-      fetchFiles();
-    }
-    
-    setTimeout(() => {
-      setUploading(false);
-      setQueue([]);
-    }, 4000);
-
+    await uploadFiles(fileList, currentFolderId);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -688,11 +623,10 @@ const FilesManager = () => {
           )}
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50"
+            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5" />
-            {uploading ? 'Uploading...' : 'Upload File'}
+            Upload File
           </button>
           <input
             ref={fileInputRef}
@@ -739,20 +673,22 @@ const FilesManager = () => {
 
       {/* Breadcrumbs for navigated folder */}
       {currentFolderId !== null && (
-        <div className="flex items-center gap-2 text-sm text-ink-mute font-sans bg-canvas-soft/50 py-2 px-3 rounded-lg border border-hairline w-fit">
+        <div className="flex items-center gap-3 py-1 font-sans">
           <button
             onClick={() => {
               setCurrentFolderId(null);
               setCurrentFolderName('');
               setPage(1);
             }}
-            className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-deep transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 h-9 px-4 border border-hairline rounded-sm shadow-sm text-xs font-semibold text-ink bg-canvas hover:bg-canvas-soft focus:outline-none transition-colors duration-150 cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Root
+            <ArrowLeft className="w-4 h-4 text-primary" />
+            Back to Folders
           </button>
-          <span className="text-hairline-strong">/</span>
-          <span className="text-ink font-semibold truncate max-w-xs">{currentFolderName}</span>
+          <span className="text-hairline-strong text-lg">/</span>
+          <div className="text-sm font-semibold text-ink bg-canvas-soft/60 px-3 py-2 rounded-lg border border-hairline truncate max-w-md">
+            {currentFolderName}
+          </div>
         </div>
       )}
 
@@ -1712,82 +1648,6 @@ const FilesManager = () => {
           </div>
         </div>,
         document.body
-      )}
-
-      {/* Upload Queue Overlay */}
-      {uploading && queue.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 bg-canvas/95 backdrop-blur-md border border-hairline shadow-2xl rounded-lg w-80 overflow-hidden font-sans flex flex-col transition-all duration-300">
-          <div className="bg-canvas-soft/80 border-b border-hairline p-3 flex items-center justify-between">
-            <span className="text-xs font-bold text-ink uppercase tracking-wider">
-              Uploading files ({queueCurrent}/{queueTotal})
-            </span>
-            <span className="text-xs text-ink-mute font-bold">
-              {Math.round(queue.reduce((acc, curr) => acc + curr.progress, 0) / queueTotal)}%
-            </span>
-          </div>
-          <div className="max-h-60 overflow-y-auto divide-y divide-hairline p-2 space-y-1">
-            {queue.map((item) => {
-              const radius = 10;
-              const stroke = 2;
-              const normalizedRadius = radius - stroke * 2;
-              const circumference = normalizedRadius * 2 * Math.PI;
-              const strokeDashoffset = circumference - (item.progress / 100) * circumference;
-
-              return (
-                <div key={item.id} className="flex items-center justify-between p-2 text-xs">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    {item.status === 'uploading' && (
-                      <svg className="w-5 h-5 shrink-0 -rotate-90">
-                        <circle
-                          stroke="var(--color-hairline)"
-                          fill="transparent"
-                          strokeWidth={stroke}
-                          r={normalizedRadius}
-                          cx={radius}
-                          cy={radius}
-                        />
-                        <circle
-                          stroke="var(--color-primary)"
-                          fill="transparent"
-                          strokeWidth={stroke}
-                          strokeDasharray={circumference + ' ' + circumference}
-                          style={{ strokeDashoffset }}
-                          r={normalizedRadius}
-                          cx={radius}
-                          cy={radius}
-                        />
-                      </svg>
-                    )}
-                    {item.status === 'completed' && (
-                      <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      </span>
-                    )}
-                    {item.status === 'failed' && (
-                      <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
-                        <X className="w-3 h-3 text-red-600 dark:text-red-400" />
-                      </span>
-                    )}
-                    {item.status === 'pending' && (
-                      <span className="w-5 h-5 rounded-full bg-hairline flex items-center justify-center shrink-0 animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-ink-mute"></span>
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-ink font-medium truncate">{item.name}</p>
-                      <p className="text-[10px] text-ink-mute">
-                        {(item.size / 1024).toFixed(0)} KB • {item.status}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-ink-mute font-semibold shrink-0 pl-2">
-                    {item.progress}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
     </div>
   );

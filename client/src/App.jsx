@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { UploadProvider } from './context/UploadContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Import Views
@@ -70,60 +71,61 @@ const PublicRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              fontSize: '13px',
-              fontFamily: 'Circular, Helvetica Neue, Helvetica, Arial, sans-serif'
-            }
-          }}
-        />
-        <Routes>
-          {/* Public Authentication routes */}
-          <Route path="/login" element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          } />
-          <Route path="/register" element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          } />
-          <Route path="/forgot-password" element={
-            <PublicRoute>
-              <ForgotPassword />
-            </PublicRoute>
-          } />
-          <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
-          
-          {/* Protected Dashboard routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<MainDashboard />} />
-            <Route path="announcement/new" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
-            <Route path="announcement/edit/:id" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
-            <Route path="announcement/:id" element={<RoleRoute allowedRole="cr"><AnnouncementDetail /></RoleRoute>} />
-            <Route path="courses" element={<RoleRoute allowedRole="cr"><CourseManager /></RoleRoute>} />
-            <Route path="routines" element={<RoleRoute allowedRole="cr"><RoutineManager /></RoleRoute>} />
-            <Route path="platforms" element={<RoleRoute allowedRole="cr"><PlatformManager /></RoleRoute>} />
-            <Route path="files" element={<RoleRoute allowedRole="cr"><FilesManager /></RoleRoute>} />
-            <Route path="logs" element={<LogsManager />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="admin/users" element={<RoleRoute allowedRole="admin"><AdminUsers /></RoleRoute>} />
-          </Route>
-          
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <UploadProvider>
+        <Router>
+          <Toaster
+            toastOptions={{
+              duration: 4000,
+              style: {
+                fontSize: '13px',
+                fontFamily: 'Circular, Helvetica Neue, Helvetica, Arial, sans-serif'
+              }
+            }}
+          />
+          <Routes>
+            {/* Public Authentication routes */}
+            <Route path="/login" element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } />
+            <Route path="/register" element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } />
+            <Route path="/forgot-password" element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            } />
+            <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
+            
+            {/* Protected Dashboard routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<MainDashboard />} />
+              <Route path="announcement/new" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
+              <Route path="announcement/edit/:id" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
+              <Route path="announcement/:id" element={<RoleRoute allowedRole="cr"><AnnouncementDetail /></RoleRoute>} />
+              <Route path="courses" element={<RoleRoute allowedRole="cr"><CourseManager /></RoleRoute>} />
+              <Route path="routines" element={<RoleRoute allowedRole="cr"><RoutineManager /></RoleRoute>} />
+              <Route path="platforms" element={<RoleRoute allowedRole="cr"><PlatformManager /></RoleRoute>} />
+              <Route path="files" element={<RoleRoute allowedRole="cr"><FilesManager /></RoleRoute>} />
+              <Route path="logs" element={<LogsManager />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="admin/users" element={<RoleRoute allowedRole="admin"><AdminUsers /></RoleRoute>} />
+            </Route>
+            
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </UploadProvider>
     </AuthProvider>
   );
 }

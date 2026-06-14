@@ -208,7 +208,7 @@ export const platformsAPI = {
 };
 
 export const filesAPI = {
-    upload: async (fileObject, folderIdOrProgress, onUploadProgress) => {
+    upload: async (fileObject, folderIdOrProgress, onUploadProgress, signal) => {
         let folderId = null;
         let progressCallback = onUploadProgress;
         
@@ -227,11 +227,12 @@ export const filesAPI = {
             headers: {
                 'Content-Type': 'multipart/form-data'
             },
-            onUploadProgress: progressCallback
+            onUploadProgress: progressCallback,
+            signal: signal
         });
         return res.data;
     },
-    uploadWithOverwrite: async (fileObject, folderIdOrProgress, onUploadProgress) => {
+    uploadWithOverwrite: async (fileObject, folderIdOrProgress, onUploadProgress, signal) => {
         let folderId = null;
         let progressCallback = onUploadProgress;
         
@@ -250,7 +251,8 @@ export const filesAPI = {
             headers: {
                 'Content-Type': 'multipart/form-data'
             },
-            onUploadProgress: progressCallback
+            onUploadProgress: progressCallback,
+            signal: signal
         });
         return res.data;
     },
