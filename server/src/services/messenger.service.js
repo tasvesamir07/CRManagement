@@ -93,8 +93,16 @@ let loginPromise = null;
 function resetBot() {
     if (botInstance) {
         const oldBot = botInstance;
-        if (typeof oldBot.stop === 'function') {
-            oldBot.stop().catch(err => console.error("Error stopping Messenger bot during reset:", err.message));
+        try {
+            if (oldBot._mqtt) {
+                if (typeof oldBot._mqtt.stopListening === 'function') {
+                    oldBot._mqtt.stopListening();
+                }
+                oldBot._mqtt.removeAllListeners?.();
+            }
+            oldBot.detachStopSignals?.();
+        } catch (err) {
+            console.error("Error stopping Messenger bot manually during reset:", err.message);
         }
     }
     botInstance = null;
@@ -130,6 +138,21 @@ async function getBot() {
             );
             botInstance = instance;
             botReady = true;
+
+            // Wait for MQTT client to connect (max 10 seconds)
+            console.log("Waiting for Messenger MQTT connection to establish...");
+            let attempts = 0;
+            while (attempts < 20) { // 20 * 500ms = 10s
+                if (instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected) {
+                    console.log("✅ Messenger MQTT client is fully connected and initialized.");
+                    break;
+                }
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            if (!instance.ctx || !instance.ctx.mqttClient || !instance.ctx.mqttClient.connected) {
+                console.warn("⚠️ Messenger MQTT client failed to connect within timeout. Messages may fail.");
+            }
 
             // Save fresh login appState (may contain refreshed/new cookies)
             try {
