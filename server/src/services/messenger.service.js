@@ -251,13 +251,16 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
     }
 
     if (isMockMode) {
-        console.log(`[MOCK MESSENGER] Sending message to ${chatId}:`);
-        console.log(message);
-        files.forEach((f, index) => {
-            console.log(`[MOCK MESSENGER] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
-        });
+        if (process.env.NODE_ENV === 'test') {
+            console.log(`[MOCK MESSENGER] Sending message to ${chatId}:`);
+            console.log(message);
+            files.forEach((f, index) => {
+                console.log(`[MOCK MESSENGER] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
+            });
 
-        return { success: true, messageId: `mock-msg-id-${Date.now()}` };
+            return { success: true, messageId: `mock-msg-id-${Date.now()}` };
+        }
+        throw new Error('Messenger service is currently disconnected or running in Mock Mode. Please check your appstate connection.');
     }
 
     try {

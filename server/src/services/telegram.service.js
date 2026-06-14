@@ -54,13 +54,16 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
     }
 
     if (isMockMode || !bot) {
-        console.log(`[MOCK TELEGRAM] Sending message to ${finalChatId} (thread: ${threadId || 'general'}):`);
-        console.log(message);
-        files.forEach((f, index) => {
-            console.log(`[MOCK TELEGRAM] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
-        });
-        
-        return { success: true, messageId: `mock-tg-id-${Date.now()}` };
+        if (process.env.NODE_ENV === 'test') {
+            console.log(`[MOCK TELEGRAM] Sending message to ${finalChatId} (thread: ${threadId || 'general'}):`);
+            console.log(message);
+            files.forEach((f, index) => {
+                console.log(`[MOCK TELEGRAM] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
+            });
+            
+            return { success: true, messageId: `mock-tg-id-${Date.now()}` };
+        }
+        throw new Error('Telegram service is not configured or is currently disconnected (running in Mock Mode). Please check your bot token.');
     }
 
     const caption = (message && message.trim()) ? message : undefined;
@@ -119,7 +122,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                     });
                 }
             } else {
-                // Multiple files: send text message first, then files in parallel
+                // Multiple files: send text message first, then files sequentially to prevent AggregateError
                 if (caption) {
                     sentMsg = await bot.sendMessage(finalChatId, caption, {
                         parse_mode: parseMode,
@@ -127,7 +130,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                     });
                 }
 
-                const fileSends = existingFiles.map(async (f) => {
+                for (const f of existingFiles) {
                     const ext = path.extname(f.path).toLowerCase();
                     const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
                     const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext);
@@ -153,10 +156,10 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                             filename: f.originalName
                         });
                     }
-                    return tempMsg;
-                });
-                const results = await Promise.all(fileSends);
-                sentMsg = results.find(r => r) || sentMsg;
+                    if (tempMsg) {
+                        sentMsg = tempMsg;
+                    }
+                }
             }
         } else {
             sentMsg = await bot.sendMessage(finalChatId, message, {
