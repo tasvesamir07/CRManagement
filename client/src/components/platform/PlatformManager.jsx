@@ -58,6 +58,27 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
   const [messengerStatus, setMessengerStatus] = useState('DISCONNECTED');
   const [isMessengerMock, setIsMessengerMock] = useState(true);
 
+  // Messenger AppState upload/paste state
+  const [showMessengerStateInput, setShowMessengerStateInput] = useState(false);
+  const [messengerAppStateJson, setMessengerAppStateJson] = useState('');
+  const [savingMessengerState, setSavingMessengerState] = useState(false);
+
+  const handleSaveMessengerAppState = async () => {
+    if (!messengerAppStateJson.trim()) return;
+    try {
+      setSavingMessengerState(true);
+      await platformsAPI.saveMessengerAppState(messengerAppStateJson.trim());
+      toast.success('Messenger AppState updated! Re-authenticating...');
+      setShowMessengerStateInput(false);
+      setMessengerAppStateJson('');
+      setTimeout(fetchMessengerStatus, 2000);
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Failed to save AppState. Make sure it is valid JSON.');
+    } finally {
+      setSavingMessengerState(false);
+    }
+  };
+
   // Phone pairing states
   const [pairPhone, setPairPhone] = useState('');
   const [countryCode, setCountryCode] = useState('880');
@@ -710,6 +731,49 @@ const sanitizePhoneNumber = (countryCode, phoneNumber) => {
               </div>
             </div>
           )}
+
+          <div className="pt-2 border-t border-hairline-cool space-y-3">
+            {!showMessengerStateInput ? (
+              <button
+                onClick={() => setShowMessengerStateInput(true)}
+                className="w-full flex items-center justify-center px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+              >
+                Update AppState / Link Account
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider">
+                  Paste AppState (JSON String)
+                </label>
+                <textarea
+                  rows={4}
+                  value={messengerAppStateJson}
+                  onChange={(e) => setMessengerAppStateJson(e.target.value)}
+                  placeholder='[{"key":"c_user","value":"..."}, ...]'
+                  className="w-full px-2.5 py-1.5 border border-hairline rounded bg-canvas text-xs text-ink placeholder-ink-mute/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 font-mono"
+                />
+                <div className="flex gap-2">
+                  <button
+                    disabled={savingMessengerState || !messengerAppStateJson.trim()}
+                    onClick={handleSaveMessengerAppState}
+                    className="w-1/2 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-sm hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {savingMessengerState ? 'Saving...' : 'Save AppState'}
+                  </button>
+                  <button
+                    disabled={savingMessengerState}
+                    onClick={() => {
+                      setShowMessengerStateInput(false);
+                      setMessengerAppStateJson('');
+                    }}
+                    className="w-1/2 px-3 py-1.5 border border-hairline rounded-sm text-xs font-semibold text-ink bg-canvas hover:bg-canvas-soft transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         </div>
 

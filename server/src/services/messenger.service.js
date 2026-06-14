@@ -24,6 +24,7 @@ async function loadAppState() {
 
 async function saveAppState(appState) {
     if (!appState) return;
+    isMockMode = false;
     try {
         const serialized = JSON.stringify(appState);
         // Save to DB
@@ -301,5 +302,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 module.exports = {
     initMessenger,
     sendMessageToGroup,
+    saveAppState,
+    resetBot,
     isMock: () => isMockMode
 };

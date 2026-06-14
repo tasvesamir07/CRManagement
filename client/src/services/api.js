@@ -204,6 +204,10 @@ export const platformsAPI = {
     pairWhatsApp: async (phoneNumber) => {
         const res = await api.post('/platforms/whatsapp/pair', { phoneNumber });
         return res.data;
+    },
+    saveMessengerAppState: async (appstate) => {
+        const res = await api.post('/platforms/messenger/appstate', { appstate });
+        return res.data;
     }
 };
 

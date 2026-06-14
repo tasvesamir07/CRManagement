@@ -164,4 +164,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// Update Messenger AppState JSON
+router.post('/messenger/appstate', authMiddleware, async (req, res) => {
+    try {
+        const { appstate } = req.body;
+        if (!appstate) {
+            return res.status(400).json({ error: 'AppState JSON string is required' });
+        }
+        
+        let parsed;
+        try {
+            parsed = typeof appstate === 'object' ? appstate : JSON.parse(appstate);
+        } catch (jsonErr) {
+            return res.status(400).json({ error: 'Invalid JSON format for AppState. Please make sure you copied the correct JSON structure.' });
+        }
+
+        // Save appState (persists to DB and writes backup file)
+        await messengerService.saveAppState(parsed);
+        
+        // Reset bot client to trigger login with new credentials
+        messengerService.resetBot();
+        
+        return res.json({ message: 'Messenger appState updated successfully. Connection check initiated.' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
