@@ -324,11 +324,10 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} in parallel...`);
-            const attachmentResults = await Promise.all(
-                attachmentTuples.map(tuple => sendMsgPromise({ attachment: tuple }))
-            );
-            lastResult = attachmentResults[attachmentResults.length - 1] || lastResult;
+            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} sequentially...`);
+            for (const tuple of attachmentTuples) {
+                lastResult = await sendMsgPromise({ attachment: tuple });
+            }
         }
 
         // 3. Save refreshed appState to persistent storage
