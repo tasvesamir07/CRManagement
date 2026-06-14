@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { coursesAPI, platformsAPI, announcementsAPI, adminAPI } from '../../services/api';
@@ -20,9 +21,12 @@ import {
   Users,
   UserCog,
   LayoutDashboard,
-  Activity
+  Activity,
+  Filter,
+  X
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
+import { StatCardSkeleton, TableSkeleton } from '../ui/LoadingSkeleton';
 
 const getUniquePlatformDeliveries = (deliveryList) => {
   if (!deliveryList) return [];
@@ -68,6 +72,7 @@ const CRDashboard = ({ navigate }) => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [stats, setStats] = useState({
     coursesCount: 0,
@@ -214,8 +219,13 @@ const CRDashboard = ({ navigate }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        <div className="space-y-2">
+          <div className="shimmer-bg h-8 w-48 rounded"></div>
+          <div className="shimmer-bg h-4 w-96 rounded"></div>
+        </div>
+        <StatCardSkeleton />
+        <TableSkeleton rows={5} cols={6} />
       </div>
     );
   }
@@ -228,7 +238,7 @@ const CRDashboard = ({ navigate }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-primary/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-primary/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Active Courses</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{stats.coursesCount}</h3>
@@ -237,11 +247,13 @@ const CRDashboard = ({ navigate }) => {
             <Link to="/courses" className="text-xs font-medium text-ink-secondary hover:text-ink hover:underline flex items-center">
               Manage Courses <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
-            <BookOpen className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary stroke-[1.5]">
+              <BookOpen className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-accent-violet/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-accent-violet/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Broadcast Targets</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{stats.platformsCount}</h3>
@@ -250,11 +262,13 @@ const CRDashboard = ({ navigate }) => {
             <Link to="/platforms" className="text-xs font-medium text-ink-secondary hover:text-ink hover:underline flex items-center">
               Setup Targets <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
-            <Radio className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-accent-violet/10 flex items-center justify-center text-accent-violet stroke-[1.5]">
+              <Radio className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-accent-indigo/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-accent-indigo/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Total Broadcasts</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{stats.announcementsCount}</h3>
@@ -263,18 +277,22 @@ const CRDashboard = ({ navigate }) => {
             <Link to="/announcement/new" className="text-xs font-medium text-ink-secondary hover:text-ink hover:underline flex items-center">
               New Notice <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
-            <Megaphone className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-accent-indigo/10 flex items-center justify-center text-accent-indigo stroke-[1.5]">
+              <Megaphone className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-emerald-500/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-emerald-500/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Delivered Notices</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{stats.deliveredCount}</h3>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-primary font-medium">
             <span>{stats.announcementsCount > 0 ? Math.round((stats.deliveredCount / stats.announcementsCount) * 100) : 0}% success rate</span>
-            <Send className="w-6 h-6 text-primary stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 stroke-[1.5]">
+              <Send className="w-5 h-5" />
+            </div>
           </div>
         </div>
       </div>
@@ -287,8 +305,8 @@ const CRDashboard = ({ navigate }) => {
             </Link>
           </div>
 
-          {/* Search and filters */}
-          <div className="flex flex-wrap items-center gap-3 pb-2">
+          {/* Desktop Search and filters */}
+          <div className="hidden md:flex flex-wrap items-center gap-3 pb-2">
             <div className="relative flex-1 min-w-[200px]">
               <input
                 type="text"
@@ -348,6 +366,122 @@ const CRDashboard = ({ navigate }) => {
               </button>
             )}
           </div>
+
+          {/* Mobile Search and Filters Trigger */}
+          <div className="flex md:hidden flex-col gap-2 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search broadcasts..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder:text-ink-mute focus:outline-none focus:border-primary transition-colors"
+                />
+                <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-ink-mute" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <button
+                onClick={() => setFiltersOpen(true)}
+                className="flex items-center justify-center p-2.5 border border-hairline rounded-sm text-ink bg-canvas-soft hover:bg-canvas-soft/80"
+                title="Filters"
+              >
+                <Filter className="w-4 h-4 text-primary" />
+              </button>
+              {(statusFilter || courseFilter || dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setStatusFilter(''); setCourseFilter(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+                  className="flex items-center justify-center p-2.5 border border-accent-tomato/20 rounded-sm text-accent-tomato hover:bg-accent-tomato/5"
+                  title="Clear filters"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Filters Drawer Bottom Sheet */}
+          {filtersOpen && createPortal(
+            <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-end justify-center z-50 md:hidden" onClick={() => setFiltersOpen(false)}>
+              <div className="bg-canvas border-t border-hairline rounded-t-xl w-full max-h-[80vh] flex flex-col p-6 space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-hairline pb-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-ink">Filter Broadcasts</h3>
+                  </div>
+                  <button onClick={() => setFiltersOpen(false)} className="p-1 hover:bg-canvas-soft rounded">
+                    <X className="w-4 h-4 text-ink-mute" />
+                  </button>
+                </div>
+                <div className="space-y-4 overflow-y-auto pb-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Status</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                      className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                    >
+                      <option value="">All Status</option>
+                      <option value="draft">Draft</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="sending">Sending</option>
+                      <option value="sent">Delivered</option>
+                      <option value="partial">Partial</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Course</label>
+                    <select
+                      value={courseFilter}
+                      onChange={(e) => { setCourseFilter(e.target.value); setPage(1); }}
+                      className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                    >
+                      <option value="">All Courses</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.course_id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Date Range</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                        className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                        title="From date"
+                      />
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                        className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                        title="To date"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2 border-t border-hairline">
+                  <button
+                    onClick={() => { setSearch(''); setStatusFilter(''); setCourseFilter(''); setDateFrom(''); setDateTo(''); setPage(1); setFiltersOpen(false); }}
+                    className="flex-1 py-2 border border-hairline rounded-sm text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5"
+                  >
+                    Clear Filters
+                  </button>
+                  <button
+                    onClick={() => setFiltersOpen(false)}
+                    className="flex-1 py-2 bg-primary hover:bg-primary-deep text-white rounded-sm text-xs font-semibold"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
 
           {announcements.length === 0 ? (
             <div className="text-center py-12 text-ink-mute text-sm">
@@ -528,8 +662,13 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-8 animate-pulse">
+        <div className="space-y-2">
+          <div className="shimmer-bg h-8 w-48 rounded"></div>
+          <div className="shimmer-bg h-4 w-96 rounded"></div>
+        </div>
+        <StatCardSkeleton />
+        <TableSkeleton rows={4} cols={4} />
       </div>
     );
   }
@@ -542,7 +681,7 @@ const AdminDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-primary/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-primary/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Total Users</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{totalUsers}</h3>
@@ -551,40 +690,48 @@ const AdminDashboard = () => {
             <Link to="/admin/users" className="text-xs font-medium text-ink-secondary hover:text-ink hover:underline flex items-center">
               Manage Users <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
-            <Users className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary stroke-[1.5]">
+              <Users className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-accent-violet/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-accent-violet/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">CR Users</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{crUsers}</h3>
           </div>
           <div className="mt-4 flex items-center justify-between">
             <span className="text-xs text-ink-mute">{activeUsers} active users</span>
-            <UserCog className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-accent-violet/10 flex items-center justify-center text-accent-violet stroke-[1.5]">
+              <UserCog className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-accent-indigo/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-accent-indigo/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Total Broadcasts</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{totalBroadcasts}</h3>
           </div>
           <div className="mt-4 flex items-center justify-between">
             <span className="text-xs text-ink-mute">{scheduledBroadcasts} scheduled</span>
-            <Megaphone className="w-8 h-8 text-hairline-strong stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-accent-indigo/10 flex items-center justify-center text-accent-indigo stroke-[1.5]">
+              <Megaphone className="w-5 h-5" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-canvas border border-hairline hover:border-emerald-500/20 rounded-lg p-6 shadow-sm flex flex-col justify-between bg-gradient-to-br from-emerald-500/5 to-transparent glass-panel hover:scale-[1.02] transition-all duration-200">
           <div>
             <span className="text-xs font-medium text-ink-mute uppercase tracking-wider">Delivered Notices</span>
             <h3 className="text-3xl font-medium text-ink mt-2">{deliveredBroadcasts}</h3>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-primary font-medium">
             <span>{totalBroadcasts > 0 ? Math.round((deliveredBroadcasts / totalBroadcasts) * 100) : 0}% delivery rate</span>
-            <Send className="w-6 h-6 text-primary stroke-[1.25]" />
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 stroke-[1.5]">
+              <Send className="w-5 h-5" />
+            </div>
           </div>
         </div>
       </div>

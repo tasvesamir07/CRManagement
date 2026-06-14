@@ -48,7 +48,9 @@ const Profile = () => {
     try {
       await authAPI.updateProfile(displayName);
       toast.success('Profile updated');
+      const updatedUser = { ...user, display_name: displayName };
       user.display_name = displayName;
+      localStorage.setItem('cr_user', JSON.stringify(updatedUser));
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to update profile');
     } finally {
@@ -66,7 +68,9 @@ const Profile = () => {
     try {
       const data = await authAPI.changeEmail(newEmail, emailPassword);
       toast.success('Email changed');
+      const updatedUser = { ...user, email: newEmail };
       user.email = newEmail;
+      localStorage.setItem('cr_user', JSON.stringify(updatedUser));
       setEmailPassword('');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to change email');
@@ -86,7 +90,9 @@ const Profile = () => {
       const data = await authAPI.changeUsername(newUsername, usernamePassword);
       localStorage.setItem('cr_token', data.token);
       toast.success('Username changed');
+      const updatedUser = { ...user, username: newUsername };
       user.username = newUsername;
+      localStorage.setItem('cr_user', JSON.stringify(updatedUser));
       setUsernamePassword('');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to change username');
@@ -144,7 +150,9 @@ const Profile = () => {
     try {
       await authAPI.enable2FA(twoFactorToken);
       toast.success('2FA enabled successfully');
-      setUser({ ...user, two_factor_enabled: true });
+      const updatedUser = { ...user, two_factor_enabled: true };
+      setUser(updatedUser);
+      localStorage.setItem('cr_user', JSON.stringify(updatedUser));
       setTwoFactorSecret('');
       setTwoFactorQrUrl('');
       setTwoFactorToken('');
@@ -161,7 +169,9 @@ const Profile = () => {
     try {
       await authAPI.disable2FA(disable2FAPassword);
       toast.success('2FA disabled successfully');
-      setUser({ ...user, two_factor_enabled: false, two_factor_secret: null });
+      const updatedUser = { ...user, two_factor_enabled: false, two_factor_secret: null };
+      setUser(updatedUser);
+      localStorage.setItem('cr_user', JSON.stringify(updatedUser));
       setDisable2FAPassword('');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to disable 2FA');
@@ -301,7 +311,7 @@ const Profile = () => {
               className="w-full px-3 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">New Password</label>
               <PasswordInput
@@ -396,7 +406,7 @@ const Profile = () => {
               <Shield className="w-4 h-4" />
               <span className="text-sm font-medium">2FA is currently enabled</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
             <PasswordInput
               value={disable2FAPassword}
               onChange={(e) => setDisable2FAPassword(e.target.value)}

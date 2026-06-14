@@ -30,6 +30,8 @@ const LogsManager = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
+  const [expandedLogId, setExpandedLogId] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Filters
   const [actionFilter, setActionFilter] = useState('');
@@ -291,7 +293,8 @@ const LogsManager = () => {
       </div>
 
       {/* Filters Card */}
-      <div className="bg-canvas border border-hairline rounded-lg p-4 shadow-sm">
+      {/* Desktop Filters */}
+      <div className="hidden md:block bg-canvas border border-hairline rounded-lg p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-ink-mute" />
@@ -364,6 +367,104 @@ const LogsManager = () => {
         </div>
       </div>
 
+      {/* Mobile Filters Trigger Bar */}
+      <div className="flex md:hidden items-center justify-between gap-3 bg-canvas border border-hairline rounded-lg p-3 shadow-sm">
+        <button
+          onClick={() => setFiltersOpen(true)}
+          className="flex flex-1 items-center justify-center gap-2 px-3 py-2 border border-hairline rounded-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft/80"
+        >
+          <Filter className="w-3.5 h-3.5 text-primary" />
+          Filter Events {(actionFilter || entityTypeFilter || searchUserId) ? '(Active)' : ''}
+        </button>
+        {(actionFilter || entityTypeFilter || searchUserId) && (
+          <button
+            onClick={handleClearFilters}
+            className="flex items-center justify-center p-2 border border-accent-tomato/20 rounded-sm text-accent-tomato hover:bg-accent-tomato/5"
+            title="Clear filters"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Filters Drawer Bottom Sheet */}
+      {filtersOpen && createPortal(
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-end justify-center z-50 md:hidden" onClick={() => setFiltersOpen(false)}>
+          <div className="bg-canvas border-t border-hairline rounded-t-xl w-full max-h-[80vh] flex flex-col p-6 space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-hairline pb-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-ink">Filter Logs</h3>
+              </div>
+              <button onClick={() => setFiltersOpen(false)} className="p-1 hover:bg-canvas-soft rounded">
+                <X className="w-4 h-4 text-ink-mute" />
+              </button>
+            </div>
+            <div className="space-y-4 overflow-y-auto pb-6">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Event Type</label>
+                <select
+                  value={actionFilter}
+                  onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
+                  className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                >
+                  <option value="">All Event Types</option>
+                  <option value="announcement.delivery_failed">Delivery Failures</option>
+                  <option value="announcement.delivery_sent">Delivery Successes</option>
+                  <option value="announcement.broadcast_completed">Completed Broadcasts</option>
+                  {isAdmin && (
+                    <>
+                      <option value="admin.create_user">User Creation</option>
+                      <option value="admin.update_user">User Updates</option>
+                      <option value="admin.delete_user">User Removals</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Entity Type</label>
+                <select
+                  value={entityTypeFilter}
+                  onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}
+                  className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                >
+                  <option value="">All Entities</option>
+                  <option value="announcement">Announcements</option>
+                  {isAdmin && <option value="user">Users</option>}
+                </select>
+              </div>
+              {isAdmin && (
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">User ID</label>
+                  <input
+                    type="text"
+                    placeholder="Filter by User ID..."
+                    value={searchUserId}
+                    onChange={(e) => { setSearchUserId(e.target.value); setPage(1); }}
+                    className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2 border-t border-hairline">
+              <button
+                onClick={() => { handleClearFilters(); setFiltersOpen(false); }}
+                className="flex-1 py-2 border border-hairline rounded-sm text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5"
+              >
+                Clear Filters
+              </button>
+              <button
+                onClick={() => setFiltersOpen(false)}
+                className="flex-1 py-2 bg-primary hover:bg-primary-deep text-white rounded-sm text-xs font-semibold"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Logs Table */}
       <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
         {loading ? (
@@ -377,67 +478,170 @@ const LogsManager = () => {
             <p className="text-sm">No log events match your filters.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-hairline-cool">
-              <thead>
-                <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider bg-canvas-soft/40">
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">User</th>
-                  <th className="py-3 px-4">Event / Action</th>
-                  <th className="py-3 px-4">Target Entity</th>
-                  <th className="py-3 px-4">IP Address</th>
-                  <th className="py-3 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
-                {logs.map((log) => {
-                  const details = parseDetails(log.details);
-                  const isError = log.action.includes('failed');
-                  return (
-                    <tr key={log.id} className="hover:bg-canvas-soft/30 transition-colors">
-                      <td className="py-3 px-4 text-xs font-mono text-ink-mute">
+          <>
+            {/* Desktop View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-hairline-cool">
+                <thead>
+                  <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider bg-canvas-soft/40">
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4">User</th>
+                    <th className="py-3 px-4">Event / Action</th>
+                    <th className="py-3 px-4">Target Entity</th>
+                    <th className="py-3 px-4">IP Address</th>
+                    <th className="py-3 px-4 text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
+                  {logs.map((log) => {
+                    const details = parseDetails(log.details);
+                    const isError = log.action.includes('failed');
+                    return (
+                      <tr key={log.id} className="hover:bg-canvas-soft/30 transition-colors">
+                        <td className="py-3 px-4 text-xs font-mono text-ink-mute">
+                          {new Date(log.created_at).toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 font-medium text-ink">
+                          {log.display_name || log.username || `User ID: ${log.user_id}`}
+                        </td>
+                        <td className="py-3 px-4">
+                          {getActionLabel(log.action)}
+                        </td>
+                        <td className="py-3 px-4 text-xs">
+                          {log.entity_type && (
+                            <span className="font-semibold text-ink-mute capitalize">
+                              {log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono text-ink-mute">
+                          {log.ip_address || '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedLog(log)}
+                              className="inline-flex items-center px-2 py-1 text-xs border border-hairline rounded-sm text-ink-mute hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" />
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteLog(log.id, e)}
+                              className="inline-flex items-center px-2 py-1 text-xs border border-accent-tomato/20 rounded-sm text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+                              title="Delete log entry"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card-Based View */}
+            <div className="md:hidden divide-y divide-hairline-cool bg-canvas">
+              {logs.map((log) => {
+                const details = parseDetails(log.details);
+                const isExpanded = expandedLogId === log.id;
+                const errorMsg = details?.error || details?.message;
+                const troubleshoot = troubleshootError(errorMsg);
+
+                return (
+                  <div 
+                    key={log.id} 
+                    className={`p-4 space-y-3 cursor-pointer transition-colors ${isExpanded ? 'bg-canvas-soft/30' : 'hover:bg-canvas-soft/10'}`}
+                    onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-mono text-ink-mute">
                         {new Date(log.created_at).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 font-medium text-ink">
-                        {log.display_name || log.username || `User ID: ${log.user_id}`}
-                      </td>
-                      <td className="py-3 px-4">
-                        {getActionLabel(log.action)}
-                      </td>
-                      <td className="py-3 px-4 text-xs">
+                      </span>
+                      {getActionLabel(log.action)}
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <span className="text-ink font-semibold">
+                          {log.display_name || log.username || `User #${log.user_id}`}
+                        </span>
                         {log.entity_type && (
-                          <span className="font-semibold text-ink-mute capitalize">
-                            {log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}
+                          <span className="text-ink-mute block">
+                            Entity: <span className="capitalize">{log.entity_type}</span> {log.entity_id ? `#${log.entity_id}` : ''}
                           </span>
                         )}
-                      </td>
-                      <td className="py-3 px-4 text-xs font-mono text-ink-mute">
-                        {log.ip_address || '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      </div>
+                      <span className="text-[10px] text-ink-mute font-mono">
+                        {log.ip_address || 'No IP'}
+                      </span>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-hairline-cool/40 space-y-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <div>
+                          <span className="block text-[10px] uppercase font-bold text-ink-mute/70 mb-1">IP Address</span>
+                          <span className="font-mono text-ink-secondary">{log.ip_address || '—'}</span>
+                        </div>
+
+                        {troubleshoot && (
+                          <div className="bg-accent-tomato/5 border border-accent-tomato/20 rounded p-3 space-y-2">
+                            <div className="flex items-center gap-1.5 text-accent-tomato font-semibold">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              {troubleshoot.title}
+                            </div>
+                            <p className="text-[11px] text-ink-secondary leading-relaxed">
+                              {troubleshoot.explanation}
+                            </p>
+                            <div className="space-y-1">
+                              <span className="text-[9px] uppercase font-bold text-accent-tomato tracking-wider block">Suggested Fixes:</span>
+                              <ul className="list-decimal pl-4 text-[11px] text-ink-secondary space-y-0.5">
+                                {troubleshoot.steps.map((step, idx) => (
+                                  <li key={idx} className="leading-tight">{step}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <span className="block text-[10px] uppercase font-bold text-ink-mute/70">Raw Event Metadata</span>
+                          <pre className="bg-canvas-night text-on-dark text-[10px] p-3 rounded font-mono overflow-x-auto max-h-32 whitespace-pre-wrap">
+                            {JSON.stringify(details, null, 2)}
+                          </pre>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2">
+                          {selectedLog?.entity_type === 'announcement' && selectedLog?.entity_id && (
+                            <button
+                              onClick={() => handleRetrySend(log.entity_id)}
+                              className="px-2.5 py-1.5 bg-accent-tomato hover:bg-accent-tomato-deep text-white rounded-sm text-[11px] font-semibold cursor-pointer"
+                            >
+                              Retry Broadcast
+                            </button>
+                          )}
                           <button
                             onClick={() => setSelectedLog(log)}
-                            className="inline-flex items-center px-2 py-1 text-xs border border-hairline rounded-sm text-ink-mute hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1.5 border border-hairline rounded text-[11px] font-semibold text-ink hover:bg-canvas-soft cursor-pointer"
                           >
-                            <Eye className="w-3.5 h-3.5 mr-1" />
-                            View
+                            <Eye className="w-3.5 h-3.5" /> Full Modal
                           </button>
                           <button
                             onClick={(e) => handleDeleteLog(log.id, e)}
-                            className="inline-flex items-center px-2 py-1 text-xs border border-accent-tomato/20 rounded-sm text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
-                            title="Delete log entry"
+                            className="flex items-center gap-1 px-2.5 py-1.5 border border-accent-tomato/20 rounded text-[11px] font-semibold text-accent-tomato hover:bg-accent-tomato/5 cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" /> Delete Log
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Pagination Footer */}

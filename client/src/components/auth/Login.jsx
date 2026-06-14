@@ -37,6 +37,7 @@ const Login = () => {
                 setTwoFactorUserId(data.userId);
             } else {
                 localStorage.setItem('cr_token', data.token);
+                localStorage.setItem('cr_user', JSON.stringify(data.user));
                 setUser(data.user);
                 toast.success(`Welcome back, ${data.user.display_name || data.user.username}!`);
                 navigate('/dashboard');
@@ -59,7 +60,8 @@ const Login = () => {
         try {
             const data = await authAPI.login2FA(twoFactorUserId, twoFactorCode);
             localStorage.setItem('cr_token', data.token);
-                setUser(data.user);
+            localStorage.setItem('cr_user', JSON.stringify(data.user));
+            setUser(data.user);
                 toast.success('2FA verified successfully!');
                 navigate('/dashboard');
         } catch (error) {
@@ -71,8 +73,11 @@ const Login = () => {
 
     if (requires2FA) {
         return (
-            <div className="min-h-screen bg-canvas flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-                <div className="sm:mx-auto sm:w-full sm:max-w-md">
+            <div className="min-h-screen bg-gradient-to-br from-primary/[0.03] via-canvas to-accent-violet/[0.03] dark:from-primary/[0.08] dark:via-canvas dark:to-accent-violet/[0.08] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 right-0 w-80 h-80 bg-accent-violet/5 rounded-full blur-3xl pointer-events-none translate-x-1/4 translate-y-1/4"></div>
+                
+                <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
                     <div className="flex justify-center">
                         <div className="w-14 h-14 rounded-sm bg-accent-violet/15 flex items-center justify-center">
                             <Smartphone className="w-7 h-7 text-accent-violet" />
@@ -84,8 +89,8 @@ const Login = () => {
                     </p>
                 </div>
 
-                <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="bg-canvas py-8 px-4 border border-hairline rounded-lg sm:px-10 shadow-sm">
+                <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                    <div className="bg-canvas py-8 px-4 border border-hairline rounded-lg sm:px-10 shadow-sm animate-slide-up">
                         {err && (
                             <div className="mb-4 bg-accent-tomato/10 border border-accent-tomato/20 text-accent-tomato text-sm p-3 rounded-sm">
                                 {err}
@@ -113,7 +118,7 @@ const Login = () => {
                             >
                                 {verifying2FA ? (
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
+                               ) : (
                                     <Shield className="w-4 h-4 mr-2" />
                                 )}
                                 Verify & Sign In
@@ -140,8 +145,11 @@ const Login = () => {
     }
 
     return (
-        <div className="min-h-screen bg-canvas flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="min-h-screen bg-gradient-to-br from-primary/[0.03] via-canvas to-accent-violet/[0.03] dark:from-primary/[0.08] dark:via-canvas dark:to-accent-violet/[0.08] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
+            <div className="absolute bottom-0 right-0 w-80 h-80 bg-accent-violet/5 rounded-full blur-3xl pointer-events-none translate-x-1/4 translate-y-1/4"></div>
+
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-slide-up">
                 <div className="flex justify-center items-center gap-2">
                     <div className="w-8 h-8 rounded-sm bg-ink flex items-center justify-center text-primary font-bold text-lg">
                         CR
@@ -156,8 +164,8 @@ const Login = () => {
                 </p>
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-canvas py-8 px-4 border border-hairline rounded-lg sm:px-10 shadow-sm">
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <div className="bg-canvas py-8 px-4 border border-hairline rounded-lg sm:px-10 shadow-sm animate-slide-up">
                     {err && (
                         <div className="mb-4 bg-accent-tomato/10 border border-accent-tomato/20 text-accent-tomato text-sm p-3 rounded-sm">
                             {err}
@@ -212,7 +220,7 @@ const Login = () => {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+                                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-colors duration-150 cursor-pointer animate-in fade-in"
                             >
                                 {submitting ? 'Signing in...' : 'Sign In'}
                                 <ArrowRight className="ml-2 w-4 h-4" />

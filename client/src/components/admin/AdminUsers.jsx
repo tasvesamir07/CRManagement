@@ -262,63 +262,114 @@ const AdminUsers = () => {
             </div>
           )}
 
-          <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-hairline-cool">
-                <thead>
-                  <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider">
-                    <th className="py-3 px-4">User</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Created</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-canvas-soft transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-hairline-strong flex items-center justify-center text-xs font-bold text-ink-secondary">
-                            {(u.display_name || u.username).charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-ink">{u.display_name || u.username}</p>
-                            <p className="text-xs text-ink-mute">@{u.username}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-xs">{u.email}</td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleRoleToggle(u.id, u.role)}
-                          className={`px-2 py-0.5 rounded text-xs font-medium border cursor-pointer transition-colors ${
-                            u.role === 'admin'
-                              ? 'bg-accent-violet/10 text-accent-violet border-accent-violet/20 hover:bg-accent-violet/20'
-                              : 'bg-primary/10 text-primary-deep border-primary/20 hover:bg-primary/20'
-                          }`}
-                        >
-                          {u.role}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4 text-xs text-ink-mute">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleDelete(u.id, u.username)}
-                          className="p-1.5 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer"
-                          title="Deactivate user"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-hairline-cool">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider">
+                      <th className="py-3 px-4">User</th>
+                      <th className="py-3 px-4">Email</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Created</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-canvas-soft transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-hairline-strong flex items-center justify-center text-xs font-bold text-ink-secondary">
+                              {(u.display_name || u.username).charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-ink">{u.display_name || u.username}</p>
+                              <p className="text-xs text-ink-mute">@{u.username}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-xs">{u.email}</td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleRoleToggle(u.id, u.role)}
+                            className={`px-2 py-0.5 rounded text-xs font-medium border cursor-pointer transition-colors ${
+                              u.role === 'admin'
+                                ? 'bg-accent-violet/10 text-accent-violet border-accent-violet/20 hover:bg-accent-violet/20'
+                                : 'bg-primary/10 text-primary-deep border-primary/20 hover:bg-primary/20'
+                            }`}
+                          >
+                            {u.role}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-xs text-ink-mute">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleDelete(u.id, u.username)}
+                            className="p-1.5 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer"
+                            title="Deactivate user"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card-Based View */}
+              <div className="md:hidden divide-y divide-hairline-cool bg-canvas">
+                {users.map((u) => (
+                  <div key={u.id} className="p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-hairline-strong flex items-center justify-center text-xs font-bold text-ink-secondary">
+                          {(u.display_name || u.username).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-ink">{u.display_name || u.username}</h4>
+                          <p className="text-xs text-ink-mute">@{u.username}</p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleRoleToggle(u.id, u.role)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium border cursor-pointer transition-colors ${
+                          u.role === 'admin'
+                            ? 'bg-accent-violet/10 text-accent-violet border-accent-violet/20 hover:bg-accent-violet/20'
+                            : 'bg-primary/10 text-primary-deep border-primary/20 hover:bg-primary/20'
+                        }`}
+                      >
+                        {u.role}
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs text-ink-mute">
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">Email</span>
+                        <span className="text-ink-secondary break-all">{u.email}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">Created At</span>
+                        <span className="text-ink-secondary">{new Date(u.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2 border-t border-hairline-cool/40">
+                      <button
+                        onClick={() => handleDelete(u.id, u.username)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-tomato/20 rounded text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Deactivate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -260,31 +260,102 @@ const CourseManager = () => {
             No courses registered. Click 'Add Course' to start.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-hairline-cool">
-              <thead>
-                <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider bg-canvas-soft">
-                  <th className="py-3 px-6">Code</th>
-                  <th className="py-3 px-6">Course Name</th>
-                  <th className="py-3 px-6">Instructor</th>
-                  <th className="py-3 px-6">Initials</th>
-                  <th className="py-3 px-6">Default Platforms</th>
-                  <th className="py-3 px-6">CRs Assigned</th>
-                  <th className="py-3 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
-                {courses.map((course) => (
-                  <tr key={course.id} className="hover:bg-canvas-soft transition-colors">
-                    <td className="py-4 px-6 font-mono text-xs font-bold text-ink">{course.course_id}</td>
-                    <td className="py-4 px-6 font-medium text-ink">{course.course_name}</td>
-                    <td className="py-4 px-6">{course.teacher_name}</td>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-hairline-cool">
+                <thead>
+                  <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider bg-canvas-soft">
+                    <th className="py-3 px-6">Code</th>
+                    <th className="py-3 px-6">Course Name</th>
+                    <th className="py-3 px-6">Instructor</th>
+                    <th className="py-3 px-6">Initials</th>
+                    <th className="py-3 px-6">Default Platforms</th>
+                    <th className="py-3 px-6">CRs Assigned</th>
+                    <th className="py-3 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
+                  {courses.map((course) => (
+                    <tr key={course.id} className="hover:bg-canvas-soft transition-colors">
+                      <td className="py-4 px-6 font-mono text-xs font-bold text-ink">{course.course_id}</td>
+                      <td className="py-4 px-6 font-medium text-ink">{course.course_name}</td>
+                      <td className="py-4 px-6">{course.teacher_name}</td>
+                      <td className="py-4 px-6">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-hairline-cool text-ink">
+                          {course.teacher_initials}
+                        </span>
+                      </td>
                     <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-hairline-cool text-ink">
-                        {course.teacher_initials}
+                      {(course.default_platform_ids || []).length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(course.default_platform_ids || []).map(pid => (
+                            <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary-deep">
+                              <Flag className="w-2.5 h-2.5" />
+                              {pid}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-ink-mute">None</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary-deep">
+                        {course.member_count || 0} {course.member_count === 1 ? 'CR' : 'CRs'}
                       </span>
                     </td>
-                  <td className="py-4 px-6">
+                    <td className="py-4 px-6 text-right">
+                        <div className="flex justify-end gap-3">
+                          <button
+                            onClick={() => handleEdit(course)}
+                            className="p-1 text-ink-mute hover:text-ink hover:bg-hairline-cool rounded transition-all cursor-pointer"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(course.id)}
+                            className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-all cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card-Based View */}
+            <div className="md:hidden divide-y divide-hairline-cool bg-canvas">
+              {courses.map((course) => (
+                <div key={course.id} className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-base font-bold text-ink">{course.course_id}</h4>
+                      <p className="text-sm font-medium text-ink-secondary">{course.course_name}</p>
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-hairline-cool text-ink">
+                      {course.teacher_initials}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs text-ink-mute">
+                    <div>
+                      <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">Instructor</span>
+                      <span className="text-ink-secondary">{course.teacher_name}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">CRs Assigned</span>
+                      <span className="text-ink-secondary">{course.member_count || 0} CR(s)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] uppercase font-semibold text-ink-mute/70 mb-1">Default Platforms</span>
                     {(course.default_platform_ids || []).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {(course.default_platform_ids || []).map(pid => (
@@ -297,35 +368,26 @@ const CourseManager = () => {
                     ) : (
                       <span className="text-xs text-ink-mute">None</span>
                     )}
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary-deep">
-                      {course.member_count || 0} {course.member_count === 1 ? 'CR' : 'CRs'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                      <div className="flex justify-end gap-3">
-                        <button
-                          onClick={() => handleEdit(course)}
-                          className="p-1 text-ink-mute hover:text-ink hover:bg-hairline-cool rounded transition-all cursor-pointer"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(course.id)}
-                          className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-all cursor-pointer"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2 border-t border-hairline-cool/40">
+                    <button
+                      onClick={() => handleEdit(course)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-hairline rounded text-xs font-semibold text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(course.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-tomato/20 rounded text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

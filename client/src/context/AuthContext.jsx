@@ -11,17 +11,52 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const checkAuth = async () => {
             const token = localStorage.getItem('cr_token');
+            const cachedUserStr = localStorage.getItem('cr_user');
+            
             if (token) {
+                // Client-side JWT expiry check
+                let expired = false;
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    if (payload.exp && Date.now() >= payload.exp * 1000) {
+                        expired = true;
+                    }
+                } catch (e) {
+                    expired = true;
+                }
+
+                if (expired) {
+                    localStorage.removeItem('cr_token');
+                    localStorage.removeItem('cr_user');
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+
+                // Restore user state from cache instantly
+                if (cachedUserStr) {
+                    try {
+                        setUser(JSON.parse(cachedUserStr));
+                    } catch (_) {}
+                }
+                
+                // Immediately stop loading state
+                setLoading(false);
+
+                // Revalidate session silently in background
                 try {
                     const data = await authAPI.me();
                     setUser(data.user);
+                    localStorage.setItem('cr_user', JSON.stringify(data.user));
                 } catch (err) {
                     console.error('Session restore failed:', err.message);
                     localStorage.removeItem('cr_token');
+                    localStorage.removeItem('cr_user');
                     setUser(null);
                 }
+            } else {
+                setLoading(false);
             }
-            setLoading(false);
         };
         checkAuth();
     }, []);
@@ -36,6 +71,7 @@ export const AuthProvider = ({ children }) => {
                 return data;
             }
             localStorage.setItem('cr_token', data.token);
+            localStorage.setItem('cr_user', JSON.stringify(data.user));
             setUser(data.user);
             setLoading(false);
             return data;
@@ -52,6 +88,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const data = await authAPI.register(username, email, password, displayName);
             localStorage.setItem('cr_token', data.token);
+            localStorage.setItem('cr_user', JSON.stringify(data.user));
             setUser(data.user);
             setLoading(false);
             return data.user;
@@ -64,6 +101,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('cr_token');
+        localStorage.removeItem('cr_user');
         setUser(null);
     };
 
@@ -71,6 +109,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const data = await authAPI.me();
             setUser(data.user);
+            localStorage.setItem('cr_user', JSON.stringify(data.user));
         } catch (err) {
             console.error('Failed to refresh user:', err.message);
         }

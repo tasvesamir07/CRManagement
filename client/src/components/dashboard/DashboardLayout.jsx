@@ -23,7 +23,7 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('cr_theme') || 'light';
@@ -65,7 +65,7 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-canvas-soft flex flex-col md:flex-row">
-      {/* Mobile menu bar */}
+      {/* Mobile top bar */}
       <div className="md:hidden bg-canvas border-b border-hairline px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-sm bg-ink flex items-center justify-center text-primary font-bold text-base">
@@ -81,79 +81,127 @@ const DashboardLayout = () => {
           >
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="text-ink hover:text-ink-secondary focus:outline-none cursor-pointer"
+          <Link
+            to="/profile"
+            className="p-2 text-ink-mute hover:text-ink rounded-sm hover:bg-canvas-soft transition-colors"
+            title="Profile Settings"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            <User className="w-4 h-4" />
+          </Link>
         </div>
       </div>
 
-      {/* Mobile dropdown menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-[53px] bg-canvas z-40 border-b border-hairline flex flex-col p-4 space-y-2">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-sm transition-colors ${
-                  isActive 
-                    ? 'bg-primary/15 text-ink-secondary font-semibold border-l-2 border-primary' 
-                    : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
-                }`}
-              >
-                <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-primary' : 'text-ink-mute'}`} />
-                {item.name}
-              </Link>
-            );
-          })}
-          <hr className="border-hairline my-2" />
-          {bottomLinks.map((item) => {
-            const isActive = location.pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-sm transition-colors ${
-                  isActive 
-                    ? 'bg-primary/15 text-ink-secondary font-semibold border-l-2 border-primary' 
-                    : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
-                }`}
-              >
-                <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-primary' : 'text-ink-mute'}`} />
-                {item.name}
-              </Link>
-            );
-          })}
-          <hr className="border-hairline my-2" />
-          <div className="px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-hairline flex items-center justify-center text-ink-secondary">
-              <User className="w-4 h-4" />
+      {/* Mobile More Drawer Overlay */}
+      {moreMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end" onClick={() => setMoreMenuOpen(false)}>
+          <div 
+            className="bg-canvas w-full rounded-t-lg border-t border-hairline p-5 space-y-4 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-hairline-cool pb-3">
+              <span className="text-xs font-semibold text-ink-mute uppercase tracking-wider">More Menu</span>
+              <button onClick={() => setMoreMenuOpen(false)} className="p-1 rounded hover:bg-canvas-soft text-ink-mute hover:text-ink cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div>
-              <p className="text-sm font-medium text-ink">{user?.display_name || user?.username}</p>
-              <p className="text-xs text-ink-mute capitalize">{user?.role} Account</p>
+            
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <Link to="/routines" onClick={() => setMoreMenuOpen(false)} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+                <Calendar className="w-6 h-6 mb-2 text-primary" />
+                <span className="text-xs font-medium text-center">Schedules</span>
+              </Link>
+              <Link to="/files" onClick={() => setMoreMenuOpen(false)} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+                <FileUp className="w-6 h-6 mb-2 text-primary" />
+                <span className="text-xs font-medium text-center">Uploaded Files</span>
+              </Link>
+              <Link to="/logs" onClick={() => setMoreMenuOpen(false)} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+                <ClipboardList className="w-6 h-6 mb-2 text-primary" />
+                <span className="text-xs font-medium text-center">Delivery Logs</span>
+              </Link>
+              <Link to="/profile" onClick={() => setMoreMenuOpen(false)} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+                <User className="w-6 h-6 mb-2 text-primary" />
+                <span className="text-xs font-medium text-center">Profile Settings</span>
+              </Link>
+              {user?.role === 'admin' && (
+                <Link to="/admin/users" onClick={() => setMoreMenuOpen(false)} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+                  <Shield className="w-6 h-6 mb-2 text-primary" />
+                  <span className="text-xs font-medium text-center">Admin Panel</span>
+                </Link>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-hairline-cool flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-hairline flex items-center justify-center text-ink-secondary">
+                  <User className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-ink truncate">{user?.display_name || user?.username}</p>
+                  <p className="text-[10px] text-ink-mute capitalize">{user?.role} Account</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setMoreMenuOpen(false); handleLogout(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-tomato/20 rounded text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out
+              </button>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              handleLogout();
-            }}
-            className="flex w-full items-center px-4 py-3 text-sm font-medium text-accent-tomato hover:bg-accent-tomato/10 rounded-sm cursor-pointer"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            Sign Out
-          </button>
         </div>
       )}
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-canvas border-t border-hairline py-2 px-3 flex items-center justify-around z-40 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-lg">
+        {user?.role === 'admin' ? (
+          <>
+            <Link to="/dashboard" className={`flex flex-col items-center ${location.pathname === '/dashboard' ? 'text-primary' : 'text-ink-mute'}`}>
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Overview</span>
+            </Link>
+            <Link to="/logs" className={`flex flex-col items-center ${location.pathname === '/logs' ? 'text-primary' : 'text-ink-mute'}`}>
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Logs</span>
+            </Link>
+            <Link to="/admin/users" className={`flex flex-col items-center ${location.pathname === '/admin/users' ? 'text-primary' : 'text-ink-mute'}`}>
+              <Shield className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Admin</span>
+            </Link>
+            <Link to="/profile" className={`flex flex-col items-center ${location.pathname === '/profile' ? 'text-primary' : 'text-ink-mute'}`}>
+              <User className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Profile</span>
+            </Link>
+            <button onClick={handleLogout} className="flex flex-col items-center text-ink-mute cursor-pointer">
+              <LogOut className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Exit</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/dashboard" className={`flex flex-col items-center ${location.pathname === '/dashboard' ? 'text-primary' : 'text-ink-mute'}`}>
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Overview</span>
+            </Link>
+            <Link to="/announcement/new" className={`flex flex-col items-center ${location.pathname === '/announcement/new' ? 'text-primary' : 'text-ink-mute'}`}>
+              <Megaphone className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Broadcast</span>
+            </Link>
+            <Link to="/courses" className={`flex flex-col items-center ${location.pathname === '/courses' ? 'text-primary' : 'text-ink-mute'}`}>
+              <BookOpen className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Courses</span>
+            </Link>
+            <Link to="/platforms" className={`flex flex-col items-center ${location.pathname === '/platforms' ? 'text-primary' : 'text-ink-mute'}`}>
+              <Radio className="w-5 h-5" />
+              <span className="text-[10px] mt-1">Platforms</span>
+            </Link>
+            <button onClick={() => setMoreMenuOpen(true)} className={`flex flex-col items-center ${moreMenuOpen ? 'text-primary' : 'text-ink-mute'} cursor-pointer`}>
+              <Menu className="w-5 h-5" />
+              <span className="text-[10px] mt-1">More</span>
+            </button>
+          </>
+        )}
+      </nav>
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-canvas border-r border-hairline z-30">
@@ -237,7 +285,7 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 md:pl-64 flex flex-col min-h-screen pb-16 md:pb-0">
         <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
           <ErrorBoundary>
             <div key={location.pathname} className="route-enter-active">

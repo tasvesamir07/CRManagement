@@ -303,14 +303,11 @@ async function resetPassword(email, otp, newPassword) {
 }
 
 async function getUserById(id) {
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+    const result = await db.query('SELECT id, username, role, display_name, email, is_active, two_factor_enabled, created_at FROM users WHERE id = $1', [id]);
     if (result.rows.length === 0) {
         return null;
     }
-    const user = result.rows[0];
-    delete user.password_hash;
-    delete user.two_factor_secret;
-    return user;
+    return result.rows[0];
 }
 
 async function setup2FA(userId) {

@@ -67,28 +67,28 @@
 }
 
 .text-display-xxl {
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.05em;
 }
 
 .text-display-xl {
-  font-size: 2.75rem;
+  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.04em;
 }
 
 .text-display-lg {
-  font-size: 2.25rem;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.03em;
 }
 
 .text-display-md {
-  font-size: 1.75rem;
+  font-size: clamp(1.25rem, 3.5vw, 1.75rem);
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -214,6 +214,54 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Safe areas */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Touch active feedback */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-active:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Shimmer keyframes & skeleton loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, var(--color-hairline) 25%, var(--color-hairline-cool) 50%, var(--color-hairline) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 

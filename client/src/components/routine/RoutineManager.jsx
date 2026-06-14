@@ -604,7 +604,7 @@ const RoutineManager = () => {
                                       <div className="text-xs text-ink-mute mt-1 font-medium">
                                         {r.room_number}
                                       </div>
-                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 no-export">
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 no-export">
                                         <button
                                           onClick={() => setAnnounceTarget({ routine: r, slot, matchedCourse })}
                                           className="text-ink-mute hover:text-accent-yellow hover:bg-accent-yellow/10 p-0.5 rounded cursor-pointer"

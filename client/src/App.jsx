@@ -69,11 +69,24 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
+  const [toastPosition, setToastPosition] = React.useState(
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'bottom-center' : 'top-right'
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setToastPosition(window.innerWidth < 768 ? 'bottom-center' : 'top-right');
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <AuthProvider>
       <UploadProvider>
         <Router>
           <Toaster
+            position={toastPosition}
             toastOptions={{
               duration: 4000,
               style: {

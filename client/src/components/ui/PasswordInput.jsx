@@ -16,8 +16,8 @@ const PasswordInput = forwardRef((props, ref) => {
       <button
         type="button"
         onClick={() => setShow(!show)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute hover:text-ink transition-colors cursor-pointer"
-        tabIndex={-1}
+        className="absolute right-0 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-mute hover:text-ink transition-colors cursor-pointer"
+        aria-label="Toggle password visibility"
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
