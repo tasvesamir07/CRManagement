@@ -65,12 +65,20 @@ function formatTelegram(announcement, _course) {
     return announcement.content;
 }
 
-// Format message for Messenger
+// Format message for Messenger (strips formatting characters since Messenger mobile doesn't support them)
 function formatMessenger(announcement, _course) {
+    let content = announcement.content;
     if (announcement.category === 'share_file') {
-        return announcement.content === 'Shared File(s)' ? '' : (announcement.content || '');
+        content = announcement.content === 'Shared File(s)' ? '' : (announcement.content || '');
     }
-    return announcement.content;
+    if (!content) return '';
+    return content
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/__(.*?)__/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/_(.*?)_/g, '$1')
+        .replace(/~(.*?)~/g, '$1')
+        .replace(/`(.*?)`/g, '$1');
 }
 
 async function sendAnnouncement(id, _hostUrl = '') {
