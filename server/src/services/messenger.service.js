@@ -269,11 +269,14 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
             return new Promise((resolve, reject) => {
+                console.log(`[FCA] Calling sendMessage to thread ${chatId} with payload:`, JSON.stringify(payload));
                 bot.api.sendMessage(payload, chatId, (err, messageInfo) => {
                     if (err) {
+                        console.error(`[FCA] sendMessage to thread ${chatId} failed:`, err);
                         const errMsg = err.message || err.error || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Unknown FCA error';
                         reject(new Error(errMsg));
                     } else {
+                        console.log(`[FCA] sendMessage to thread ${chatId} succeeded. messageInfo:`, JSON.stringify(messageInfo));
                         resolve(messageInfo);
                     }
                 });
