@@ -48,9 +48,17 @@ async function saveAppState(appState) {
     }
 }
 async function checkConnection() {
-    if (isMockMode) return false;
     try {
         console.log("Running proactive Messenger connection check...");
+        const appStateData = await loadAppState();
+        const hasAppState = appStateData || process.env.MESSENGER_APPSTATE || fs.existsSync(APPSTATE_PATH);
+        if (!hasAppState) {
+            console.log("No Messenger appstate found. Staying in Mock Mode.");
+            resetBot();
+            isMockMode = true;
+            return false;
+        }
+
         const bot = await getBot();
         
         const isMqttConnected = !!(bot.ctx && bot.ctx.mqttClient && bot.ctx.mqttClient.connected);
@@ -71,6 +79,7 @@ async function checkConnection() {
         });
 
         console.log(`✅ Messenger connection check passed. Active User ID: ${myId}`);
+        isMockMode = false;
         return true;
     } catch (err) {
         console.warn(`❌ Messenger connection check failed: ${err.message}. Transitioning to Mock Mode.`);
@@ -125,12 +134,10 @@ async function initMessenger() {
         }
 
         setInterval(async () => {
-            if (!isMockMode) {
-                try {
-                    await checkConnection();
-                } catch (err) {
-                    console.error("Scheduled Messenger connection check error:", err.message);
-                }
+            try {
+                await checkConnection();
+            } catch (err) {
+                console.error("Scheduled Messenger connection check error:", err.message);
             }
         }, 6 * 60 * 60 * 1000);
     } catch (err) {

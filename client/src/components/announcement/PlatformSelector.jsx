@@ -12,7 +12,9 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
     );
   }
 
-  const displayPlatforms = platforms.filter(p => !alreadySentPlatforms.includes(p.id));
+  const displayPlatforms = platforms
+    .filter(p => !alreadySentPlatforms.includes(p.id))
+    .filter(p => !(p.platform_type === 'messenger' && p.service_available === false));
 
   if (displayPlatforms.length === 0) {
     return (

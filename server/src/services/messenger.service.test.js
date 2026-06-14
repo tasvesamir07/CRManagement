@@ -36,4 +36,11 @@ describe('Messenger Service', () => {
     expect(result.success).toBe(true);
     expect(result.messageId).toMatch(/^mock-msg-id-/);
   });
+
+  it('should return false when checkConnection is called but no appstate is configured', async () => {
+    const messengerService = require('./messenger.service');
+    await messengerService.initMessenger();
+    const isConnected = await messengerService.checkConnection();
+    expect(isConnected).toBe(false);
+  });
 });

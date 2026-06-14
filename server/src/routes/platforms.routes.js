@@ -185,7 +185,15 @@ router.post('/messenger/appstate', authMiddleware, async (req, res) => {
         // Reset bot client to trigger login with new credentials
         messengerService.resetBot();
         
-        return res.json({ message: 'Messenger appState updated successfully. Connection check initiated.' });
+        // Verify connection immediately
+        console.log("Verifying newly uploaded Messenger AppState...");
+        const isConnected = await messengerService.checkConnection();
+        
+        if (isConnected) {
+            return res.json({ message: 'Messenger AppState updated and verified successfully!' });
+        } else {
+            return res.status(400).json({ error: 'Connection failed with the uploaded AppState. Please make sure your Facebook account is not locked and the AppState is valid.' });
+        }
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
