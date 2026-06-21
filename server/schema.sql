@@ -58,7 +58,16 @@ CREATE TABLE IF NOT EXISTS platforms (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Files
+-- 5. Folders (organize files by course)
+CREATE TABLE IF NOT EXISTS folders (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+    created_by INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Files
 CREATE TABLE IF NOT EXISTS files (
     id SERIAL PRIMARY KEY,
     original_name TEXT NOT NULL,
@@ -67,6 +76,7 @@ CREATE TABLE IF NOT EXISTS files (
     file_size INTEGER,
     uploaded_by INTEGER,
     expires_at TIMESTAMPTZ,
+    folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL,
     uploaded_at TIMESTAMPTZ DEFAULT NOW(),
     is_deleted BOOLEAN DEFAULT false
 );
@@ -91,7 +101,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Announcement-Platform mapping (delivery status per platform)
+-- 8. Announcement-Platform mapping (delivery status per platform)
 CREATE TABLE IF NOT EXISTS announcement_platforms (
     announcement_id INTEGER REFERENCES announcements(id) ON DELETE CASCADE,
     platform_id INTEGER REFERENCES platforms(id),
@@ -101,7 +111,7 @@ CREATE TABLE IF NOT EXISTS announcement_platforms (
     PRIMARY KEY (announcement_id, platform_id)
 );
 
--- 8. Course members
+-- 9. Course members
 CREATE TABLE IF NOT EXISTS course_members (
     user_id INTEGER REFERENCES users(id),
     course_id INTEGER REFERENCES courses(id),
@@ -110,7 +120,7 @@ CREATE TABLE IF NOT EXISTS course_members (
     PRIMARY KEY (user_id, course_id)
 );
 
--- 9. OTPs (for password reset)
+-- 10. OTPs (for password reset)
 CREATE TABLE IF NOT EXISTS otps (
     id SERIAL PRIMARY KEY,
     email TEXT NOT NULL,
@@ -121,7 +131,7 @@ CREATE TABLE IF NOT EXISTS otps (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 10. Audit logs
+-- 11. Audit logs
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER,
@@ -133,7 +143,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 11. Analytics events
+-- 12. Analytics events
 CREATE TABLE IF NOT EXISTS analytics_events (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL,
@@ -142,7 +152,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 12. Announcement templates
+-- 13. Announcement templates
 CREATE TABLE IF NOT EXISTS announcement_templates (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -157,14 +167,14 @@ CREATE TABLE IF NOT EXISTS announcement_templates (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 13. WhatsApp auth credentials (persists across deploys)
+-- 14. WhatsApp auth credentials (persists across deploys)
 CREATE TABLE IF NOT EXISTS whatsapp_creds (
     type TEXT PRIMARY KEY,
     data JSONB NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 14. System settings (e.g. messenger appState, config)
+-- 15. System settings (e.g. messenger appState, config)
 CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
