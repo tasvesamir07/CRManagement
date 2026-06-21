@@ -44,10 +44,6 @@ services:
         sync: false
       - key: FILE_EXPIRY_DAYS
         value: "15"
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 1
 
   # ──────────────────────────────────────────────
   # Frontend — React SPA (Static Site)
@@ -77,22 +73,3 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-
-  # ──────────────────────────────────────────────
-  # WhatsApp Relay — Baileys persistent connection
-  # ──────────────────────────────────────────────
-  - type: web
-    name: crmanagement-relay
-    runtime: node
-    rootDir: relay
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: PORT
-        value: 3003
-      - key: WHATSAPP_RELAY_SECRET
-        generateValue: true
-    disk:
-      name: baileys-auth
-      mountPath: /app/.baileys_auth
-      sizeGB: 1
