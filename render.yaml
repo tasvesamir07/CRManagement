@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 5000
       - key: CORS_ORIGIN
-        value: https://crmanagement-frontend.onrender.com
+        value: https://cr-management-lovat.vercel.app
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -56,9 +56,9 @@ services:
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_URL
-        value: https://crmanagement-backend.onrender.com/api
+        value: https://crmanagement-backend-v7sz.onrender.com/api
       - key: VITE_WS_URL
-        value: wss://crmanagement-backend.onrender.com
+        value: wss://crmanagement-backend-v7sz.onrender.com
     headers:
       - path: /*
         name: X-Frame-Options
