@@ -2,6 +2,7 @@ const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws');
 
 // Initialize Supabase if credentials are provided
 let supabase = null;
@@ -12,7 +13,9 @@ const bucketName = process.env.SUPABASE_BUCKET_NAME || 'announcement-files';
 if (supabaseUrl && supabaseKey) {
     console.log('Supabase Storage configurations detected. Initializing Supabase client...');
     const cleanSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
-    supabase = createClient(cleanSupabaseUrl, supabaseKey);
+    supabase = createClient(cleanSupabaseUrl, supabaseKey, {
+        realtime: { transport: WebSocket }
+    });
 } else {
     console.log('⚠️ Supabase credentials missing. File service will run on local uploads fallback.');
 }
