@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const cache = require('../config/cache');
 
 async function createCourse({ course_id, course_name, teacher_name, teacher_initials, created_by, default_platform_ids }) {
     // Trim and sanitize input values to remove tab characters and multiple whitespaces
@@ -28,10 +29,20 @@ async function createCourse({ course_id, course_name, teacher_name, teacher_init
         await fileService.createFolder(folderName, newCourse.id, created_by || null);
     }
     
+    if (newCourse) {
+        cache.invalidatePattern('courses:');
+    }
+    
     return newCourse;
 }
 
 async function getCourses(userId) {
+    const cacheKey = `courses:${userId || 'all'}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
     let query;
     const params = [];
     if (userId) {
@@ -43,11 +54,22 @@ async function getCourses(userId) {
     const result = await db.query(query, params);
     const courses = result.rows;
 
-    for (const course of courses) {
-        const members = await getMembers(course.id);
-        course.member_count = members.length;
+    if (courses.length > 0) {
+        const courseIds = courses.map(c => c.id);
+        const countResult = await db.query(
+            'SELECT course_id, COUNT(*) as count FROM course_members WHERE course_id = ANY($1) GROUP BY course_id',
+            [courseIds]
+        );
+        const countsMap = {};
+        countResult.rows.forEach(row => {
+            countsMap[row.course_id] = parseInt(row.count);
+        });
+        courses.forEach(course => {
+            course.member_count = countsMap[course.id] || 0;
+        });
     }
 
+    cache.set(cacheKey, courses, 60); // 60s TTL
     return courses;
 }
 
@@ -85,7 +107,11 @@ async function setDefaultPlatforms(courseId, platformIds, userId, userRole) {
         throw new Error('Course not found');
     }
     
-    return courseResult.rows[0];
+    const updated = courseResult.rows[0];
+    if (updated) {
+        cache.invalidatePattern('courses:');
+    }
+    return updated;
 }
 
 async function updateCourse(id, { course_id, course_name, teacher_name, teacher_initials, default_platform_ids }) {
@@ -98,13 +124,21 @@ async function updateCourse(id, { course_id, course_name, teacher_name, teacher_
         'UPDATE courses SET course_id=$1, course_name=$2, teacher_name=$3, teacher_initials=$4, default_platform_ids=$5 WHERE id=$6 RETURNING *',
         [sanitizedId, sanitizedName, sanitizedTeacherName, sanitizedTeacherInitials, default_platform_ids || [], id]
     );
-    return result.rows[0];
+    const updated = result.rows[0];
+    if (updated) {
+        cache.invalidatePattern('courses:');
+    }
+    return updated;
 }
 
 async function deleteCourse(id) {
     // Soft delete
     const result = await db.query('UPDATE courses SET is_active = false WHERE id = $1 RETURNING *', [id]);
-    return result.rows[0];
+    const deleted = result.rows[0];
+    if (deleted) {
+        cache.invalidatePattern('courses:');
+    }
+    return deleted;
 }
 
 async function getMembers(courseId) {
@@ -125,7 +159,11 @@ async function assignMember(courseId, userId, role = 'cr') {
          ON CONFLICT (user_id, course_id) DO UPDATE SET role = EXCLUDED.role RETURNING *',
         [userId, courseId, role]
     );
-    return result.rows[0];
+    const assigned = result.rows[0];
+    if (assigned) {
+        cache.invalidatePattern('courses:');
+    }
+    return assigned;
 }
 
 async function removeMember(courseId, userId) {
@@ -133,7 +171,11 @@ async function removeMember(courseId, userId) {
         'DELETE FROM course_members WHERE course_id = $1 AND user_id = $2 RETURNING *',
         [courseId, userId]
     );
-    return result.rows[0];
+    const removed = result.rows[0];
+    if (removed) {
+        cache.invalidatePattern('courses:');
+    }
+    return removed;
 }
 
 module.exports = {

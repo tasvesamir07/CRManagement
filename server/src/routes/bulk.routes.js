@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
+const cache = require('../config/cache');
 
 router.post('/courses/delete', adminMiddleware, async (req, res) => {
     try {
@@ -14,6 +15,7 @@ router.post('/courses/delete', adminMiddleware, async (req, res) => {
             'UPDATE courses SET is_active = false WHERE id = ANY($1::int[]) RETURNING id',
             [ids]
         );
+        cache.invalidatePattern('courses:');
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -34,6 +36,7 @@ router.post('/platforms/delete', authMiddleware, async (req, res) => {
             'DELETE FROM platforms WHERE id = ANY($1::int[]) RETURNING id',
             [ids]
         );
+        cache.invalidatePattern('platforms:');
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
     } catch (err) {
         return res.status(500).json({ error: err.message });

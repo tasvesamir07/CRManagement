@@ -1544,7 +1544,7 @@ async function initDatabase() {
                 : false,
             connectionTimeoutMillis: 15000,
             idleTimeoutMillis: 30000,
-            max: 3
+            max: 10
         });
 
         const maxRetries = 5;

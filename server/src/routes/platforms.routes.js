@@ -5,10 +5,17 @@ const whatsappService = require('../services/whatsapp.service');
 const telegramService = require('../services/telegram.service');
 const messengerService = require('../services/messenger.service');
 const authMiddleware = require('../middleware/auth.middleware');
+const cache = require('../config/cache');
 
 // Fetch registered platforms
 router.get('/', authMiddleware, async (req, res) => {
     try {
+        const cacheKey = `platforms:${req.user.id}:${req.query.course_id || 'all'}:${req.user.role}`;
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
         let query = 'SELECT * FROM platforms WHERE is_active = true';
         const params = [];
         if (req.user.role !== 'admin') {
@@ -30,6 +37,8 @@ router.get('/', authMiddleware, async (req, res) => {
                 ? !whatsappService.getStatus().isMock
                 : !messengerService.isMock()
         }));
+        
+        cache.set(cacheKey, platforms, 60); // 60s TTL
         return res.json(platforms);
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -49,6 +58,7 @@ router.post('/', authMiddleware, async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [platform_name, platform_type, chat_id, description || '', req.user.id, course_id || null]
         );
+        cache.invalidatePattern('platforms:');
         return res.status(201).json(result.rows[0]);
     } catch (err) {
         return res.status(400).json({ error: err.message });
@@ -70,6 +80,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Platform not found' });
         }
+        cache.invalidatePattern('platforms:');
         return res.json({ message: 'Platform deleted successfully' });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -158,6 +169,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Platform not found' });
         }
+        cache.invalidatePattern('platforms:');
         return res.json(result.rows[0]);
     } catch (err) {
         return res.status(400).json({ error: err.message });

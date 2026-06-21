@@ -118,26 +118,39 @@ const CRDashboard = ({ navigate }) => {
     return () => window.removeEventListener('offline-drafts-synced', handleSync);
   }, []);
 
+  useEffect(() => {
+    const pingEndpoint = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '/health')
+      : 'http://localhost:5000/health';
+      
+    const keepAlive = () => {
+      fetch(pingEndpoint).catch(() => {});
+    };
+    
+    keepAlive();
+    const interval = setInterval(keepAlive, 240000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [coursesData, platformsData] = await Promise.all([
+      const [coursesData, platformsData, announcementsData] = await Promise.all([
         coursesAPI.list(),
-        platformsAPI.list()
+        platformsAPI.list(),
+        announcementsAPI.list({
+          page,
+          limit: 10,
+          search: debouncedSearch || undefined,
+          status: statusFilter || undefined,
+          course_id: courseFilter || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined
+        })
       ]);
 
       setCourses(coursesData);
       setPlatforms(platformsData);
-
-      const announcementsData = await announcementsAPI.list({
-        page,
-        limit: 10,
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-        course_id: courseFilter || undefined,
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined
-      });
 
       const rawAnnouncements = Array.isArray(announcementsData) ? announcementsData : (announcementsData.announcements || []);
       setAnnouncements(rawAnnouncements);

@@ -28,6 +28,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
 const nodeCron = require('node-cron');
+const compression = require('compression');
 
 // Import services & configs
 const logger = require('./src/config/logger');
@@ -76,6 +77,7 @@ app.use(cors({
         },
     credentials: true
 }));
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -219,11 +221,15 @@ announcementService.setWsBroadcaster((payload) => {
 });
 
 // Start services (Skip WhatsApp client on Vercel as it requires persistent session/WebSocket)
-if (!isVercel) {
-    whatsappService.initWhatsApp();
-}
-telegramService.initTelegram();
-messengerService.initMessenger();
+// Defer initialization by 30 seconds to prevent blocking initial requests and high CPU startup spikes
+setTimeout(() => {
+    logger.info('Initializing WhatsApp, Telegram, and Messenger clients...');
+    if (!isVercel) {
+        whatsappService.initWhatsApp();
+    }
+    telegramService.initTelegram();
+    messengerService.initMessenger();
+}, 30000);
 
 // Skip active crons and recursive schedulers on Vercel as it is an ephemeral serverless environment
 if (!isVercel) {
