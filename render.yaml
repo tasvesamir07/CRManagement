@@ -3,7 +3,7 @@ services:
   # Backend API — Express.js (Docker)
   # ──────────────────────────────────────────────
   - type: web
-    name: announcement-server
+    name: crmanagement-backend
     runtime: docker
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 5000
       - key: CORS_ORIGIN
-        value: https://announcement-client.onrender.com
+        value: https://crmanagement-frontend.onrender.com
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -53,16 +53,16 @@ services:
   # Frontend — React SPA (Static Site)
   # ──────────────────────────────────────────────
   - type: web
-    name: announcement-client
+    name: crmanagement-frontend
     runtime: static
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_URL
-        value: https://announcement-server.onrender.com/api
+        value: https://crmanagement-backend.onrender.com/api
       - key: VITE_WS_URL
-        value: wss://announcement-server.onrender.com
+        value: wss://crmanagement-backend.onrender.com
     headers:
       - path: /*
         name: X-Frame-Options
@@ -82,7 +82,7 @@ services:
   # WhatsApp Relay — Baileys persistent connection
   # ──────────────────────────────────────────────
   - type: web
-    name: announcement-relay
+    name: crmanagement-relay
     runtime: node
     rootDir: relay
     buildCommand: npm install
