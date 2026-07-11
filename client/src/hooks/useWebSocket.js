@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -8,14 +8,19 @@ if (!API_URL.endsWith('/api')) {
 
 export function useWebSocket({ onMessage, enabled = true } = {}) {
   const [isAvailable, setIsAvailable] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
   const onMessageRef = useRef(onMessage);
-  onMessageRef.current = onMessage;
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   useEffect(() => {
     if (!enabled) {
       setIsAvailable(false);
+      setIsConnected(false);
       return;
     }
 
@@ -35,6 +40,10 @@ export function useWebSocket({ onMessage, enabled = true } = {}) {
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
+        ws.onopen = () => {
+          if (!cancelled) setIsConnected(true);
+        };
+
         ws.onmessage = (event) => {
           try {
             const payload = JSON.parse(event.data);
@@ -45,23 +54,33 @@ export function useWebSocket({ onMessage, enabled = true } = {}) {
         };
 
         ws.onclose = () => {
-          if (!cancelled) reconnectRef.current = setTimeout(connectWs, 5000);
+          if (!cancelled) {
+            setIsConnected(false);
+            reconnectRef.current = setTimeout(connectWs, 5000);
+          }
         };
 
-        ws.onerror = () => { ws.close(); };
+        ws.onerror = () => {
+          if (!cancelled) setIsConnected(false);
+          ws.close();
+        };
       };
 
       connectWs();
     }).catch(() => {
-      if (!cancelled) setIsAvailable(false);
+      if (!cancelled) {
+        setIsAvailable(false);
+        setIsConnected(false);
+      }
     });
 
     return () => {
       cancelled = true;
+      setIsConnected(false);
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
       if (reconnectRef.current) { clearTimeout(reconnectRef.current); reconnectRef.current = null; }
     };
   }, [enabled]);
 
-  return { isAvailable };
+  return { isAvailable, isConnected };
 }

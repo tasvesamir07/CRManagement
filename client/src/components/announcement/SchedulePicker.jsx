@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Calendar, Clock, X } from 'lucide-react';
 
 export default function SchedulePicker({ scheduleDateTime, setScheduleDateTime, show, onToggle }) {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { coursesAPI, platformsAPI } from '../../services/api';
-import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Radio, Flag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { coursesAPI } from '../../services/api';
+import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag } from 'lucide-react';
 
 const CourseManager = () => {
   const [courses, setCourses] = useState([]);

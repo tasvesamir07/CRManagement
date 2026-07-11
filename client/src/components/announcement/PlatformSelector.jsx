@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { CheckSquare, Square, CheckCircle } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 
@@ -72,7 +72,7 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
           badgeClass = 'text-accent-yellow bg-accent-yellow/10 px-2 py-0.5 rounded-full text-[9px] font-semibold';
         }
 
-        let containerClass = '';
+        let containerClass;
         if (alreadySent) {
           containerClass = 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/5 opacity-90 pointer-events-none';
         } else if (isSelected) {

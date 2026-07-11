@@ -1,15 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { filesAPI, coursesAPI, bulkAPI } from '../../services/api';
-import { 
-  Search, Download, Trash2, Upload, File, Image, FileText, 
-  FileArchive, ChevronLeft, ChevronRight, Send, Check, X, 
+import {
+  Search, Download, Trash2, Upload, File, Image, FileText,
+  FileArchive, ChevronLeft, ChevronRight, Send,
   UploadCloud, Folder, FolderPlus, ArrowLeft, FolderClosed,
-  Eye, Calendar, FolderOpen
+  Eye, FolderOpen
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useUpload } from '../../context/UploadContext';
+import { formatSize, formatDate } from '../../lib/announcementPresets';
+import LightboxPreviewModal from '../announcement/LightboxPreviewModal';
+import CreateFolderModal from './CreateFolderModal';
+import DeleteFolderModal from './DeleteFolderModal';
+import MoveFilesModal from './MoveFilesModal';
+import ExpiryModal from './ExpiryModal';
+import CompressModal from './CompressModal';
+import ExtractZipModal from './ExtractZipModal';
 
 const TYPE_ICONS = {
   'image': Image,
@@ -22,22 +29,6 @@ const TYPE_ICONS = {
 const getFileIcon = (type) => {
   const Icon = Object.entries(TYPE_ICONS).find(([key]) => type?.startsWith(key))?.[1] || TYPE_ICONS.default;
   return Icon;
-};
-
-const formatSize = (bytes) => {
-  if (!bytes) return '—';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let i = 0;
-  let size = bytes;
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
-  return `${size.toFixed(1)} ${units[i]}`;
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
 };
 
 const FilesManager = () => {
@@ -63,8 +54,6 @@ const FilesManager = () => {
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [currentFolderName, setCurrentFolderName] = useState('');
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderCourseId, setNewFolderCourseId] = useState('');
   const [courses, setCourses] = useState([]);
   const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
@@ -87,18 +76,13 @@ const FilesManager = () => {
   // Expiry Modification states
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [expiryFile, setExpiryFile] = useState(null);
-  const [customExpiryDate, setCustomExpiryDate] = useState('');
 
   // ZIP Compression states
   const [showCompressModal, setShowCompressModal] = useState(false);
-  const [compressArchiveName, setCompressArchiveName] = useState('archive.zip');
-  const [compressing, setCompressing] = useState(false);
 
   // ZIP Extraction states
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [extractFile, setExtractFile] = useState(null);
-  const [deleteOriginalZip, setDeleteOriginalZip] = useState(true);
-  const [extracting, setExtracting] = useState(false);
 
   const handleFileDragStart = (e, file) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -113,7 +97,7 @@ const FilesManager = () => {
     setDraggedOverFolderId(folderId);
   };
 
-  const handleFolderDragLeave = (e, folderId) => {
+  const handleFolderDragLeave = (e) => {
     e.preventDefault();
     setDraggedOverFolderId(null);
   };
@@ -143,7 +127,7 @@ const FilesManager = () => {
     try {
       const data = await filesAPI.getDownloadUrl(file.id);
       setPreviewUrl(data.url);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load file preview');
       setPreviewFile(null);
     } finally {
@@ -153,6 +137,7 @@ const FilesManager = () => {
 
   useEffect(() => {
     if (!previewFile || !previewUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewTextContent('');
       setPreviewTextError(false);
       return;
@@ -178,66 +163,12 @@ const FilesManager = () => {
     }
   }, [previewFile, previewUrl]);
 
-  const handleUpdateExpiry = async (fileId, newExpiresAt) => {
-    try {
-      const updatedFile = await filesAPI.updateExpiry(fileId, newExpiresAt);
-      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, expires_at: updatedFile.expires_at } : f));
-      toast.success('Expiry date updated successfully');
-      setShowExpiryModal(false);
-      setExpiryFile(null);
-    } catch (err) {
-      toast.error('Failed to update expiry date');
-    }
-  };
-
   const getExpiryLabel = (expiresAt) => {
     if (!expiresAt) return 'Permanent';
     const diffTime = new Date(expiresAt) - new Date();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (diffDays <= 0) return 'Expired';
     return `Expires in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-  };
-
-  const handleCompressFiles = async () => {
-    if (selectedFileIds.size === 0) return;
-    setCompressing(true);
-    try {
-      const archiveName = compressArchiveName.trim() || 'archive.zip';
-      await filesAPI.compressFiles(Array.from(selectedFileIds), archiveName, currentFolderId);
-      toast.success(`Successfully compressed files into ${archiveName}`);
-      setSelectedFileIds(new Set());
-      setShowCompressModal(false);
-      fetchFiles();
-      fetchStorageUsage();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to compress files');
-    } finally {
-      setCompressing(false);
-    }
-  };
-
-  const handleExtractZip = async () => {
-    if (!extractFile) return;
-    setExtracting(true);
-    try {
-      const res = await filesAPI.extractZip(extractFile.id, deleteOriginalZip, currentFolderId);
-      toast.success(res.message || 'Successfully extracted ZIP archive');
-      if (deleteOriginalZip) {
-        setSelectedFileIds(prev => {
-          const next = new Set(prev);
-          next.delete(extractFile.id);
-          return next;
-        });
-      }
-      setShowExtractModal(false);
-      setExtractFile(null);
-      fetchFiles();
-      fetchStorageUsage();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to extract ZIP file');
-    } finally {
-      setExtracting(false);
-    }
   };
 
   const matchesFilter = (file, currentFilter) => {
@@ -352,6 +283,7 @@ const FilesManager = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFileIds(new Set());
   }, [page, search, currentFolderId]);
 
@@ -375,6 +307,7 @@ const FilesManager = () => {
       }
     };
     fetchCourses();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStorageUsage();
   }, [fetchStorageUsage]);
 
@@ -402,7 +335,7 @@ const FilesManager = () => {
       setFiles(result.files);
       setPagination(result.pagination);
       fetchStorageUsage();
-    } catch (e) {
+    } catch {
       toast.error('Failed to load files');
     }
     setLoading(false);
@@ -427,11 +360,13 @@ const FilesManager = () => {
 
   useEffect(() => {
     if (currentFolderId === null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchFolders();
     }
   }, [currentFolderId, fetchFolders]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFileIds(new Set());
   }, [currentFolderId, filter, search, page]);
 
@@ -478,7 +413,7 @@ const FilesManager = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (e) {
+    } catch {
       toast.error('Download failed');
     }
   };
@@ -496,7 +431,7 @@ const FilesManager = () => {
       });
       toast.success('File deleted');
       fetchStorageUsage();
-    } catch (e) {
+    } catch {
       toast.error('Delete failed');
     }
     setDeleting(prev => { const next = new Set(prev); next.delete(id); return next; });
@@ -520,7 +455,7 @@ const FilesManager = () => {
       toast.success('Selected files deleted successfully');
       fetchFiles();
       fetchStorageUsage();
-    } catch (e) {
+    } catch {
       toast.error('Bulk deletion failed');
     } finally {
       setDeleting(prev => {
@@ -528,18 +463,6 @@ const FilesManager = () => {
         idsToDelete.forEach(id => next.delete(id));
         return next;
       });
-    }
-  };
-
-  const handlePerformMove = async (targetFolderId) => {
-    try {
-      await filesAPI.moveFiles([...selectedFileIds], targetFolderId);
-      toast.success('Files moved successfully');
-      setShowMoveModal(false);
-      setSelectedFileIds(new Set());
-      fetchFiles();
-    } catch (err) {
-      toast.error('Failed to move files');
     }
   };
 
@@ -552,7 +475,7 @@ const FilesManager = () => {
         return;
       }
       navigate(`/announcement/new?file_ids=${ids.join(',')}`);
-    } catch (e) {
+    } catch {
       toast.error('Failed to prepare folder files');
     }
   };
@@ -603,10 +526,7 @@ const FilesManager = () => {
                 Move Selected ({selectedFileIds.size})
               </button>
               <button
-                onClick={() => {
-                  setCompressArchiveName('archive.zip');
-                  setShowCompressModal(true);
-                }}
+                onClick={() => setShowCompressModal(true)}
                 className="flex items-center justify-center h-9 px-4 border border-hairline rounded-sm shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong focus:outline-none transition-colors duration-150 cursor-pointer"
               >
                 <FileArchive className="w-3.5 h-3.5 mr-1.5" />
@@ -928,7 +848,6 @@ const FilesManager = () => {
                                 <button
                                   onClick={() => {
                                     setExpiryFile(file);
-                                    setCustomExpiryDate(file.expires_at ? file.expires_at.split('T')[0] : '');
                                     setShowExpiryModal(true);
                                   }}
                                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm hover:underline cursor-pointer ${
@@ -977,7 +896,6 @@ const FilesManager = () => {
                               <button
                                 onClick={() => {
                                   setExtractFile(file);
-                                  setDeleteOriginalZip(true);
                                   setShowExtractModal(true);
                                 }}
                                 className="p-1.5 text-ink-mute hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-sm transition-colors cursor-pointer"
@@ -1029,630 +947,68 @@ const FilesManager = () => {
         )}
       </div>
 
-      {/* Create Folder Modal */}
-      {showCreateFolderModal && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <FolderPlus className="text-primary w-5 h-5" />
-                  Create New Folder
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowCreateFolderModal(false);
-                    setNewFolderName('');
-                    setNewFolderCourseId('');
-                  }}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">
-                    Folder Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Shared Documents, Assignment Instructions"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/50 focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
+      <CreateFolderModal
+        show={showCreateFolderModal}
+        onClose={() => setShowCreateFolderModal(false)}
+        courses={courses}
+        onCreated={fetchFolders}
+      />
 
-                <div>
-                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">
-                    Associate with Course (Optional)
-                  </label>
-                  <select
-                    value={newFolderCourseId}
-                    onChange={(e) => setNewFolderCourseId(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary transition-colors"
-                  >
-                    <option value="">Personal / General (No Course)</option>
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>
-                        {course.course_id} - {course.course_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      <DeleteFolderModal
+        show={showDeleteFolderModal}
+        folder={folderToDelete}
+        onClose={() => { setShowDeleteFolderModal(false); setFolderToDelete(null); }}
+        onDeleted={() => { fetchFolders(); fetchFiles(); fetchStorageUsage(); }}
+      />
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowCreateFolderModal(false);
-                    setNewFolderName('');
-                    setNewFolderCourseId('');
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded-sm transition-colors border border-hairline cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!newFolderName.trim()) {
-                      toast.error('Folder name is required');
-                      return;
-                    }
-                    try {
-                      await filesAPI.createFolder(newFolderName.trim(), newFolderCourseId || null);
-                      toast.success('Folder created successfully');
-                      setShowCreateFolderModal(false);
-                      setNewFolderName('');
-                      setNewFolderCourseId('');
-                      fetchFolders();
-                    } catch (err) {
-                      toast.error(err.response?.data?.error || 'Failed to create folder');
-                    }
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded-sm shadow-sm transition-colors cursor-pointer"
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <MoveFilesModal
+        show={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        folders={folders}
+        selectedFileIds={selectedFileIds}
+        onMoved={() => { setSelectedFileIds(new Set()); fetchFiles(); }}
+      />
 
-      {/* Delete Folder Modal */}
-      {showDeleteFolderModal && folderToDelete && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <Trash2 className="text-red-500 w-5 h-5" />
-                  Delete Folder
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowDeleteFolderModal(false);
-                    setFolderToDelete(null);
-                  }}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <p className="text-sm text-ink font-sans">
-                  Are you sure you want to delete the folder <span className="font-bold text-primary">"{folderToDelete.name}"</span>?
-                </p>
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
-                  <p className="text-xs text-red-600 dark:text-red-400 font-sans">
-                    Choose what to do with the files currently inside this folder:
-                  </p>
-                </div>
-              </div>
+      <ExpiryModal
+        show={showExpiryModal}
+        file={expiryFile}
+        onClose={() => { setShowExpiryModal(false); setExpiryFile(null); }}
+        onUpdated={(updatedFile) => setFiles(prev => prev.map(f => f.id === updatedFile.id ? { ...f, expires_at: updatedFile.expires_at } : f))}
+      />
 
-              <div className="flex flex-col gap-2.5 pt-2">
-                <button
-                  onClick={async () => {
-                    try {
-                      await filesAPI.deleteFolder(folderToDelete.id, true);
-                      toast.success('Folder and files deleted');
-                      setShowDeleteFolderModal(false);
-                      setFolderToDelete(null);
-                      fetchFolders();
-                      fetchFiles();
-                      fetchStorageUsage();
-                    } catch (err) {
-                      toast.error(err.response?.data?.error || 'Failed to delete folder');
-                    }
-                  }}
-                  className="w-full py-2.5 px-4 text-xs font-semibold text-on-primary bg-red-600 hover:bg-red-700 rounded-sm shadow-sm transition-colors text-center cursor-pointer"
-                >
-                  Delete Folder & All Files Inside
-                </button>
-                
-                <button
-                  onClick={async () => {
-                    try {
-                      await filesAPI.deleteFolder(folderToDelete.id, false);
-                      toast.success('Folder deleted, files kept');
-                      setShowDeleteFolderModal(false);
-                      setFolderToDelete(null);
-                      fetchFolders();
-                      fetchFiles();
-                      fetchStorageUsage();
-                    } catch (err) {
-                      toast.error(err.response?.data?.error || 'Failed to delete folder');
-                    }
-                  }}
-                  className="w-full py-2.5 px-4 text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong border border-hairline rounded-sm transition-colors text-center cursor-pointer"
-                >
-                  Delete Folder Only (Keep files and move to Root)
-                </button>
+      <CompressModal
+        show={showCompressModal}
+        onClose={() => setShowCompressModal(false)}
+        selectedFileIds={selectedFileIds}
+        currentFolderId={currentFolderId}
+        onCompressed={() => { setSelectedFileIds(new Set()); fetchFiles(); fetchStorageUsage(); }}
+      />
 
-                <button
-                  onClick={() => {
-                    setShowDeleteFolderModal(false);
-                    setFolderToDelete(null);
-                  }}
-                  className="w-full py-2.5 px-4 text-xs font-medium text-ink-mute hover:text-ink transition-colors text-center cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ExtractZipModal
+        show={showExtractModal}
+        file={extractFile}
+        onClose={() => { setShowExtractModal(false); setExtractFile(null); }}
+        currentFolderId={currentFolderId}
+        onExtracted={(removedFileId) => {
+          if (removedFileId) {
+            setSelectedFileIds(prev => { const next = new Set(prev); next.delete(removedFileId); return next; });
+          }
+          fetchFiles();
+          fetchStorageUsage();
+        }}
+      />
 
-      {/* Move Files Modal */}
-      {showMoveModal && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <Folder className="text-primary w-5 h-5" />
-                  Move Files
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowMoveModal(false);
-                  }}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <p className="text-sm text-ink-mute font-sans">
-                Select target folder for the {selectedFileIds.size} selected file(s):
-              </p>
-
-              <div className="max-h-60 overflow-y-auto border border-hairline rounded-md divide-y divide-hairline">
-                <div
-                  onClick={() => handlePerformMove(null)}
-                  className="p-3 text-sm text-ink hover:bg-canvas-soft cursor-pointer transition-colors flex items-center gap-2.5 font-sans"
-                >
-                  <FolderClosed className="w-4.5 h-4.5 text-ink-mute" />
-                  <span className="font-medium">Root Level / Uncategorized</span>
-                </div>
-                {folders.map(folder => (
-                  <div
-                    key={folder.id}
-                    onClick={() => handlePerformMove(folder.id)}
-                    className="p-3 text-sm text-ink hover:bg-canvas-soft cursor-pointer transition-colors flex items-center gap-2.5 justify-between font-sans"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <FolderClosed className="w-4.5 h-4.5 text-primary" />
-                      <span className="truncate">{folder.name}</span>
-                    </div>
-                    {folder.course_code && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-sm uppercase shrink-0">
-                        {folder.course_code}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end pt-2">
-                <button
-                  onClick={() => {
-                    setShowMoveModal(false);
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded-sm transition-colors border border-hairline cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Expiry Customization Modal */}
-      {showExpiryModal && expiryFile && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <Calendar className="text-primary w-5 h-5" />
-                  Customize Expiry Date
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowExpiryModal(false);
-                    setExpiryFile(null);
-                  }}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <p className="text-xs text-ink-mute font-sans">
-                  Set how long <span className="font-semibold text-ink">"{expiryFile.original_name}"</span> remains active in database storage.
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <button
-                    onClick={() => handleUpdateExpiry(expiryFile.id, null)}
-                    className="py-2 px-3 text-xs font-semibold rounded border border-hairline hover:bg-canvas-soft bg-canvas text-ink transition-colors cursor-pointer"
-                  >
-                    Make Permanent
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date();
-                      date.setDate(date.getDate() + 7);
-                      handleUpdateExpiry(expiryFile.id, date.toISOString());
-                    }}
-                    className="py-2 px-3 text-xs font-semibold rounded border border-hairline hover:bg-canvas-soft bg-canvas text-ink transition-colors cursor-pointer"
-                  >
-                    Extend 7 Days
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date();
-                      date.setDate(date.getDate() + 15);
-                      handleUpdateExpiry(expiryFile.id, date.toISOString());
-                    }}
-                    className="py-2 px-3 text-xs font-semibold rounded border border-hairline hover:bg-canvas-soft bg-canvas text-ink transition-colors cursor-pointer"
-                  >
-                    Extend 15 Days
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date();
-                      date.setDate(date.getDate() + 30);
-                      handleUpdateExpiry(expiryFile.id, date.toISOString());
-                    }}
-                    className="py-2 px-3 text-xs font-semibold rounded border border-hairline hover:bg-canvas-soft bg-canvas text-ink transition-colors cursor-pointer"
-                  >
-                    Extend 30 Days
-                  </button>
-                </div>
-
-                <div className="border-t border-hairline pt-3 mt-3">
-                  <label className="block text-[10px] font-bold text-ink-mute uppercase tracking-wider mb-1 font-sans">
-                    Custom Date Selection
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={customExpiryDate}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setCustomExpiryDate(e.target.value)}
-                      className="flex-1 px-3 py-2 text-sm border border-hairline rounded bg-canvas text-ink focus:outline-none focus:border-primary transition-colors font-sans"
-                    />
-                    <button
-                      disabled={!customExpiryDate}
-                      onClick={() => handleUpdateExpiry(expiryFile.id, new Date(customExpiryDate).toISOString())}
-                      className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-2">
-                <button
-                  onClick={() => {
-                    setShowExpiryModal(false);
-                    setExpiryFile(null);
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded transition-colors border border-hairline cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ZIP Compression Modal */}
-      {showCompressModal && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <FileArchive className="text-primary w-5 h-5" />
-                  Compress Selected Files
-                </h3>
-                <button
-                  onClick={() => setShowCompressModal(false)}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <p className="text-xs text-ink-mute font-sans">
-                  Pack the {selectedFileIds.size} selected file(s) into a compressed ZIP archive.
-                </p>
-
-                <div>
-                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">
-                    Archive File Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="archive.zip"
-                    value={compressArchiveName}
-                    onChange={(e) => setCompressArchiveName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-hairline rounded bg-canvas text-ink focus:outline-none focus:border-primary transition-colors font-sans"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  disabled={compressing}
-                  onClick={() => setShowCompressModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded transition-colors border border-hairline cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={compressing || !compressArchiveName.trim()}
-                  onClick={handleCompressFiles}
-                  className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {compressing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                      Compressing...
-                    </>
-                  ) : (
-                    'Compress'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ZIP Extraction Modal */}
-      {showExtractModal && extractFile && createPortal(
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-canvas border border-hairline w-full max-w-md rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-ink font-sans flex items-center gap-2">
-                  <FolderOpen className="text-amber-500 w-5 h-5" />
-                  Extract ZIP Archive
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowExtractModal(false);
-                    setExtractFile(null);
-                  }}
-                  className="text-ink-mute hover:text-ink transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <p className="text-sm text-ink font-sans">
-                  Are you sure you want to extract the files from <span className="font-bold text-primary">"{extractFile.original_name}"</span> directly into the current folder?
-                </p>
-
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md">
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-sans">
-                    Extracted folders and subfolders will be automatically recreated in your virtual folder system.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 pt-2 font-sans">
-                  <input
-                    type="checkbox"
-                    id="delete-original-zip"
-                    checked={deleteOriginalZip}
-                    onChange={(e) => setDeleteOriginalZip(e.target.checked)}
-                    className="accent-primary w-4 h-4 cursor-pointer rounded-sm"
-                  />
-                  <label htmlFor="delete-original-zip" className="text-xs font-semibold text-ink-mute hover:text-ink cursor-pointer select-none font-sans">
-                    Auto-delete original ZIP file after extraction
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  disabled={extracting}
-                  onClick={() => {
-                    setShowExtractModal(false);
-                    setExtractFile(null);
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded transition-colors border border-hairline cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={extracting}
-                  onClick={handleExtractZip}
-                  className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {extracting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                      Extracting...
-                    </>
-                  ) : (
-                    'Extract'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Lightbox Preview Modal */}
-      {previewFile && createPortal(
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="relative bg-canvas border border-hairline w-full max-w-4xl h-[85vh] rounded-lg shadow-2xl overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-hairline flex items-center justify-between bg-canvas">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-ink truncate font-sans">{previewFile.original_name}</h3>
-                <p className="text-xs text-ink-mute font-sans">
-                  {formatSize(previewFile.file_size)} • {previewFile.file_type}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setPreviewFile(null);
-                  setPreviewUrl(null);
-                }}
-                className="text-ink-mute hover:text-ink transition-colors p-1.5 hover:bg-canvas-soft rounded-full cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Content */}
-            <div className="flex-1 bg-canvas-soft flex items-center justify-center overflow-auto p-4">
-              {previewLoading ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <p className="text-xs text-ink-mute font-sans">Loading preview...</p>
-                </div>
-              ) : previewUrl ? (
-                <>
-                  {previewFile.file_type?.startsWith('image/') ? (
-                    <img
-                      src={previewUrl}
-                      alt={previewFile.original_name}
-                      className="max-w-full max-h-full object-contain rounded shadow-md"
-                    />
-                  ) : previewFile.file_type === 'application/pdf' ? (
-                    <iframe
-                      src={`${previewUrl}#toolbar=0`}
-                      title={previewFile.original_name}
-                      className="w-full h-full border-0 rounded"
-                    />
-                  ) : (
-                    previewFile.file_type?.includes('officedocument') ||
-                    previewFile.file_type?.includes('ms-excel') ||
-                    previewFile.file_type?.includes('ms-powerpoint') ||
-                    previewFile.file_type?.includes('msword') ||
-                    previewFile.original_name.endsWith('.docx') ||
-                    previewFile.original_name.endsWith('.doc') ||
-                    previewFile.original_name.endsWith('.xlsx') ||
-                    previewFile.original_name.endsWith('.xls') ||
-                    previewFile.original_name.endsWith('.pptx') ||
-                    previewFile.original_name.endsWith('.ppt')
-                  ) ? (
-                    (previewUrl.includes('localhost') || previewUrl.includes('127.0.0.1')) ? (
-                      <div className="text-center p-8 max-w-sm">
-                        <File className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-                        <p className="text-sm font-semibold text-ink font-sans mb-1">Local Preview Limitation</p>
-                        <p className="text-xs text-ink-mute font-sans mb-4">Office documents (.docx, .xlsx, .pptx) cannot be previewed when running on localhost. Please download the file to view it.</p>
-                        <a
-                          href={previewUrl}
-                          download={previewFile.original_name}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Download to View
-                        </a>
-                      </div>
-                    ) : (
-                      <iframe
-                        src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
-                        title={previewFile.original_name}
-                        className="w-full h-full border-0 rounded bg-canvas"
-                      />
-                    )
-                  ) : (
-                    previewFile.file_type?.startsWith('text/') ||
-                    previewFile.original_name.toLowerCase().endsWith('.csv') ||
-                    previewFile.original_name.toLowerCase().endsWith('.txt')
-                  ) ? (
-                    previewTextError ? (
-                      <div className="text-center p-8 max-w-sm">
-                        <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
-                        <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
-                        <p className="text-xs text-ink-mute font-sans mb-4">Could not load file content. Please download to view.</p>
-                        <a
-                          href={previewUrl}
-                          download={previewFile.original_name}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Download to View
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col bg-canvas border border-hairline rounded overflow-hidden shadow-inner">
-                        <div className="overflow-auto flex-1 font-mono text-[11px] text-ink p-4 bg-canvas-soft select-text whitespace-pre-wrap leading-relaxed max-w-full text-left">
-                          {previewTextContent || 'Loading content...'}
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-center p-8 max-w-sm">
-                      <File className="w-16 h-16 text-ink-mute/50 mx-auto mb-4" />
-                      <p className="text-sm font-semibold text-ink font-sans mb-1">Preview not available</p>
-                      <p className="text-xs text-ink-mute font-sans mb-4">This file type ({previewFile.file_type}) cannot be previewed directly in the browser.</p>
-                      <a
-                        href={previewUrl}
-                        download={previewFile.original_name}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-deep text-on-primary text-xs font-semibold rounded transition-colors cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Download to View
-                      </a>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-ink-mute font-sans">Failed to load preview.</p>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <LightboxPreviewModal
+        previewFile={previewFile}
+        previewUrl={previewUrl}
+        previewLoading={previewLoading}
+        previewTextContent={previewTextContent}
+        previewTextError={previewTextError}
+        onClose={() => {
+          setPreviewFile(null);
+          setPreviewUrl(null);
+        }}
+      />
     </div>
   );
 };

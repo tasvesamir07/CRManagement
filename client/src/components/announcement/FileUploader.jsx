@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { UploadCloud, Paperclip, X } from 'lucide-react';
 
 export default function FileUploader({

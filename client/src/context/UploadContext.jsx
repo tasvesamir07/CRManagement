@@ -1,7 +1,7 @@
-import React, { createContext, useState, useContext, useRef } from 'react';
+import { createContext, useState, useContext, useRef } from 'react';
 import { filesAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { X, Check, AlertCircle, ChevronDown, ChevronUp, FileText, Presentation, File, Loader2 } from 'lucide-react';
+import { X, Check, AlertCircle, ChevronDown, ChevronUp, FileText, Presentation, File } from 'lucide-react';
 
 const UploadContext = createContext(null);
 
@@ -14,6 +14,7 @@ export const UploadProvider = ({ children }) => {
     const abortControllers = useRef({});
 
     const uploadSingleFile = async (file, folderId, overwrite = false) => {
+        // eslint-disable-next-line react-hooks/purity
         const uploadId = `${file.name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const controller = new AbortController();
         abortControllers.current[uploadId] = controller;

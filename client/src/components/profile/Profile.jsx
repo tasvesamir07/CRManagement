@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -7,8 +6,7 @@ import { User, Save, KeyRound, Shield, Smartphone, Loader2 } from 'lucide-react'
 import PasswordInput from '../ui/PasswordInput';
 
 const Profile = () => {
-  const { user, logout, setUser } = useAuth();
-  const navigate = useNavigate();
+  const { user, setUser } = useAuth();
 
   const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -66,7 +64,7 @@ const Profile = () => {
     }
     setChangingEmail(true);
     try {
-      const data = await authAPI.changeEmail(newEmail, emailPassword);
+      await authAPI.changeEmail(newEmail, emailPassword);
       toast.success('Email changed');
       const updatedUser = { ...user, email: newEmail };
       user.email = newEmail;
@@ -87,8 +85,8 @@ const Profile = () => {
     }
     setChangingUsername(true);
     try {
-      const data = await authAPI.changeUsername(newUsername, usernamePassword);
-      localStorage.setItem('cr_token', data.token);
+      const data2 = await authAPI.changeUsername(newUsername, usernamePassword);
+      localStorage.setItem('cr_token', data2.token);
       toast.success('Username changed');
       const updatedUser = { ...user, username: newUsername };
       user.username = newUsername;

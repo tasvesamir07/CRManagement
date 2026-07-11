@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export const ShimmerLine = ({ className = '' }) => (
   <div className={`shimmer-bg rounded-sm ${className}`}></div>

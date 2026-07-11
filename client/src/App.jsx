@@ -1,31 +1,28 @@
-import React from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UploadProvider } from './context/UploadContext';
-import ErrorBoundary from './components/ui/ErrorBoundary';
-
-// Import Views
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
 import DashboardLayout from './components/dashboard/DashboardLayout';
-import MainDashboard from './components/dashboard/MainDashboard';
-import AnnouncementForm from './components/announcement/AnnouncementForm';
-import AnnouncementDetail from './components/announcement/AnnouncementDetail';
-import CourseManager from './components/course/CourseManager';
-import RoutineManager from './components/routine/RoutineManager';
-import PlatformManager from './components/platform/PlatformManager';
-import ForgotPassword from './components/auth/ForgotPassword';
-import Profile from './components/profile/Profile';
-import AdminUsers from './components/admin/AdminUsers';
-import LogsManager from './components/logs/LogsManager';
-import FilesManager from './components/files/FilesManager';
 
-// Loading Spinner helper
+const Login = lazy(() => import('./components/auth/Login'));
+const Register = lazy(() => import('./components/auth/Register'));
+const ForgotPassword = lazy(() => import('./components/auth/ForgotPassword'));
+const MainDashboard = lazy(() => import('./components/dashboard/MainDashboard'));
+const AnnouncementForm = lazy(() => import('./components/announcement/AnnouncementForm'));
+const AnnouncementDetail = lazy(() => import('./components/announcement/AnnouncementDetail'));
+const CourseManager = lazy(() => import('./components/course/CourseManager'));
+const RoutineManager = lazy(() => import('./components/routine/RoutineManager'));
+const PlatformManager = lazy(() => import('./components/platform/PlatformManager'));
+const Profile = lazy(() => import('./components/profile/Profile'));
+const AdminUsers = lazy(() => import('./components/admin/AdminUsers'));
+const LogsManager = lazy(() => import('./components/logs/LogsManager'));
+const FilesManager = lazy(() => import('./components/files/FilesManager'));
+
 const LoadingPage = () => (
   <div className="min-h-screen bg-canvas flex flex-col justify-center items-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    <p className="mt-4 text-sm text-ink-mute">Checking authorization session...</p>
+    <p className="mt-4 text-sm text-ink-mute">Loading...</p>
   </div>
 );
 
@@ -69,11 +66,11 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
-  const [toastPosition, setToastPosition] = React.useState(
+  const [toastPosition, setToastPosition] = useState(
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'bottom-center' : 'top-right'
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setToastPosition(window.innerWidth < 768 ? 'bottom-center' : 'top-right');
     };
@@ -95,48 +92,50 @@ function App() {
               }
             }}
           />
-          <Routes>
-            {/* Public Authentication routes */}
-            <Route path="/login" element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } />
-            <Route path="/register" element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            } />
-            <Route path="/forgot-password" element={
-              <PublicRoute>
-                <ForgotPassword />
-              </PublicRoute>
-            } />
-            <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
-            
-            {/* Protected Dashboard routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<MainDashboard />} />
-              <Route path="announcement/new" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
-              <Route path="announcement/edit/:id" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
-              <Route path="announcement/:id" element={<RoleRoute allowedRole="cr"><AnnouncementDetail /></RoleRoute>} />
-              <Route path="courses" element={<RoleRoute allowedRole="cr"><CourseManager /></RoleRoute>} />
-              <Route path="routines" element={<RoleRoute allowedRole="cr"><RoutineManager /></RoleRoute>} />
-              <Route path="platforms" element={<RoleRoute allowedRole="cr"><PlatformManager /></RoleRoute>} />
-              <Route path="files" element={<RoleRoute allowedRole="cr"><FilesManager /></RoleRoute>} />
-              <Route path="logs" element={<LogsManager />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="admin/users" element={<RoleRoute allowedRole="admin"><AdminUsers /></RoleRoute>} />
-            </Route>
-            
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<LoadingPage />}>
+            <Routes>
+              {/* Public Authentication routes */}
+              <Route path="/login" element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } />
+              <Route path="/register" element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } />
+              <Route path="/forgot-password" element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              } />
+              <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
+              
+              {/* Protected Dashboard routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<MainDashboard />} />
+                <Route path="announcement/new" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
+                <Route path="announcement/edit/:id" element={<RoleRoute allowedRole="cr"><AnnouncementForm /></RoleRoute>} />
+                <Route path="announcement/:id" element={<RoleRoute allowedRole="cr"><AnnouncementDetail /></RoleRoute>} />
+                <Route path="courses" element={<RoleRoute allowedRole="cr"><CourseManager /></RoleRoute>} />
+                <Route path="routines" element={<RoleRoute allowedRole="cr"><RoutineManager /></RoleRoute>} />
+                <Route path="platforms" element={<RoleRoute allowedRole="cr"><PlatformManager /></RoleRoute>} />
+                <Route path="files" element={<RoleRoute allowedRole="cr"><FilesManager /></RoleRoute>} />
+                <Route path="logs" element={<LogsManager />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="admin/users" element={<RoleRoute allowedRole="admin"><AdminUsers /></RoleRoute>} />
+              </Route>
+              
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </Router>
       </UploadProvider>
     </AuthProvider>

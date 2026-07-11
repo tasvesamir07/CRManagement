@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import PasswordInput from '../ui/PasswordInput';
 
 const Register = () => {

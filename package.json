@@ -1,4 +1,23 @@
 {
+  "name": "cr-announcement-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:server & npm run dev:client",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server run start",
+    "test": "npm --prefix client run test && npm --prefix server run test",
+    "test:client": "npm --prefix client run test",
+    "test:server": "npm --prefix server run test",
+    "lint": "npm --prefix client run lint && npm --prefix server run lint",
+    "lint:client": "npm --prefix client run lint",
+    "lint:server": "npm --prefix server run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "setup": "npm install && npm --prefix client install && npm --prefix server install"
+  },
   "devDependencies": {
     "prettier": "^3.8.4"
   }

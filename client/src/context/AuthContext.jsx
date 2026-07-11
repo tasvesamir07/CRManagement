@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
                     if (payload.exp && Date.now() >= payload.exp * 1000) {
                         expired = true;
                     }
-                } catch (e) {
+                } catch {
                     expired = true;
                 }
 
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
                 if (cachedUserStr) {
                     try {
                         setUser(JSON.parse(cachedUserStr));
-                    } catch (_) {}
+                    } catch { /* ignore */ }
                 }
                 
                 // Immediately stop loading state

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
-import { Shield, Mail, KeyRound, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Shield, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 import PasswordInput from '../ui/PasswordInput';
 
 const OTP_EXPIRY_SECONDS = 900;
@@ -67,7 +67,7 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [expiresAt, setExpiresAt] = useState(null);
-  const [otpVerified, setOtpVerified] = useState(false);
+  const [, setOtpVerified] = useState(false);
   const otpInputRef = useRef(null);
   const passwordInputRef = useRef(null);
 

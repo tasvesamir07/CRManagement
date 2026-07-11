@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { announcementsAPI, filesAPI } from '../../services/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import {
   ArrowLeft,
   Edit3,
@@ -13,109 +13,11 @@ import {
   Paperclip,
   Clipboard,
   HelpCircle,
-  X,
   Download
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
-
-const troubleshootError = (errorStr) => {
-  if (!errorStr) return null;
-  const lower = errorStr.toLowerCase();
-  
-  if (lower.includes('thread not found') || lower.includes('message thread not found') || lower.includes('message thread no')) {
-    return {
-      title: 'Telegram Topic/Thread Missing',
-      explanation: 'The Telegram broadcast was sent to a topic/thread ID that does not exist or was deleted in that group.',
-      steps: [
-        'Open the target Telegram group and check if the topic/thread still exists.',
-        'If the topic was deleted, recreate it in Telegram.',
-        'Go to "Broadcasting Targets" in the sidebar, edit the Telegram platform, and update the Chat ID suffix (e.g. -100xxxxxxxx/thread_id) with the correct thread ID.',
-        'Ensure the Telegram bot is permitted to post inside topics.'
-      ]
-    };
-  }
-  
-  if (lower.includes('chat not found') || lower.includes('chat_id_invalid')) {
-    return {
-      title: 'Chat/Group Not Found',
-      explanation: 'The Telegram bot cannot find the chat or group ID specified in the platform setup.',
-      steps: [
-        'Ensure the Telegram Bot token in the server configuration (.env) is correct.',
-        'Double-check that the Chat ID in "Broadcasting Targets" is correct (group IDs usually start with -100).',
-        'Make sure the Telegram Bot has been added as a member/administrator to the target group.'
-      ]
-    };
-  }
-  
-  if (lower.includes('bot was blocked') || lower.includes('user is deactivated')) {
-    return {
-      title: 'Bot Blocked/Kicked',
-      explanation: 'The bot was blocked by the user or removed from the group chat.',
-      steps: [
-        'Ensure the bot is still a member of the group/channel.',
-        'If it is a private chat, the target user must start the chat with the bot first by clicking "/start".',
-        'Verify the bot has not been banned or restricted.'
-      ]
-    };
-  }
-  
-  if (lower.includes('admin') || lower.includes('not enough rights') || lower.includes('privileges')) {
-    return {
-      title: 'Insufficient Permissions',
-      explanation: 'The bot does not have permission to post messages in the selected group or channel.',
-      steps: [
-        'Promote the Telegram Bot to an Administrator in the group/channel settings.',
-        'Make sure the administrator permission "Post Messages" (or "Send Messages") is enabled for the bot.'
-      ]
-    };
-  }
-  
-  if (lower.includes('whatsapp') && (lower.includes('session') || lower.includes('close') || lower.includes('not paired') || lower.includes('disconnected'))) {
-    return {
-      title: 'WhatsApp Session Disconnected',
-      explanation: 'The WhatsApp service is running in mock mode or its authentication session has expired.',
-      steps: [
-        'Go to "Broadcasting Targets" in the sidebar.',
-        'Check the status badge for WhatsApp.',
-        'If disconnected, follow the pairing instructions (scan QR code or use a pairing code) to re-authenticate the device.'
-      ]
-    };
-  }
-  
-  if (lower.includes('quota') || lower.includes('limit') || lower.includes('size')) {
-    return {
-      title: 'Size or Rate Limit Exceeded',
-      explanation: 'The payload or attachment is too large, or you are broadcasting too many messages at once.',
-      steps: [
-        'Verify that your file attachments are within size limits (WhatsApp/Telegram have limits around 16MB - 50MB depending on type).',
-        'If sending a large notice with multiple attachments, use the "Schedule" feature instead of sending immediately to allow staggered dispatch.'
-      ]
-    };
-  }
-
-  if (lower.includes('text is empty') || lower.includes('message text is empty') || lower.includes('empty text') || lower.includes('body is empty')) {
-    return {
-      title: 'Empty Message Content',
-      explanation: 'The Telegram broadcast failed because the compiled message body was empty.',
-      steps: [
-        'Ensure the notice content is not blank before sending.',
-        'If broadcasting a "Share File" notice, verify that you have uploaded at least one attachment.',
-        'If using a template, verify that all variables are filled out so that the compiled content is not empty.'
-      ]
-    };
-  }
-
-  return {
-    title: 'General Delivery Failure',
-    explanation: 'An unexpected platform or network error occurred during broadcast delivery.',
-    steps: [
-      'Check the server console logs for full stack traces.',
-      'Verify internet connectivity and external platform API status.',
-      'Double check that the broadcasting target channel details are valid.'
-    ]
-  };
-};
+import TroubleshootModal from '../ui/TroubleshootModal';
 
 const AnnouncementDetail = () => {
   const { id } = useParams();
@@ -128,7 +30,7 @@ const AnnouncementDetail = () => {
     try {
       const data = await announcementsAPI.get(id);
       setAnnouncement(data);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load announcement');
       navigate('/dashboard');
     } finally {
@@ -141,14 +43,7 @@ const AnnouncementDetail = () => {
     fetchAnnouncement();
   }, [id, navigate]);
 
-  // Refetch on window focus to avoid stale data when navigating back
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchAnnouncement();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [id]);
+  useRefetchOnFocus(fetchAnnouncement);
 
   const handleWsMessage = useCallback((payload) => {
     if (payload.type === 'announcement_status' && payload.data.id === parseInt(id)) {
@@ -188,7 +83,7 @@ const AnnouncementDetail = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (e) {
+    } catch {
       toast.error('Download failed');
     }
   };
@@ -390,67 +285,7 @@ const AnnouncementDetail = () => {
         )}
       </div>
 
-      {troubleshootingError && createPortal(
-        (() => {
-          const troubleshoot = troubleshootError(troubleshootingError);
-          return (
-            <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-              <div className="bg-canvas border border-hairline rounded-lg w-full max-w-md shadow-xl p-6 relative">
-                <button
-                  onClick={() => setTroubleshootingError(null)}
-                  className="absolute top-4 right-4 p-1 hover:bg-canvas-soft rounded cursor-pointer"
-                >
-                  <X className="w-4 h-4 text-ink-mute" />
-                </button>
-                
-                <div className="flex items-center gap-2.5 text-accent-tomato mb-4">
-                  <AlertTriangle className="w-5 h-5" />
-                  <h3 className="text-md font-semibold text-ink">Delivery Troubleshooter</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block">Raw Error Message</span>
-                    <p className="mt-1 text-xs font-mono bg-canvas-soft p-3 rounded border border-hairline break-words text-ink">
-                      {troubleshootingError}
-                    </p>
-                  </div>
-                  
-                  {troubleshoot && (
-                    <>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-primary tracking-wider block">{troubleshoot.title}</span>
-                        <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
-                          {troubleshoot.explanation}
-                        </p>
-                      </div>
-                      
-                      <div className="border-t border-hairline pt-3">
-                        <span className="text-[10px] uppercase font-bold text-ink-mute tracking-wider block mb-1.5">Suggested Action Checklist:</span>
-                        <ul className="list-decimal pl-4 text-xs text-ink-secondary space-y-1.5">
-                          {troubleshoot.steps.map((step, index) => (
-                            <li key={index} className="leading-normal">{step}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() => setTroubleshootingError(null)}
-                    className="px-4 py-2 bg-ink text-on-dark hover:bg-ink-secondary text-xs font-medium rounded-sm transition-colors cursor-pointer"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })(),
-        document.body
-      )}
+      <TroubleshootModal errorMessage={troubleshootingError} onClose={() => setTroubleshootingError(null)} />
     </div>
   );
 };
