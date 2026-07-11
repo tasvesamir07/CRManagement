@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - touch /home/hepttech/repositories/CRManagement/server/tmp/restart.txt

@@ -109,6 +109,11 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', time: new Date() });
 });
 
+// Root welcome endpoint
+app.get('/', (req, res) => {
+    res.send('CR Announcement API Server is running successfully!');
+});
+
 // WebSocket availability check (client uses this to decide whether to connect WS)
 app.get('/api/ws-available', (req, res) => {
     res.json({ available: !isVercel, reason: isVercel ? 'Vercel serverless does not support persistent WebSockets' : null });
