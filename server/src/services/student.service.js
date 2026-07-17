@@ -60,7 +60,7 @@ async function createStudent({ student_id, name, email, phone, batch, section })
     const sanitizedSection = (section || '').trim();
 
     const result = await db.query(
-        'INSERT INTO students (student_id, name, email, phone, batch, section) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        'INSERT INTO students (student_id, name, email, phone, batch, section, is_active) VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *',
         [sanitizedId, sanitizedName, sanitizedEmail, sanitizedPhone, sanitizedBatch, sanitizedSection]
     );
     return result.rows[0];
@@ -100,7 +100,7 @@ async function bulkImportStudents({ students, course_ids, enroll_all }) {
             const sanitizedSection = (student.section || '').trim();
 
             const result = await db.query(
-                'INSERT INTO students (student_id, name, email, phone, batch, section) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (student_id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone, batch=EXCLUDED.batch, section=EXCLUDED.section RETURNING *',
+                'INSERT INTO students (student_id, name, email, phone, batch, section, is_active) VALUES ($1, $2, $3, $4, $5, $6, true) ON CONFLICT (student_id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone, batch=EXCLUDED.batch, section=EXCLUDED.section, is_active=true RETURNING *',
                 [sanitizedId, sanitizedName, sanitizedEmail, sanitizedPhone, sanitizedBatch, sanitizedSection]
             );
             created.push(result.rows[0]);
