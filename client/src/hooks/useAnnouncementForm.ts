@@ -351,7 +351,7 @@ getInitialValue('uploadedFiles', []));
 
   const handleOpenLibrary = () => setShowLibraryModal(true);
 
-  const handleAttachFromLibrary = (files: any) => { setUploadedFiles((prev: any[]) => [...prev, files]); setShowLibraryModal(false); };
+  const handleAttachFromLibrary = (files: any[]) => { setUploadedFiles((prev: any[]) => [...prev, ...files]); setShowLibraryModal(false); };
 
   const handlePlatformToggle = (id: any) => {
     if (id === 'clear') { setSelectedPlatforms([]); return; }
