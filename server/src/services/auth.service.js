@@ -74,6 +74,7 @@ async function login(username, password) {
     delete user.two_factor_secret;
 
     const token = generateToken(user);
+    console.log('[AUTH] login response:', { hasUser: !!user, userId: user?.id, username: user?.username, hasToken: !!token, userKeys: Object.keys(user || {}) });
     return { user, token };
 }
 

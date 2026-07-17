@@ -35,6 +35,7 @@ const Login = () => {
                 setRequires2FA(true);
                 setTwoFactorUserId(data.userId);
             } else {
+                console.log('[LOGIN] response data:', { hasToken: !!data.token, hasUser: !!data.user, keys: Object.keys(data) });
                 localStorage.setItem('cr_token', data.token);
                 localStorage.setItem('cr_user', JSON.stringify(data.user));
                 setUser(data.user);
