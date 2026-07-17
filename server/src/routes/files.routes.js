@@ -3,7 +3,7 @@ const router = express.Router();
 const fileService = require('../services/file.service');
 const uploadMiddleware = require('../middleware/upload.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
-const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
 
 /**
  * @openapi
