@@ -210,7 +210,7 @@ const RoutineManager = () => {
       });
       fetchData();
     } catch (err: any) {
-      alert('Failed to move class: ' + (err.response?.data?.error || err.message));
+      toast.error('Failed to move class: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -250,7 +250,7 @@ const RoutineManager = () => {
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
       console.error('Failed to export image:', err);
-      alert('Failed to export routine as image. Please try again.');
+      toast.error('Failed to export routine as image. Please try again.');
     } finally {
       node.style.overflow = origOverflow;
     }
@@ -277,7 +277,7 @@ const RoutineManager = () => {
       });
     } catch (err: any) {
       console.error('Failed to share routine notice:', err);
-      alert('Failed to generate or upload routine image. ' + (err.response?.data?.error || err.message));
+      toast.error('Failed to generate or upload routine image. ' + (err.response?.data?.error || err.message));
     } finally {
       node.style.overflow = origOverflow;
       setSharingRoutine(false);

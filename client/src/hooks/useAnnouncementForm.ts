@@ -5,6 +5,7 @@ import { useWebSocket } from './useWebSocket';
 import { useOnlineStatus } from './useOnlineStatus';
 import { OfflineCache, OfflineDrafts } from '../services/offline';
 import toast from 'react-hot-toast';
+import { confirm } from '../components/ui/ConfirmDialog';
 import { PRESET_DEFS } from '../lib/announcementPresets';
 import { FORM_MESSAGES, API_MESSAGES } from '../lib/validation';
 import { getCompiledMessage as getCompiledMsg } from '../lib/compileMessage';
@@ -371,7 +372,14 @@ getInitialValue('uploadedFiles', []));
         setUploadProgress(0);
         const dupCheck = await filesAPI.checkDuplicate(f.name);
         let overwrite = false;
-        if (dupCheck.duplicate) { overwrite = window.confirm(`"${f.name}" already exists. Overwrite?`); if (!overwrite) continue; }
+        if (dupCheck.duplicate) {
+          overwrite = await confirm(`"${f.name}" already exists. Do you want to overwrite it?`, {
+            title: 'File Already Exists',
+            confirmLabel: 'Overwrite',
+            variant: 'danger'
+          });
+          if (!overwrite) continue;
+        }
         const uploadFn = overwrite ? filesAPI.uploadWithOverwrite : filesAPI.upload;
         const record = await uploadFn(f, (pe: any) => setUploadProgress(Math.round((pe.loaded * 100) / pe.total)));
         setUploadedFiles((prev: any[]) => [...prev, record]);

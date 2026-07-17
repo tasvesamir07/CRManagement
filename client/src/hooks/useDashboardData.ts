@@ -4,6 +4,7 @@ import { useWebSocket } from './useWebSocket';
 import { OfflineDrafts } from '../services/offline';
 import useKeepAlive from './useKeepAlive';
 import toast from 'react-hot-toast';
+import { confirm } from '../components/ui/ConfirmDialog';
 
 const getUniquePlatformDeliveries = (deliveryList: any[]) => {
   if (!deliveryList) return [];
@@ -147,19 +148,19 @@ export default function useDashboardData(navigate: (path: string) => void) {
   };
 
   const handleDeleteAnnouncement = async (id: number | string) => {
-    if (!window.confirm('Are you sure you want to delete this broadcast notice from history?')) return;
+    if (!(await confirm('Are you sure you want to delete this broadcast notice from history?', { title: 'Delete Notice', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       setAnnouncements(prev => prev.filter(ann => ann.id !== id));
       await announcementsAPI.delete(id);
       fetchData(true);
     } catch (e) {
-      alert('Delete failed: ' + ((e as any).response?.data?.error || (e as any).message));
+      toast.error('Delete failed: ' + ((e as any).response?.data?.error || (e as any).message));
       fetchData();
     }
   };
 
   const deleteOfflineDraft = async (draftId: string) => {
-    if (!window.confirm('Are you sure you want to delete this local offline draft?')) return;
+    if (!(await confirm('Are you sure you want to delete this local offline draft?', { title: 'Delete Draft', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       await OfflineDrafts.delete(draftId);
       toast.success('Local draft deleted');

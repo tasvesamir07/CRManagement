@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
+import { confirm } from '../ui/ConfirmDialog';
 import TroubleshootModal from '../ui/TroubleshootModal';
 import type { Announcement, UploadedFile, DeliveryItem } from './types';
 
@@ -57,7 +58,7 @@ const AnnouncementDetail: React.FC = () => {
   useWebSocket({ onMessage: handleWsMessage });
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this announcement permanently?')) return;
+    if (!(await confirm('Delete this announcement permanently?', { title: 'Delete Announcement', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       if (!id) return;
       await announcementsAPI.delete(id);

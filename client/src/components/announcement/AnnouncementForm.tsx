@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { confirm } from '../ui/ConfirmDialog';
 import { BookOpen, Clock, Send, X, Plus, ListPlus, StickyNote, Save,
   AlertTriangle, ArrowLeft, ChevronDown, GripVertical, Sparkles, Trash2, WifiOff } from 'lucide-react';
 import { DatePicker } from '../ui/date-picker';
@@ -156,7 +157,12 @@ const AnnouncementForm: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                         {notices.length > 1 && (
-                          <button type="button" onClick={() => { if (window.confirm(`Are you sure you want to delete Notice #${nIdx + 1}?`)) { setNotices((prev: any[]) => prev.filter((_: any, idx: number) => idx !== nIdx)); toast.success(`Notice #${nIdx + 1} deleted`); } }}
+                          <button type="button" onClick={async () => {
+                            if (await confirm(`Are you sure you want to delete Notice #${nIdx + 1}?`, { title: 'Delete Notice', variant: 'danger', confirmLabel: 'Delete' })) {
+                              setNotices((prev: any[]) => prev.filter((_: any, idx: number) => idx !== nIdx));
+                              toast.success(`Notice #${nIdx + 1} deleted`);
+                            }
+                          }}
                             className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent" title="Delete Notice">
                             <Trash2 className="w-4 h-4" />
                           </button>

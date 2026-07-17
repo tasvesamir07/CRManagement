@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useRef, type ReactNode } from 'react';
 import { filesAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { confirm } from '../components/ui/ConfirmDialog';
 import { X, Check, AlertCircle, ChevronDown, ChevronUp, FileText, Presentation, File } from 'lucide-react';
 
 interface UploadItem {
@@ -99,24 +100,32 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
 
         const filesArray = Array.from(fileList);
 
-        filesArray.forEach(file => {
-            if (file.size > 50 * 1024 * 1024) {
-                toast.error(`"${file.name}" exceeds the 50MB limit.`);
-                return;
-            }
+        const processFilesQueue = async () => {
+            for (const file of filesArray) {
+                if (file.size > 50 * 1024 * 1024) {
+                    toast.error(`"${file.name}" exceeds the 50MB limit.`);
+                    continue;
+                }
 
-            filesAPI.checkDuplicate(file.name, folderId != null ? String(folderId) : null).then(dupCheck => {
-                if (dupCheck.duplicate) {
-                    if (window.confirm(`A file named "${file.name}" already exists in this folder. Do you want to overwrite it?`)) {
-                        uploadSingleFile(file, folderId, true);
+                try {
+                    const dupCheck = await filesAPI.checkDuplicate(file.name, folderId != null ? String(folderId) : null);
+                    if (dupCheck.duplicate) {
+                        const overwrite = await confirm(
+                            `A file named "${file.name}" already exists in this folder. Do you want to overwrite it?`,
+                            { title: 'File Already Exists', confirmLabel: 'Overwrite', variant: 'danger' }
+                        );
+                        if (overwrite) {
+                            uploadSingleFile(file, folderId, true);
+                        }
+                    } else {
+                        uploadSingleFile(file, folderId, false);
                     }
-                } else {
+                } catch (e) {
                     uploadSingleFile(file, folderId, false);
                 }
-            }).catch(() => {
-                uploadSingleFile(file, folderId, false);
-            });
-        });
+            }
+        };
+        processFilesQueue();
     };
 
     const cancelUpload = (uploadId: string) => {

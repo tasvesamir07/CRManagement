@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminAPI, coursesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { confirm } from '../ui/ConfirmDialog';
 import { Plus, Loader2, Trash2, X, ChevronDown } from 'lucide-react';
 import PasswordInput from '../ui/PasswordInput';
 import CourseMemberAssignment from './CourseMemberAssignment';
@@ -98,7 +99,7 @@ const AdminUsers = () => {
   };
 
   const handleDelete = async (id: string, username: string) => {
-    if (!window.confirm(`Deactivate user "${username}"? They can be reactivated later.`)) return;
+    if (!(await confirm(`Deactivate user "${username}"? They can be reactivated later.`, { title: 'Deactivate User', variant: 'danger', confirmLabel: 'Deactivate' }))) return;
     try {
       await adminAPI.deleteUser(id);
       toast.success('User deactivated');
@@ -158,7 +159,11 @@ const AdminUsers = () => {
   };
 
   const handleRemoveMember = async (userId: string) => {
-    if (!window.confirm('Remove this user from the course? They will lose access to shared notice history and routines.')) return;
+    if (!(await confirm('Remove this user from the course? They will lose access to shared notice history and routines.', {
+      title: 'Remove Member',
+      confirmLabel: 'Remove Member',
+      variant: 'danger'
+    }))) return;
     try {
       await coursesAPI.removeMember(selectedCourseId, userId);
       toast.success('User removed from course');

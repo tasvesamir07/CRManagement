@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, RefreshCw, Trash2, ChevronDown } from 'lucide-react';
 import QRCode from 'qrcode';
 import { platformsAPI } from '../../services/api';
+import { confirm } from '../ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 
 import { COUNTRY_CODES, sanitizePhoneNumber } from './platformUtils';
 
@@ -72,7 +74,7 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
       await platformsAPI.restartWhatsApp();
       fetchWhatsAppStatusHttp();
     } catch (e: any) {
-      alert('Failed to restart WhatsApp: ' + (e.response?.data?.error || e.message));
+      toast.error('Failed to restart WhatsApp: ' + (e.response?.data?.error || e.message));
     } finally {
       setActionLoading(false);
     }
@@ -97,13 +99,17 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
   };
 
   const handleClearSession = async () => {
-    if (!window.confirm('WARNING: Wiping the session will disconnect WhatsApp. You will need to scan the QR code again. Proceed?')) return;
+    if (!(await confirm('WARNING: Wiping the session will disconnect WhatsApp. You will need to scan the QR code again. Proceed?', {
+      title: 'Clear Session',
+      confirmLabel: 'Wipe Session',
+      variant: 'danger'
+    }))) return;
     try {
       setActionLoading(true);
       await platformsAPI.clearWhatsAppSession();
       fetchWhatsAppStatusHttp();
     } catch (e: any) {
-      alert('Failed to clear WhatsApp session: ' + (e.response?.data?.error || e.message));
+      toast.error('Failed to clear WhatsApp session: ' + (e.response?.data?.error || e.message));
     } finally {
       setActionLoading(false);
     }
@@ -116,7 +122,7 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
       const groups = await platformsAPI.getWhatsAppGroups();
       setWaGroups(groups);
     } catch (e: any) {
-      alert('Sync failed: ' + e.message);
+      toast.error('Sync failed: ' + e.message);
     } finally {
       setSyncingGroups(false);
     }

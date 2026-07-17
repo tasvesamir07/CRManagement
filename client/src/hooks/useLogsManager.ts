@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { logsAPI, announcementsAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { confirm } from '../components/ui/ConfirmDialog';
 
 export default function useLogsManager(isAdmin: boolean) {
   const [logs, setLogs] = useState<any[]>([]);
@@ -59,7 +60,7 @@ export default function useLogsManager(isAdmin: boolean) {
 
   const handleDeleteLog = async (logId: number, event: any) => {
     event.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this log entry?')) return;
+    if (!(await confirm('Are you sure you want to delete this log entry?', { title: 'Delete Log Entry', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       setLogs(prev => prev.filter(l => l.id !== logId));
       await logsAPI.delete(logId);
@@ -79,7 +80,7 @@ export default function useLogsManager(isAdmin: boolean) {
     const confirmMsg = isAdmin
       ? 'Are you sure you want to delete ALL system audit logs? This cannot be undone.'
       : 'Are you sure you want to clear all your notice delivery logs?';
-    if (!window.confirm(confirmMsg)) return;
+    if (!(await confirm(confirmMsg, { title: 'Clear Logs', variant: 'danger', confirmLabel: 'Clear All' }))) return;
     try {
       await logsAPI.clear();
       toast.success('Logs cleared successfully');
