@@ -8,6 +8,7 @@ import MessengerStatusCard from './MessengerStatusCard';
 import ChannelForm from './ChannelForm';
 import ChannelCard from './ChannelCard';
 import toast from 'react-hot-toast';
+import { confirm } from '../ui/ConfirmDialog';
 
 interface Platform {
   id: string;
@@ -154,19 +155,19 @@ const PlatformManager = () => {
   }, [isConnected]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this broadcasting channel?')) return;
+    if (!(await confirm('Delete this broadcasting channel?', { title: 'Delete Channel', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       setPlatforms(prev => prev.filter(p => p.id !== id));
       await platformsAPI.delete(id);
       fetchPlatforms();
     } catch {
-      alert('Delete failed');
+      toast.error('Delete failed');
       fetchPlatforms();
     }
   };
 
   const handleSetDefault = async (platformId: string, courseId: string) => {
-    if (!window.confirm('Set this platform as default for this course?')) return;
+    if (!(await confirm('Set this platform as default for this course?', { title: 'Set Default Platform' }))) return;
     setSettingDefault(platformId);
     try {
       const currentDefaults = courseDefaults[courseId] || [];

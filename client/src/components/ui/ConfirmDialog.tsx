@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
-import type { MouseEventHandler } from 'react';
+import { createRoot } from 'react-dom/client';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -46,3 +46,33 @@ export default function ConfirmDialog({ open, title, message, confirmLabel, canc
     document.body
   );
 }
+
+export const confirm = (
+  message: string,
+  options: { title?: string; variant?: 'danger' | 'default'; confirmLabel?: string; cancelLabel?: string } = {}
+): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const div = document.createElement('div');
+    document.body.appendChild(div);
+    const root = createRoot(div);
+
+    const cleanup = (value: boolean) => {
+      root.unmount();
+      div.remove();
+      resolve(value);
+    };
+
+    root.render(
+      <ConfirmDialog
+        open={true}
+        title={options.title}
+        message={message}
+        confirmLabel={options.confirmLabel}
+        cancelLabel={options.cancelLabel}
+        variant={options.variant}
+        onConfirm={() => cleanup(true)}
+        onCancel={() => cleanup(false)}
+      />
+    );
+  });
+};
