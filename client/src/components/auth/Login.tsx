@@ -42,6 +42,7 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } catch (err: any) {
+            console.error('Login failed:', err.response?.data || err.message);
             setErr(err.response?.data?.error || 'Invalid credentials. Please try again.');
         } finally {
             setSubmitting(false);

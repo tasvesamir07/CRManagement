@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const authService = require('../services/auth.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, schemas } = require('../middleware/validate.middleware');
+const logger = require('../config/logger');
 
 // Rate limiting on login: 5 attempts per 15 minutes
 const loginLimiter = rateLimit({
@@ -86,6 +87,7 @@ router.post('/register', registerLimiter, validate(schemas.auth.register), async
         const result = await authService.register(username, email, password, displayName, role);
         return res.status(201).json(result);
     } catch (err) {
+        logger.warn({ username: req.body?.username, email: req.body?.email, ip: req.ip }, `Registration failed: ${err.message}`);
         return res.status(400).json({ error: err.message });
     }
 });
@@ -127,6 +129,7 @@ router.post('/login', loginLimiter, validate(schemas.auth.login), async (req, re
         const result = await authService.login(username, password);
         return res.json(result);
     } catch (err) {
+        logger.warn({ username: req.body?.username, ip: req.ip }, `Login failed: ${err.message}`);
         return res.status(400).json({ error: err.message });
     }
 });
