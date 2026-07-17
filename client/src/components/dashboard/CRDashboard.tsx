@@ -210,7 +210,7 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-center">Channels</th>
-                  <th className="py-3 pl-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
@@ -256,15 +256,23 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                         ))}
                       </div>
                     </td>
-                    <td className="py-3.5 pl-4 text-right whitespace-nowrap" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                      <Link to={`/announcement/${ann.id}`}
-                        className="p-1 text-ink-mute hover:text-primary hover:bg-primary/10 rounded transition-colors cursor-pointer inline-block" title="View Details"><Eye className="w-4 h-4" /></Link>
-                      {(ann.status === 'draft' || ann.status === 'scheduled' || ann.status === 'partial' || ann.status === 'failed') && (
-                        <button onClick={(e: React.MouseEvent) => handleEditClick(ann, e)}
-                          className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block mr-1" title="Edit Broadcast"><Edit3 className="w-4 h-4" /></button>
-                      )}
-                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteAnnouncement(ann.id); }}
-                        className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer" title="Delete Broadcast Notice"><Trash2 className="w-4 h-4" /></button>
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <div className="flex justify-center items-center gap-1.5">
+                        <Link to={`/announcement/${ann.id}`}
+                          className="p-1 text-ink-mute hover:text-primary hover:bg-primary/10 rounded transition-colors cursor-pointer inline-block" title="View Details">
+                          <Eye className="w-4 h-4" />
+                        </Link>
+                        {(ann.status === 'draft' || ann.status === 'scheduled' || ann.status === 'partial' || ann.status === 'failed') && (
+                          <button onClick={(e: React.MouseEvent) => handleEditClick(ann, e)}
+                            className="p-1 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors cursor-pointer inline-block" title="Edit Broadcast">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteAnnouncement(ann.id); }}
+                          className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer" title="Delete Broadcast Notice">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

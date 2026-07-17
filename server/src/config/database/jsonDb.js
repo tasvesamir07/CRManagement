@@ -9,7 +9,8 @@ const JSON_DB_SCHEMA = {
     users: [], courses: [], routines: [], platforms: [], files: [],
     announcements: [], announcement_platforms: [], course_members: [],
     otps: [], audit_logs: [], analytics_events: [], announcement_templates: [],
-    folders: [], system_settings: []
+    folders: [], system_settings: [],
+    students: [], student_courses: [], exam_routines: [], attendance: [], canva_templates: []
 };
 
 function initJsonDb() {

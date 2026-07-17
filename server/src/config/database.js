@@ -186,6 +186,63 @@ async function initDatabase() {
                         value TEXT NOT NULL,
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     );
+                    CREATE TABLE IF NOT EXISTS students (
+                        id SERIAL PRIMARY KEY,
+                        student_id TEXT NOT NULL UNIQUE,
+                        name TEXT NOT NULL,
+                        email TEXT,
+                        phone TEXT,
+                        batch TEXT,
+                        section TEXT,
+                        is_active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                    CREATE TABLE IF NOT EXISTS student_courses (
+                        id SERIAL PRIMARY KEY,
+                        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+                        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+                        enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+                        UNIQUE(student_id, course_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS exam_routines (
+                        id SERIAL PRIMARY KEY,
+                        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+                        exam_type TEXT NOT NULL CHECK (exam_type IN ('mid', 'final', 'quiz', 'makeup')),
+                        exam_date DATE NOT NULL,
+                        start_time TIME NOT NULL,
+                        end_time TIME NOT NULL,
+                        room_number TEXT,
+                        section TEXT DEFAULT '',
+                        instructions TEXT,
+                        canva_template_id TEXT,
+                        is_active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                    CREATE TABLE IF NOT EXISTS attendance (
+                        id SERIAL PRIMARY KEY,
+                        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+                        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+                        exam_routine_id INTEGER REFERENCES exam_routines(id) ON DELETE SET NULL,
+                        date DATE NOT NULL,
+                        status TEXT NOT NULL CHECK (status IN ('present', 'absent')),
+                        marked_by INTEGER REFERENCES users(id),
+                        marked_at TIMESTAMPTZ DEFAULT NOW(),
+                        notes TEXT,
+                        UNIQUE(student_id, course_id, date, exam_routine_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS canva_templates (
+                        id SERIAL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        template_type TEXT NOT NULL CHECK (template_type IN ('attendance', 'exam_routine')),
+                        canva_template_id TEXT NOT NULL,
+                        canva_design_id TEXT,
+                        variables JSONB DEFAULT '[]',
+                        is_active BOOLEAN DEFAULT true,
+                        created_by INTEGER REFERENCES users(id),
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
                 `);
 
                 // Seed default admin user if not exists (password: admin123)
