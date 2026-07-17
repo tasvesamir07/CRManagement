@@ -27,8 +27,10 @@ api.interceptors.response.use(
     (response: AxiosResponse) => {
         const url = response.config.url;
         const method = response.config.method?.toLowerCase();
-        if (method === 'get' && (url === '/courses' || url === '/platforms' || url === '/templates')) {
-            OfflineCache.set(url, response.data).catch(err => console.error('Failed to cache response:', err));
+        const cacheableUrls = ['/courses', '/platforms', '/templates', '/announcements', '/files', '/routines'];
+        if (method === 'get' && url && cacheableUrls.some(cu => url.startsWith(cu))) {
+            const cacheKey = url + (response.config.params ? JSON.stringify(response.config.params) : '');
+            OfflineCache.set(cacheKey, response.data).catch(err => console.error('Failed to cache response:', err));
         }
         return response;
     },
@@ -36,8 +38,9 @@ api.interceptors.response.use(
         if (!error.response && typeof navigator !== 'undefined' && navigator.onLine === false) {
             const config = error.config;
             const method = config.method?.toLowerCase();
-            if (method === 'get') {
-                const cached = await OfflineCache.get(config.url);
+            if (method === 'get' && config.url) {
+                const cacheKey = config.url + (config.params ? JSON.stringify(config.params) : '');
+                const cached = await OfflineCache.get(cacheKey);
                 if (cached) {
                     return { data: cached, config, headers: {}, status: 200, statusText: 'OK' };
                 }

@@ -322,6 +322,95 @@ const schemas = {
             metadata: z.record(z.any()).optional()
         })
     },
+    students: {
+        create: z.object({
+            student_id: z.string().min(1).max(50),
+            name: z.string().min(1).max(200),
+            email: z.string().email().optional().nullable(),
+            phone: z.string().max(20).optional().nullable(),
+            batch: z.string().max(50).optional().nullable(),
+            section: z.string().max(10).optional().nullable()
+        }),
+        update: z.object({
+            student_id: z.string().min(1).max(50).optional(),
+            name: z.string().min(1).max(200).optional(),
+            email: z.string().email().optional().nullable(),
+            phone: z.string().max(20).optional().nullable(),
+            batch: z.string().max(50).optional().nullable(),
+            section: z.string().max(10).optional().nullable(),
+            is_active: z.boolean().optional()
+        }).partial(),
+        bulkImport: z.object({
+            students: z.array(z.object({
+                student_id: z.string().min(1).max(50),
+                name: z.string().min(1).max(200),
+                email: z.string().email().optional().nullable(),
+                phone: z.string().max(20).optional().nullable(),
+                batch: z.string().max(50).optional().nullable(),
+                section: z.string().max(10).optional().nullable()
+            })).min(1),
+            course_ids: z.array(z.number().int().positive()).optional(),
+            enroll_all: z.boolean().optional()
+        }),
+        enroll: z.object({
+            course_ids: z.array(z.number().int().positive()).min(1)
+        })
+    },
+    examRoutines: {
+        create: z.object({
+            course_id: z.number().int().positive(),
+            exam_type: z.enum(['mid', 'final', 'quiz', 'makeup']),
+            exam_date: z.string().date(),
+            start_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+            end_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+            room_number: z.string().max(50).optional().nullable(),
+            section: z.string().max(50).optional().nullable(),
+            instructions: z.string().max(1000).optional().nullable(),
+            canva_template_id: z.string().optional().nullable()
+        }),
+        update: z.object({
+            course_id: z.number().int().positive().optional(),
+            exam_type: z.enum(['mid', 'final', 'quiz', 'makeup']).optional(),
+            exam_date: z.string().date().optional(),
+            start_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+            end_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+            room_number: z.string().max(50).optional().nullable(),
+            section: z.string().max(50).optional().nullable(),
+            instructions: z.string().max(1000).optional().nullable(),
+            canva_template_id: z.string().optional().nullable(),
+            is_active: z.boolean().optional()
+        }).partial()
+    },
+    attendance: {
+        bulkMark: z.object({
+            course_id: z.number().int().positive(),
+            date: z.string().date(),
+            exam_routine_id: z.number().int().positive().optional().nullable(),
+            records: z.array(z.object({
+                student_id: z.number().int().positive(),
+                status: z.enum(['present', 'absent']),
+                notes: z.string().max(500).optional().nullable()
+            })).min(1)
+        }),
+        update: z.object({
+            status: z.enum(['present', 'absent']).optional(),
+            notes: z.string().max(500).optional().nullable()
+        }).partial()
+    },
+    canva: {
+        generatePdf: z.object({
+            template_id: z.number().int().positive(),
+            data: z.record(z.any()),
+            filename: z.string().max(200).optional()
+        }),
+        saveTemplate: z.object({
+            name: z.string().min(1).max(100),
+            template_type: z.enum(['attendance', 'exam_routine']),
+            canva_template_id: z.string().min(1),
+            canva_design_id: z.string().optional().nullable(),
+            variables: z.array(z.string()).optional()
+        })
+    },
     params: {
         id: z.object({
             id: z.coerce.number().int().positive()
@@ -346,6 +435,12 @@ const schemas = {
         }),
         userId: z.object({
             userId: z.coerce.number().int().positive()
+        }),
+        studentId: z.object({
+            studentId: z.coerce.number().int().positive()
+        }),
+        date: z.object({
+            date: z.string().date()
         })
     }
 };

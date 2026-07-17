@@ -68,15 +68,45 @@ export default function useDashboardData(navigate: (path: string) => void) {
 
   const fetchData = async (silent: boolean = false) => {
     try {
+      const announcementsParams = {
+        page, limit: 10, search: debouncedSearch || undefined,
+        status: statusFilter || undefined, course_id: courseFilter || undefined,
+        date_from: dateFrom || undefined, date_to: dateTo || undefined
+      };
+
+      // Try to load from local cache first to load instantly
+      const coursesKey = '/courses';
+      const platformsKey = '/platforms';
+      const announcementsKey = '/announcements' + JSON.stringify(announcementsParams);
+
+      const [cachedCourses, cachedPlatforms, cachedAnnouncements] = await Promise.all([
+        OfflineCache.get(coursesKey),
+        OfflineCache.get(platformsKey),
+        OfflineCache.get(announcementsKey)
+      ]);
+
+      if (cachedCourses && cachedPlatforms && cachedAnnouncements) {
+        setCourses(cachedCourses);
+        setPlatforms(cachedPlatforms);
+        const rawAnnouncements = Array.isArray(cachedAnnouncements) ? cachedAnnouncements : (cachedAnnouncements.announcements || []);
+        setAnnouncements(rawAnnouncements);
+        if (cachedAnnouncements.totalPages) setTotalPages(cachedAnnouncements.totalPages);
+        if (cachedAnnouncements.totalCount) setTotalCount(cachedAnnouncements.totalCount);
+        const delivered = rawAnnouncements.filter((a: any) => a.status === 'sent' || a.status === 'partial').length;
+        setStats({
+          coursesCount: cachedCourses.length, platformsCount: cachedPlatforms.length,
+          announcementsCount: cachedAnnouncements.totalCount || rawAnnouncements.length,
+          deliveredCount: delivered
+        });
+        setLoading(false);
+        silent = true; // Skip spinner, background fetch is silent
+      }
+
       if (!silent) setLoading(true);
       const [coursesData, platformsData, announcementsData] = await Promise.all([
         coursesAPI.list(),
         platformsAPI.list(),
-        announcementsAPI.list({
-          page, limit: 10, search: debouncedSearch || undefined,
-          status: statusFilter || undefined, course_id: courseFilter || undefined,
-          date_from: dateFrom || undefined, date_to: dateTo || undefined
-        })
+        announcementsAPI.list(announcementsParams)
       ]);
       setCourses(coursesData);
       setPlatforms(platformsData);
@@ -93,7 +123,7 @@ export default function useDashboardData(navigate: (path: string) => void) {
     } catch (err) {
       console.error('Error fetching dashboard statistics:', err);
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
     }
   };
 
