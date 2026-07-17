@@ -154,6 +154,27 @@ router.get('/', authMiddleware, validateQuery(schemas.files.listQuery), async (r
  *       201:
  *         description: Folder created
  */
+/**
+ * @openapi
+ * /files/folders:
+ *   get:
+ *     tags: [Files]
+ *     summary: List all folders
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of folders
+ */
+router.get('/folders', authMiddleware, async (req, res) => {
+    try {
+        const folders = await fileService.listFolders(req.user.id);
+        return res.json(folders);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/folders', authMiddleware, validate(schemas.files.createFolder), async (req, res) => {
     try {
         const { name, courseId } = req.body;

@@ -12,7 +12,13 @@ const validate = (schema) => (req, res, next) => {
 };
 
 const validateQuery = (schema) => (req, res, next) => {
-    const result = schema.safeParse(req.query);
+    const cleanedQuery = { ...req.query };
+    for (const key in cleanedQuery) {
+        if (cleanedQuery[key] === '') {
+            delete cleanedQuery[key];
+        }
+    }
+    const result = schema.safeParse(cleanedQuery);
     if (!result.success) {
         const errors = result.error.flatten().fieldErrors;
         const messages = Object.entries(errors).map(([field, msgs]) => `${field}: ${msgs.join(', ')}`);
