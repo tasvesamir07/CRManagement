@@ -17,14 +17,19 @@ function generateToken(user) {
 }
 
 async function register(username, email, password, displayName, role = 'cr') {
-    const checkUsername = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    const trimmedUsername = username.trim();
+    const checkUsername = await db.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [trimmedUsername]);
     if (checkUsername.rows.length > 0) {
         throw new Error('Username already exists');
     }
 
-    const checkEmail = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const checkEmail = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
     if (checkEmail.rows.length > 0) {
         throw new Error('Email already exists');
+    }
+
+    if (trimmedUsername !== username) {
+        username = trimmedUsername;
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -44,7 +49,7 @@ async function register(username, email, password, displayName, role = 'cr') {
 }
 
 async function login(username, password) {
-    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    const result = await db.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username.trim()]);
     if (result.rows.length === 0) {
         throw new Error('Invalid username or password');
     }

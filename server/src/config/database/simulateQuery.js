@@ -32,15 +32,15 @@ async function simulateQuery(text, params = []) {
         return { rows: [newUser] };
     }
 
-    if (normalizedText.includes('SELECT * FROM users WHERE username =')) {
+    if (normalizedText.includes('FROM users WHERE') && normalizedText.includes('username')) {
         const username = params[0];
-        const user = db.users.find(u => u.username === username && u.is_active);
+        const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.is_active);
         return { rows: user ? [user] : [] };
     }
 
-    if (normalizedText.includes('SELECT * FROM users WHERE email =')) {
+    if (normalizedText.includes('FROM users WHERE') && normalizedText.includes('email')) {
         const email = params[0];
-        const user = db.users.find(u => u.email === email && u.is_active);
+        const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.is_active);
         return { rows: user ? [user] : [] };
     }
 
