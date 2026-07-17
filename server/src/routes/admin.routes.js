@@ -4,6 +4,7 @@ const adminMiddleware = require('../middleware/admin.middleware');
 const adminService = require('../services/admin.service');
 const { audit } = require('../middleware/audit.middleware');
 const auditService = require('../services/audit.service');
+const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
 
 /**
  * @openapi
