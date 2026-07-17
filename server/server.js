@@ -139,8 +139,8 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
+// Health check endpoint (supports root, legacy /api/health, and /api/v1/health)
+app.get(['/health', '/api/health', '/api/v1/health'], async (req, res) => {
     const checks = {
         database: false,
         whatsapp: false,
