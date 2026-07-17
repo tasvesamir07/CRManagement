@@ -162,7 +162,7 @@ app.get('/health', async (req, res) => {
         checks.messenger = !messengerService.isMock();
     } catch (_) {}
     const allOk = Object.values(checks).every(Boolean);
-    res.status(allOk ? 200 : 503).json({
+    res.status(checks.database ? 200 : 503).json({
         status: allOk ? 'healthy' : 'degraded',
         time: new Date().toISOString(),
         correlationId: req.correlationId,
