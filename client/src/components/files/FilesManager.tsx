@@ -17,6 +17,7 @@ import MoveFilesModal from './MoveFilesModal';
 import ExpiryModal from './ExpiryModal';
 import CompressModal from './CompressModal';
 import ExtractZipModal from './ExtractZipModal';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface FileItem {
   id: string;
@@ -120,6 +121,9 @@ const FilesManager = () => {
 
   const [showExtractModal, setShowExtractModal] = useState(false);
   const [extractFile, setExtractFile] = useState<FileItem | null>(null);
+
+  const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState<boolean>(false);
 
   const handleFileDragStart = (e: React.DragEvent, file: FileItem) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -450,8 +454,11 @@ const FilesManager = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this file permanently?')) return;
+  const handleDelete = (id: string) => {
+    setConfirmDeleteFileId(id);
+  };
+
+  const executeDelete = async (id: string) => {
     setDeleting(prev => new Set(prev).add(id));
     try {
       await filesAPI.delete(id);
@@ -469,33 +476,55 @@ const FilesManager = () => {
     setDeleting(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedFileIds.size === 0) return;
-    if (!window.confirm(`Are you sure you want to permanently delete the ${selectedFileIds.size} selected file(s)?`)) return;
-    
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const executeBulkDelete = async () => {
+    setShowBulkDeleteConfirm(false);
     const idsToDelete = [...selectedFileIds];
+    let successCount = 0;
+    let failCount = 0;
+    const total = idsToDelete.length;
+
+    // Create a loading toast
+    const toastId = toast.loading(`Deleting files... 0/${total} (0%)`);
+
     setDeleting(prev => {
       const next = new Set(prev);
       idsToDelete.forEach(id => next.add(id));
       return next;
     });
-    
-    try {
-      await bulkAPI.deleteFiles(idsToDelete);
-      setFiles(prev => prev.filter(f => !selectedFileIds.has(f.id)));
-      setSelectedFileIds(new Set());
-      toast.success('Selected files deleted successfully');
-      fetchFiles();
-      fetchStorageUsage();
-    } catch {
-      toast.error('Bulk deletion failed');
-    } finally {
-      setDeleting(prev => {
-        const next = new Set(prev);
-        idsToDelete.forEach(id => next.delete(id));
-        return next;
-      });
+
+    for (let i = 0; i < total; i++) {
+      const id = idsToDelete[i];
+      try {
+        await filesAPI.delete(id);
+        successCount++;
+        setFiles(prev => prev.filter(f => f.id !== id));
+      } catch (err) {
+        failCount++;
+      }
+      // Update progress toast
+      const progress = Math.round(((i + 1) / total) * 100);
+      toast.loading(`Deleting files... ${i + 1}/${total} (${progress}%)`, { id: toastId });
     }
+
+    if (failCount === 0) {
+      toast.success(`Successfully deleted all ${successCount} file(s)`, { id: toastId });
+    } else {
+      toast.success(`Deleted ${successCount} file(s), failed to delete ${failCount} file(s)`, { id: toastId });
+    }
+
+    setSelectedFileIds(new Set());
+    fetchStorageUsage();
+
+    setDeleting(prev => {
+      const next = new Set(prev);
+      idsToDelete.forEach(id => next.delete(id));
+      return next;
+    });
   };
 
   const handleShareFolder = async (folderId: string) => {
@@ -1020,6 +1049,33 @@ const FilesManager = () => {
           fetchFiles();
           fetchStorageUsage();
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteFileId !== null}
+        title="Delete File"
+        message="Are you sure you want to permanently delete this file?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          if (confirmDeleteFileId) {
+            executeDelete(confirmDeleteFileId);
+            setConfirmDeleteFileId(null);
+          }
+        }}
+        onCancel={() => setConfirmDeleteFileId(null)}
+      />
+
+      <ConfirmDialog
+        open={showBulkDeleteConfirm}
+        title="Delete Multiple Files"
+        message={`Are you sure you want to permanently delete the ${selectedFileIds.size} selected file(s)?`}
+        confirmLabel="Delete All"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={executeBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
       />
 
       <LightboxPreviewModal
