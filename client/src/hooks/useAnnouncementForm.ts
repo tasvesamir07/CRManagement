@@ -480,8 +480,8 @@ getInitialValue('uploadedFiles', []));
       let ann = announcementId ? await announcementsAPI.update(announcementId, payload) : await announcementsAPI.create(payload);
       if (!announcementId) setAnnouncementId(ann.id);
       try {
-        const res = await announcementsAPI.send(ann.id, { confirmed: true });
-        toast.success(`Broadcasted! (${res.successCount} success, ${res.failureCount} failed)`);
+        await announcementsAPI.send(ann.id, { confirmed: true });
+        // The global WebSocket progress toast displays the success/failure breakdown.
       } catch (sendErr: any) { toast.error(sendErr.response?.data?.error || sendErr.message || 'Broadcast failed'); }
       sessionStorage.removeItem('announcement_draft');
       setTimeout(() => navigate('/dashboard'), 2000);

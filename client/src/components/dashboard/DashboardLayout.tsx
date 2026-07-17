@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useAuth, type User } from '../../context/AuthContext';
 import ErrorBoundary from '../ui/ErrorBoundary';
@@ -12,6 +12,8 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import useOfflineSync from '../../hooks/useOfflineSync';
 import useDashboardTheme from '../../hooks/useDashboardTheme';
 import MobileDrawer from './MobileDrawer';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import toast from 'react-hot-toast';
 
 interface NavigationItem {
   name: string;
@@ -28,6 +30,50 @@ const DashboardLayout = () => {
   const [moreMenuOpen, setMoreMenuOpen] = useState<boolean>(false);
 
   useOfflineSync(isOnline);
+
+  const activeToastIdRef = useRef<string | null>(null);
+
+  useWebSocket({
+    onMessage: (payload: any) => {
+      if (payload.type === 'announcement_status') {
+        const { status, delivery } = payload.data;
+        if (!delivery || delivery.length === 0) return;
+
+        const total = delivery.length;
+        const completed = delivery.filter((d: any) => d.platform_status === 'sent' || d.platform_status === 'failed').length;
+        const progress = Math.round((completed / total) * 100);
+
+        const message = `Broadcasting Notice... ${completed}/${total} channels (${progress}%)`;
+
+        if (status === 'sending') {
+          if (!activeToastIdRef.current) {
+            activeToastIdRef.current = toast.loading(message);
+          } else {
+            toast.loading(message, { id: activeToastIdRef.current });
+          }
+        } else if (status === 'sent') {
+          const successCount = delivery.filter((d: any) => d.platform_status === 'sent').length;
+          const failureCount = delivery.filter((d: any) => d.platform_status === 'failed').length;
+          toast.success(`Broadcast Complete! (${successCount} sent, ${failureCount} failed)`, {
+            id: activeToastIdRef.current || undefined
+          });
+          activeToastIdRef.current = null;
+        } else if (status === 'failed') {
+          toast.error('Broadcast failed completely.', {
+            id: activeToastIdRef.current || undefined
+          });
+          activeToastIdRef.current = null;
+        } else if (status === 'partial') {
+          const successCount = delivery.filter((d: any) => d.platform_status === 'sent').length;
+          const failureCount = delivery.filter((d: any) => d.platform_status === 'failed').length;
+          toast.success(`Broadcast finished with failures (${successCount} sent, ${failureCount} failed)`, {
+            id: activeToastIdRef.current || undefined
+          });
+          activeToastIdRef.current = null;
+        }
+      }
+    }
+  });
 
   const navigation: NavigationItem[] = user?.role === 'admin'
     ? [

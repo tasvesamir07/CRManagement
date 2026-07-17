@@ -242,6 +242,13 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 }
             );
 
+            // Broadcast intermediate progress status
+            const progressDelivery = await db.query(
+                'SELECT ap.*, p.platform_name, p.platform_type FROM announcement_platforms ap JOIN platforms p ON ap.platform_id = p.id WHERE ap.announcement_id = $1',
+                [id]
+            );
+            broadcastAnnouncementStatus(id, 'sending', null, progressDelivery.rows);
+
             return { platform_id: p.platform_id, status: 'sent', skipped: false };
         } catch (err) {
             console.error(`Failed delivery to platform ID ${p.platform_id}:`, err.message);
@@ -264,6 +271,13 @@ async function sendAnnouncement(id, _hostUrl = '') {
                     error: err.message
                 }
             );
+
+            // Broadcast intermediate progress status
+            const progressDelivery = await db.query(
+                'SELECT ap.*, p.platform_name, p.platform_type FROM announcement_platforms ap JOIN platforms p ON ap.platform_id = p.id WHERE ap.announcement_id = $1',
+                [id]
+            );
+            broadcastAnnouncementStatus(id, 'sending', null, progressDelivery.rows);
 
             return { platform_id: p.platform_id, status: 'failed', skipped: false, error: err.message };
         }
