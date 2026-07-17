@@ -26,7 +26,7 @@ router.post('/', authMiddleware, validate(schemas.students.create), async (req, 
     }
 });
 
-router.get('/:id', authMiddleware, validateParams(schemas.params.studentId), async (req, res) => {
+router.get('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const student = await studentService.getStudentById(req.params.id);
         if (!student) return res.status(404).json({ error: 'Student not found' });
@@ -36,7 +36,7 @@ router.get('/:id', authMiddleware, validateParams(schemas.params.studentId), asy
     }
 });
 
-router.put('/:id', authMiddleware, validateParams(schemas.params.studentId), validate(schemas.students.update), async (req, res) => {
+router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(schemas.students.update), async (req, res) => {
     try {
         const student = await studentService.updateStudent(req.params.id, req.body);
         return res.json(student);
@@ -45,7 +45,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.studentId), val
     }
 });
 
-router.delete('/:id', authMiddleware, validateParams(schemas.params.studentId), async (req, res) => {
+router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         await studentService.deleteStudent(req.params.id);
         return res.json({ message: 'Student deleted successfully' });
@@ -63,7 +63,7 @@ router.post('/bulk', authMiddleware, validate(schemas.students.bulkImport), asyn
     }
 });
 
-router.post('/:id/courses', authMiddleware, validateParams(schemas.params.studentId), validate(schemas.students.enroll), async (req, res) => {
+router.post('/:id/courses', authMiddleware, validateParams(schemas.params.id), validate(schemas.students.enroll), async (req, res) => {
     try {
         const result = await studentService.enrollStudent(req.params.id, req.body.course_ids);
         return res.json(result);
@@ -72,7 +72,7 @@ router.post('/:id/courses', authMiddleware, validateParams(schemas.params.studen
     }
 });
 
-router.post('/:id/courses/all', authMiddleware, validateParams(schemas.params.studentId), async (req, res) => {
+router.post('/:id/courses/all', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const result = await studentService.enrollStudentInAll(req.params.id);
         return res.json(result);
@@ -90,7 +90,7 @@ router.delete('/:id/courses/:courseId', authMiddleware, async (req, res) => {
     }
 });
 
-router.get('/:id/courses', authMiddleware, validateParams(schemas.params.studentId), async (req, res) => {
+router.get('/:id/courses', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const courses = await studentService.getStudentCourses(req.params.id);
         return res.json(courses);
