@@ -15,7 +15,7 @@ interface Slot {
 }
 
 export const DAYS_OF_WEEK = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
 ];
 
 export const STANDARD_SLOTS_24: Slot[] = [
@@ -38,9 +38,10 @@ export const formatTimeRange = (start24: string, end24: string): string => {
   return `${to12h(start24)} – ${to12h(end24)}`;
 };
 
-export const getSortedSlots = (routines: Routine[]): Slot[] => {
+export const getSortedSlots = (routines: Routine[], customSlots?: Slot[]): Slot[] => {
   const slotsMap = new Map<string, string>();
-  STANDARD_SLOTS_24.forEach(s => { slotsMap.set(s.start, s.end); });
+  const baseSlots = customSlots || STANDARD_SLOTS_24;
+  baseSlots.forEach(s => { slotsMap.set(s.start, s.end); });
   routines.forEach(r => {
     const start = r.start_time.substring(0, 5);
     const end = r.end_time.substring(0, 5);
@@ -50,19 +51,16 @@ export const getSortedSlots = (routines: Routine[]): Slot[] => {
   return sortedStarts.map(start => ({ start, end: slotsMap.get(start)! }));
 };
 
-export const getActiveDays = (routines: Routine[]): string[] => {
-  const baseDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Thursday'];
-  const hasWednesday = routines.some(r => r.day_of_week.toLowerCase() === 'wednesday');
-  const hasFriday = routines.some(r => r.day_of_week.toLowerCase() === 'friday');
+export const getActiveDays = (routines: Routine[], customDays?: string[]): string[] => {
+  const baseDays = customDays || ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Thursday'];
   const activeDays: string[] = [];
-  if (routines.some(r => r.day_of_week.toLowerCase() === 'saturday') || baseDays.includes('Saturday')) activeDays.push('Saturday');
-  if (routines.some(r => r.day_of_week.toLowerCase() === 'sunday') || baseDays.includes('Sunday')) activeDays.push('Sunday');
-  if (routines.some(r => r.day_of_week.toLowerCase() === 'monday') || baseDays.includes('Monday')) activeDays.push('Monday');
-  if (routines.some(r => r.day_of_week.toLowerCase() === 'tuesday') || baseDays.includes('Tuesday')) activeDays.push('Tuesday');
-  if (hasWednesday) activeDays.push('Wednesday');
-  if (routines.some(r => r.day_of_week.toLowerCase() === 'thursday') || baseDays.includes('Thursday')) activeDays.push('Thursday');
-  if (hasFriday) activeDays.push('Friday');
-  return activeDays;
+  DAYS_OF_WEEK.forEach(day => {
+    const hasRoutine = routines.some(r => r.day_of_week.toLowerCase() === day.toLowerCase());
+    if (baseDays.includes(day) || hasRoutine) {
+      activeDays.push(day);
+    }
+  });
+  return activeDays.sort((a, b) => DAYS_OF_WEEK.indexOf(a) - DAYS_OF_WEEK.indexOf(b));
 };
 
 export const getCellRoutines = (routines: Routine[], slot: Slot, day: string): Routine[] => {

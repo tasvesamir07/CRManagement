@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routinesAPI, coursesAPI, filesAPI } from '../../services/api';
-import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Download } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, AlertCircle, Edit2, ChevronDown, Download, Settings } from 'lucide-react';
 import { TimePicker } from '../ui/time-picker';
 import { toCanvas } from 'html-to-image';
-import { DAYS_OF_WEEK, formatTimeRange, getSortedSlots, getActiveDays, getCellRoutines } from './routineUtils';
+import { DAYS_OF_WEEK, formatTimeRange, getSortedSlots, getActiveDays, getCellRoutines, STANDARD_SLOTS_24 } from './routineUtils';
 import CancelRescheduleModal from './CancelRescheduleModal';
+import ConfigureLayoutModal from './ConfigureLayoutModal';
+import { confirm } from '../ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 
 interface Course {
   id: number;
@@ -63,8 +66,28 @@ const RoutineManager = () => {
   const [batchCode, setBatchCode] = useState('SWE 41');
   const [effectiveDate, setEffectiveDate] = useState('Effective from 6, June 2026');
 
-  const sortedSlots = getSortedSlots(routines);
-  const activeDays = getActiveDays(routines);
+  const [customDays, setCustomDays] = useState<string[]>(() => {
+    const saved = localStorage.getItem('routine_custom_days');
+    return saved ? JSON.parse(saved) : ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Thursday'];
+  });
+
+  const [customSlots, setCustomSlots] = useState<Slot[]>(() => {
+    const saved = localStorage.getItem('routine_custom_slots');
+    return saved ? JSON.parse(saved) : STANDARD_SLOTS_24;
+  });
+
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
+  const sortedSlots = getSortedSlots(routines, customSlots);
+  const activeDays = getActiveDays(routines, customDays);
+
+  const saveLayoutConfig = (days: string[], slots: Slot[]) => {
+    setCustomDays(days);
+    setCustomSlots(slots);
+    localStorage.setItem('routine_custom_days', JSON.stringify(days));
+    localStorage.setItem('routine_custom_slots', JSON.stringify(slots));
+    toast.success('Grid layout configured successfully');
+  };
 
   const fetchData = useCallback(async (silent: boolean = false) => {
     try {
@@ -114,13 +137,13 @@ const RoutineManager = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this routine entry?')) return;
+    if (!(await confirm('Are you sure you want to delete this routine entry?', { title: 'Delete Routine Entry', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
       setRoutines(prev => prev.filter(r => r.id !== id));
       await routinesAPI.delete(id);
       fetchData(true);
     } catch (e: any) {
-      alert('Delete failed: ' + (e.response?.data?.error || e.message));
+      toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
       fetchData();
     }
   };
@@ -276,10 +299,16 @@ const RoutineManager = () => {
           <p className="text-sm text-ink-mute mt-1.5">Map regular class times and room numbers to courses.</p>
         </div>
         {!showForm && courses.length > 0 && (
-          <button onClick={() => setShowForm(true)}
-            className="flex items-center justify-center px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-colors duration-150 cursor-pointer shadow-sm self-start sm:self-auto">
-            <Plus className="w-4 h-4 mr-2" /> Add Class Time
-          </button>
+          <div className="flex gap-2 self-start sm:self-auto">
+            <button onClick={() => setShowConfigModal(true)}
+              className="flex items-center justify-center px-4 py-2 text-sm font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft transition-colors duration-150 cursor-pointer shadow-sm">
+              <Settings className="w-4.5 h-4.5 mr-2" /> Configure Layout
+            </button>
+            <button onClick={() => setShowForm(true)}
+              className="flex items-center justify-center px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-colors duration-150 cursor-pointer shadow-sm">
+              <Plus className="w-4 h-4 mr-2" /> Add Class Time
+            </button>
+          </div>
         )}
       </div>
 
@@ -452,6 +481,15 @@ const RoutineManager = () => {
       <CancelRescheduleModal
         announceTarget={announceTarget}
         onClose={handleAnnounceAction}
+      />
+
+      <ConfigureLayoutModal
+        show={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        customDays={customDays}
+        customSlots={customSlots}
+        routines={routines}
+        onSave={saveLayoutConfig}
       />
     </div>
   );
