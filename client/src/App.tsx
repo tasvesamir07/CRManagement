@@ -22,6 +22,7 @@ const FilesManager = lazy(() => import('./components/files/FilesManager'));
 const StudentManager = lazy(() => import('./components/student/StudentManager'));
 const AttendanceManager = lazy(() => import('./components/attendance/AttendanceManager'));
 const ExamRoutineManager = lazy(() => import('./components/exam/ExamRoutineManager'));
+const CanvaConnect = lazy(() => import('./components/canva/CanvaConnect'));
 
 const LoadingPage = () => (
   <div className="min-h-screen bg-canvas flex flex-col justify-center items-center">
@@ -156,6 +157,7 @@ function App() {
                 <Route path="students" element={<RoleRoute allowedRole="cr"><ErrorBoundary><StudentManager /></ErrorBoundary></RoleRoute>} />
                 <Route path="attendance" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AttendanceManager /></ErrorBoundary></RoleRoute>} />
                 <Route path="exam-routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><ExamRoutineManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="canva-settings" element={<RoleRoute allowedRole="cr"><ErrorBoundary><CanvaConnect /></ErrorBoundary></RoleRoute>} />
                 <Route path="logs" element={<ErrorBoundary><LogsManager /></ErrorBoundary>} />
                 <Route path="profile" element={<ErrorBoundary><Profile /></ErrorBoundary>} />
                 <Route path="admin/users" element={<RoleRoute allowedRole="admin"><ErrorBoundary><AdminUsers /></ErrorBoundary></RoleRoute>} />

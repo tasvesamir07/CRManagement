@@ -5,7 +5,7 @@ import ErrorBoundary from '../ui/ErrorBoundary';
 import {
   LayoutDashboard, Megaphone, BookOpen, Calendar, Radio,
   LogOut, Menu, Shield, ClipboardList, FileUp,
-  Sun, Moon, WifiOff, Users, UserCheck, GraduationCap, type LucideIcon
+  Sun, Moon, WifiOff, Users, UserCheck, GraduationCap, Palette, type LucideIcon
 } from 'lucide-react';
 import { User as UserIcon } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -82,6 +82,7 @@ const DashboardLayout = () => {
         { name: 'Students', href: '/students', icon: Users },
         { name: 'Attendance', href: '/attendance', icon: UserCheck },
         { name: 'Exam Routines', href: '/exam-routines', icon: GraduationCap },
+        { name: 'Canva Integration', href: '/canva-settings', icon: Palette },
       ]
     : [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -93,7 +94,7 @@ const DashboardLayout = () => {
         { name: 'Students', href: '/students', icon: Users },
         { name: 'Attendance', href: '/attendance', icon: UserCheck },
         { name: 'Exam Routines', href: '/exam-routines', icon: GraduationCap },
-        { name: 'Delivery Logs', href: '/logs', icon: ClipboardList },
+        { name: 'Canva Integration', href: '/canva-settings', icon: Palette },
       ];
 
   const bottomLinks: NavigationItem[] = [

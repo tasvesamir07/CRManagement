@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Calendar, FileUp, ClipboardList, Shield,
-  X, LogOut, Users, UserCheck, GraduationCap
+  X, LogOut, Users, UserCheck, GraduationCap, Palette
 } from 'lucide-react';
 import { User as UserIcon } from 'lucide-react';
 import { type User } from '../../context/AuthContext';
@@ -45,6 +45,10 @@ export default function MobileDrawer({ open, onClose, user, onLogout }: MobileDr
           <Link to="/exam-routines" onClick={onClose} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
             <GraduationCap className="w-6 h-6 mb-2 text-primary" />
             <span className="text-xs font-medium text-center">Exam Routine</span>
+          </Link>
+          <Link to="/canva-settings" onClick={onClose} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
+            <Palette className="w-6 h-6 mb-2 text-primary" />
+            <span className="text-xs font-medium text-center">Canva</span>
           </Link>
           <Link to="/files" onClick={onClose} className="flex flex-col items-center p-3 border border-hairline rounded hover:bg-canvas-soft text-ink-secondary">
             <FileUp className="w-6 h-6 mb-2 text-primary" />

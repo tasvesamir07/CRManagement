@@ -95,11 +95,20 @@ const StudentManager = () => {
     }
     setErr('');
     try {
+      const payload = {
+        student_id: formData.student_id.trim(),
+        name: formData.name.trim(),
+        email: formData.email.trim() || null,
+        phone: formData.phone.trim() || null,
+        batch: formData.batch.trim() || null,
+        section: formData.section.trim() || null,
+      };
+
       if (editId) {
-        await studentsAPI.update(editId, formData);
+        await studentsAPI.update(editId, payload);
         toast.success('Student updated');
       } else {
-        await studentsAPI.create(formData);
+        await studentsAPI.create(payload);
         toast.success('Student created');
       }
       resetForm();

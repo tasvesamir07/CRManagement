@@ -9,7 +9,7 @@ export const canvaAPI = {
     const res = await api.get('/canva/templates');
     return res.data;
   },
-  saveTemplate: async (data: { name: string; template_type: string; canva_template_id: string; canva_design_id?: string; variables?: string[] }) => {
+  saveTemplate: async (data: { name: string; template_type: string; canva_template_id: string; canva_design_id?: string; dataset?: string[] }) => {
     const res = await api.post('/canva/templates', data);
     return res.data;
   },
