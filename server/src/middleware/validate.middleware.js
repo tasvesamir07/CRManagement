@@ -170,7 +170,7 @@ const schemas = {
             limit: z.coerce.number().int().positive().max(200).default(50),
             search: z.string().max(200).optional(),
             userId: z.coerce.number().int().positive().optional(),
-            folderId: z.number().int().positive().nullable().optional()
+            folderId: z.coerce.number().int().positive().nullable().optional()
         }),
         compress: z.object({
             ids: z.array(z.number().int().positive()).min(1),
