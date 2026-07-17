@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UploadProvider } from './context/UploadContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -69,6 +69,38 @@ function App() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    if (!apiUrl) return;
+
+    let healthUrl = apiUrl.replace(/\/api\/?$/, '/health');
+    if (!healthUrl.startsWith('http')) {
+      healthUrl = window.location.origin + healthUrl;
+    }
+
+    let toastId: string | undefined;
+
+    const showWakeupToastTimer = setTimeout(() => {
+      toastId = toast.loading('Waking up the server... Please wait (up to 50s)...', {
+        duration: 999999
+      });
+    }, 1500);
+
+    fetch(healthUrl, { method: 'GET', mode: 'no-cors' })
+      .then(() => {
+        clearTimeout(showWakeupToastTimer);
+        if (toastId) {
+          toast.success('Server is online and ready!', { id: toastId, duration: 3000 });
+        }
+      })
+      .catch(() => {
+        clearTimeout(showWakeupToastTimer);
+        if (toastId) {
+          toast.error('Failed to connect to server. Please refresh.', { id: toastId });
+        }
+      });
   }, []);
 
   return (
