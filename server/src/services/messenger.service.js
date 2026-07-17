@@ -5,8 +5,7 @@ const db = require("../config/database");
 
 let isMockMode = false;
 let botInstance = null;
-let botReady = false;
-let pendingSends = [];
+
 
 const APPSTATE_PATH = path.join(__dirname, '../../../appstate.json');
 

@@ -27,11 +27,15 @@ const helmet = require('helmet');
 const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
+const crypto = require('crypto');
 const nodeCron = require('node-cron');
 const compression = require('compression');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./src/config/swagger');
 
 // Import services & configs
 const logger = require('./src/config/logger');
+const { run: runWithContext } = require('./src/config/requestContext');
 const db = require('./src/config/database');
 const authService = require('./src/services/auth.service');
 const whatsappService = require('./src/services/whatsapp.service');
@@ -39,11 +43,33 @@ const telegramService = require('./src/services/telegram.service');
 const messengerService = require('./src/services/messenger.service');
 const fileService = require('./src/services/file.service');
 const announcementService = require('./src/services/announcement.service');
+const metrics = require('./src/services/metrics.service');
 
 // Initialize Express app
 const app = express();
 app.set('trust proxy', 1); // trust first proxy (Render LB) for rate-limiter
 const PORT = process.env.PORT || 5000;
+
+// Request tracing — attach correlation ID to every request via AsyncLocalStorage
+app.use((req, res, next) => {
+  req.correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
+  res.setHeader('x-correlation-id', req.correlationId);
+  runWithContext({ correlationId: req.correlationId, userId: req.user?.id }, next);
+});
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (req.path.startsWith('/api')) {
+      logger.debug({ method: req.method, path: req.path, status: res.statusCode, duration: `${duration}ms`, correlationId: req.correlationId }, 'API request');
+    }
+    const pathGroup = req.route?.path || req.path.split('?')[0];
+    metrics.inc('httpRequestsTotal', req.method, pathGroup, String(res.statusCode));
+    metrics.observe('httpRequestDurationMs', duration, req.method, pathGroup);
+  });
+  next();
+});
 
 // Security and utility middlewares
 app.use(helmet({
@@ -105,13 +131,65 @@ app.use(async (req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'OK', time: new Date() });
+app.get('/health', async (req, res) => {
+    const checks = {
+        database: false,
+        whatsapp: false,
+        telegram: false,
+        messenger: false,
+    };
+    try {
+        await db.query('SELECT 1');
+        checks.database = true;
+    } catch (_) {}
+    try {
+        const ws = whatsappService.getStatus();
+        checks.whatsapp = ws.status === 'CONNECTED' || ws.status === 'QR_READY';
+    } catch (_) {}
+    try {
+        checks.telegram = !telegramService.isMock();
+    } catch (_) {}
+    try {
+        checks.messenger = !messengerService.isMock();
+    } catch (_) {}
+    const allOk = Object.values(checks).every(Boolean);
+    res.status(allOk ? 200 : 503).json({
+        status: allOk ? 'healthy' : 'degraded',
+        time: new Date().toISOString(),
+        correlationId: req.correlationId,
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        services: checks,
+        version: '1.0.0',
+    });
+});
+
+// Metrics endpoint (Prometheus text format)
+app.get('/metrics', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(metrics.formatMetrics());
 });
 
 // Root welcome endpoint
 app.get('/', (req, res) => {
     res.send('CR Announcement API Server is running successfully!');
+});
+
+// API Documentation (Swagger)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customSiteTitle: 'CR Announcement Dashboard API',
+    customCss: '.swagger-ui .topbar { display: none }',
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true
+    }
+}));
+
+// JSON version of the OpenAPI spec
+app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.json(swaggerSpec);
 });
 
 // WebSocket availability check (client uses this to decide whether to connect WS)
@@ -132,18 +210,22 @@ const templatesRoutes = require('./src/routes/templates.routes');
 const bulkRoutes = require('./src/routes/bulk.routes');
 const logsRoutes = require('./src/routes/logs.routes');
 
-// Mount routes
-app.use('/api/auth', authRoutes);
-app.use('/api/courses', coursesRoutes);
-app.use('/api/routines', routinesRoutes);
-app.use('/api/platforms', platformsRoutes);
-app.use('/api/files', filesRoutes);
-app.use('/api/announcements', announcementsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/templates', templatesRoutes);
-app.use('/api/bulk', bulkRoutes);
-app.use('/api/logs', logsRoutes);
+// Mount routes (both legacy /api and versioned /api/v1)
+const mountRoutes = (prefix) => {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/courses`, coursesRoutes);
+  app.use(`${prefix}/routines`, routinesRoutes);
+  app.use(`${prefix}/platforms`, platformsRoutes);
+  app.use(`${prefix}/files`, filesRoutes);
+  app.use(`${prefix}/announcements`, announcementsRoutes);
+  app.use(`${prefix}/admin`, adminRoutes);
+  app.use(`${prefix}/analytics`, analyticsRoutes);
+  app.use(`${prefix}/templates`, templatesRoutes);
+  app.use(`${prefix}/bulk`, bulkRoutes);
+  app.use(`${prefix}/logs`, logsRoutes);
+};
+mountRoutes('/api');
+mountRoutes('/api/v1');
 
 // Error Handling Middleware
 app.use((err, req, res, _next) => {
@@ -182,23 +264,33 @@ if (!isVercel) {
     });
 
     wss.on('connection', (ws, req) => {
-        logger.info({ userId: req.user?.id }, 'WebSocket client connected');
-        clients.add(ws);
-        ws.userId = req.user?.id;
+        const wsCorrelationId = crypto.randomUUID();
+        runWithContext({ correlationId: wsCorrelationId, userId: req.user?.id }, () => {
+            metrics.inc('wsConnectionsTotal');
+            metrics.inc('wsConnectionsCurrent');
+            logger.info({ userId: req.user?.id, wsCorrelationId }, 'WebSocket client connected');
+            clients.add(ws);
+            ws.userId = req.user?.id;
 
-        // Immediately send current WhatsApp status upon connection
-        ws.send(JSON.stringify({
-            type: 'whatsapp_status',
-            data: whatsappService.getStatus()
-        }));
+            // Immediately send current WhatsApp status upon connection
+            ws.send(JSON.stringify({
+                type: 'whatsapp_status',
+                data: whatsappService.getStatus()
+            }));
 
-        ws.on('close', () => {
-            logger.info('WebSocket client disconnected');
-            clients.delete(ws);
-        });
+            ws.on('close', () => {
+                runWithContext({ correlationId: crypto.randomUUID(), userId: req.user?.id }, () => {
+                    metrics.set('wsConnectionsCurrent', Math.max(0, clients.size - 1));
+                    logger.info('WebSocket client disconnected');
+                    clients.delete(ws);
+                });
+            });
 
-        ws.on('error', (err) => {
-            logger.error({ err }, 'WebSocket client error');
+            ws.on('error', (err) => {
+                runWithContext({ correlationId: crypto.randomUUID(), userId: req.user?.id }, () => {
+                    logger.error({ err }, 'WebSocket client error');
+                });
+            });
         });
     });
 }
@@ -238,22 +330,24 @@ setTimeout(() => {
 
 // Skip active crons and recursive schedulers on Vercel as it is an ephemeral serverless environment
 if (!isVercel) {
+    const withBackgroundContext = (fn) => async (...args) => {
+        const correlationId = `bg-${crypto.randomUUID()}`;
+        await runWithContext({ correlationId }, () => fn(...args));
+    };
+
     // Schedule daily cleanup at midnight (0 0 * * *)
-    // We run it every night to clean up files older than 15 days
-    nodeCron.schedule('0 0 * * *', async () => {
+    nodeCron.schedule('0 0 * * *', withBackgroundContext(async () => {
         logger.info('Running scheduled midnight file cleanup...');
         try {
             await fileService.cleanupExpiredFiles();
         } catch (err) {
             logger.error({ err }, 'Error during scheduled file cleanup');
         }
-    });
+    }));
 
     // Process due scheduled announcements
-    // Uses recursive setTimeout to prevent overlapping runs
-    let schedulerTimeout = null;
     let scheduledProcessing = false;
-    const processScheduledAnnouncements = async () => {
+    const processScheduledAnnouncements = withBackgroundContext(async () => {
         if (scheduledProcessing) return;
         scheduledProcessing = true;
         try {
@@ -277,12 +371,10 @@ if (!isVercel) {
             logger.error({ err }, 'Error processing scheduled announcements');
         } finally {
             scheduledProcessing = false;
-            // Schedule next check after this run completes
-            schedulerTimeout = setTimeout(processScheduledAnnouncements, 30000);
+            setTimeout(processScheduledAnnouncements, 30000);
         }
-    };
+    });
 
-    // Start the scheduler loop
     processScheduledAnnouncements();
 }
 

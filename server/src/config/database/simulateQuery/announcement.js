@@ -120,7 +120,7 @@ function handle(text, params, db, { writeJsonDb }) {
         writeJsonDb(db); return { rows: [ap] };
     }
     if (text.includes('SELECT ap.*, p.platform_name')) {
-        let annIds = text.includes('ANY(') ? (params[0] || []) : [parseInt(params[0])];
+        const annIds = text.includes('ANY(') ? (params[0] || []) : [parseInt(params[0])];
         return { rows: db.announcement_platforms.filter(ap => annIds.includes(ap.announcement_id)).map(ap => { const p = db.platforms.find(plat => plat.id === ap.platform_id); return { ...ap, platform_name: p ? p.platform_name : 'Unknown', platform_type: p ? p.platform_type : 'unknown', chat_id: p ? p.chat_id : '', is_active: p ? (p.is_active !== false) : true }; }) };
     }
     if (text.includes('UPDATE announcement_platforms SET platform_status =')) {

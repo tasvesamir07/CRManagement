@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const WebSocket = require('ws');
+const {
+    isS3Configured, uploadToS3, deleteFromS3, getDownloadUrlFromS3,
+    downloadFromS3, ensureFolderInS3, deleteFolderFromS3
+} = require('./s3Storage');
+
 let supabase = null;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -13,8 +18,6 @@ if (supabaseUrl && supabaseKey) {
     supabase = createClient(cleanSupabaseUrl, supabaseKey, {
         realtime: { transport: WebSocket }
     });
-} else {
-    console.log('⚠️ Supabase credentials missing. File service will run on local uploads fallback.');
 }
 
 const isVercel = !!process.env.VERCEL;
@@ -62,7 +65,12 @@ function getMimetype(filename) {
     return mimes[ext] || 'application/octet-stream';
 }
 
+const storageBackend = isS3Configured ? 'S3' : (supabase ? 'Supabase' : 'Local');
+
 async function uploadToStorage(filePath, storagePath, fileType) {
+    if (isS3Configured) {
+        return uploadToS3(filePath, storagePath, fileType);
+    }
     if (supabase) {
         const fileBuffer = fs.readFileSync(filePath);
         const { data, error } = await supabase.storage
@@ -75,7 +83,6 @@ async function uploadToStorage(filePath, storagePath, fileType) {
         if (error) throw new Error(`Supabase upload failed: ${error.message}`);
         return data?.path || storagePath;
     }
-
     const finalPath = path.join(uploadsDir, storagePath);
     const dir = path.dirname(finalPath);
     if (!fs.existsSync(dir)) {
@@ -89,6 +96,10 @@ async function uploadToStorage(filePath, storagePath, fileType) {
 }
 
 async function deleteFromStorage(storagePath) {
+    if (isS3Configured) {
+        await deleteFromS3(storagePath);
+        return;
+    }
     if (supabase) {
         const { error } = await supabase.storage.from(bucketName).remove([storagePath]);
         if (error) console.error('Failed to remove file from Supabase storage:', error.message);
@@ -103,6 +114,9 @@ async function deleteFromStorage(storagePath) {
 }
 
 async function getDownloadUrl(storagePath, hostUrl = '') {
+    if (isS3Configured) {
+        return getDownloadUrlFromS3(storagePath);
+    }
     if (supabase) {
         const { data, error } = await supabase.storage
             .from(bucketName)
@@ -115,6 +129,9 @@ async function getDownloadUrl(storagePath, hostUrl = '') {
 }
 
 async function downloadFromStorage(storagePath) {
+    if (isS3Configured) {
+        return downloadFromS3(storagePath);
+    }
     if (supabase) {
         const { data, error } = await supabase.storage.from(bucketName).download(storagePath);
         if (error) throw new Error(`Failed to download from Supabase: ${error.message}`);
@@ -129,16 +146,20 @@ async function ensureFolderInStorage(folderName) {
     const cleanFolderName = folderName.replace(/[\/\\?%*:|"<>]/g, '_');
     if (!cleanFolderName) return;
 
+    if (isS3Configured) {
+        await ensureFolderInS3(cleanFolderName);
+        return;
+    }
     if (supabase) {
         const placeholderPath = `${cleanFolderName}/.emptyFolderPlaceholder`;
         await supabase.storage.from(bucketName).upload(placeholderPath, Buffer.from(''), {
             contentType: 'application/octet-stream', upsert: true
         }).catch(err => console.error('Failed to create folder placeholder in Supabase:', err.message));
-    } else {
-        const folderDirPath = path.join(uploadsDir, cleanFolderName);
-        if (!fs.existsSync(folderDirPath)) {
-            fs.mkdirSync(folderDirPath, { recursive: true });
-        }
+        return;
+    }
+    const folderDirPath = path.join(uploadsDir, cleanFolderName);
+    if (!fs.existsSync(folderDirPath)) {
+        fs.mkdirSync(folderDirPath, { recursive: true });
     }
 }
 
@@ -146,6 +167,10 @@ async function deleteFolderFromStorage(folderName) {
     const cleanFolderName = folderName ? folderName.replace(/[\/\\?%*:|"<>]/g, '_') : '';
     if (!cleanFolderName) return;
 
+    if (isS3Configured) {
+        await deleteFolderFromS3(cleanFolderName);
+        return;
+    }
     if (supabase) {
         const { data: bucketFiles, error: listError } = await supabase.storage
             .from(bucketName).list(cleanFolderName);
@@ -154,15 +179,17 @@ async function deleteFolderFromStorage(folderName) {
             await supabase.storage.from(bucketName).remove(pathsToDelete);
         }
         await supabase.storage.from(bucketName).remove([`${cleanFolderName}/.emptyFolderPlaceholder`]);
-    } else {
-        const folderDirPath = path.join(uploadsDir, cleanFolderName);
-        if (fs.existsSync(folderDirPath)) {
-            try { fs.rmSync(folderDirPath, { recursive: true, force: true }); } catch (err) {
-                console.error(`Failed to delete local folder directory: ${err.message}`);
-            }
+        return;
+    }
+    const folderDirPath = path.join(uploadsDir, cleanFolderName);
+    if (fs.existsSync(folderDirPath)) {
+        try { fs.rmSync(folderDirPath, { recursive: true, force: true }); } catch (err) {
+            console.error(`Failed to delete local folder directory: ${err.message}`);
         }
     }
 }
+
+console.log(`Storage backend: ${storageBackend}`);
 
 module.exports = {
     supabase, uploadsDir, bucketName, getExpiryDate, getMimetype,

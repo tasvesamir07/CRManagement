@@ -10,6 +10,12 @@ module.exports = defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.js'],
       exclude: ['src/**/*.test.js', 'src/**/*.spec.js'],
+      thresholds: {
+        statements: 70,
+        branches: 60,
+        functions: 60,
+        lines: 70,
+      },
     },
     setupFiles: ['./src/test/setup.js'],
   },

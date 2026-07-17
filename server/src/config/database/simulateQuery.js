@@ -259,7 +259,7 @@ async function simulateQuery(text, params = []) {
             const paramIdx = parseInt(userIdMatch[1]) - 1;
             const userId = parseInt(params[paramIdx]);
             const userCourseIds = db.course_members.filter(cm => cm.user_id === userId).map(cm => cm.course_id);
-            let activeCourses = db.courses.filter(c => c.is_active && userCourseIds.includes(c.id));
+            const activeCourses = db.courses.filter(c => c.is_active && userCourseIds.includes(c.id));
             activeCourses.sort((a, b) => a.course_id.localeCompare(b.course_id));
             return { rows: activeCourses };
         }

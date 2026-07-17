@@ -3,7 +3,36 @@ const router = express.Router();
 const fileService = require('../services/file.service');
 const uploadMiddleware = require('../middleware/upload.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
+const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
 
+/**
+ * @openapi
+ * /files/upload:
+ *   post:
+ *     tags: [Files]
+ *     summary: Upload a file
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               overwrite:
+ *                 type: boolean
+ *               folderId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: File uploaded
+ *       400:
+ *         description: No file uploaded
+ */
 router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -20,12 +49,32 @@ router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (r
     }
 });
 
-router.post('/check-duplicate', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /files/check-duplicate:
+ *   post:
+ *     tags: [Files]
+ *     summary: Check if a file with the same name exists
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               filename:
+ *                 type: string
+ *               folderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Duplicate check result
+ */
+router.post('/check-duplicate', authMiddleware, validate(schemas.files.checkDuplicate), async (req, res) => {
     try {
         const { filename, folderId } = req.body;
-        if (!filename) {
-            return res.status(400).json({ error: 'filename is required' });
-        }
         const duplicate = await fileService.checkDuplicate(filename, folderId);
         return res.json({ duplicate: !!duplicate, file: duplicate });
     } catch (err) {
@@ -33,7 +82,40 @@ router.post('/check-duplicate', authMiddleware, async (req, res) => {
     }
 });
 
-router.get('/', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /files:
+ *   get:
+ *     tags: [Files]
+ *     summary: List files
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *       - in: query
+ *         name: folderId
+ *         schema:
+ *           type: integer
+ *         description: Filter by folder ID
+ *     responses:
+ *       200:
+ *         description: Paginated list of files
+ */
+router.get('/', authMiddleware, validateQuery(schemas.files.listQuery), async (req, res) => {
     try {
         const { page, limit, search, userId, folderId } = req.query;
         const result = await fileService.listFiles({
@@ -49,21 +131,32 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-router.get('/folders', authMiddleware, async (req, res) => {
-    try {
-        const folders = await fileService.listFolders(req.user.id);
-        return res.json(folders);
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/folders', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /files/folders:
+ *   post:
+ *     tags: [Files]
+ *     summary: Create a folder
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               courseId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Folder created
+ */
+router.post('/folders', authMiddleware, validate(schemas.files.createFolder), async (req, res) => {
     try {
         const { name, courseId } = req.body;
-        if (!name) {
-            return res.status(400).json({ error: 'Folder name is required' });
-        }
         const folder = await fileService.createFolder(name, courseId, req.user.id);
         return res.status(201).json(folder);
     } catch (err) {
@@ -71,7 +164,33 @@ router.post('/folders', authMiddleware, async (req, res) => {
     }
 });
 
-router.delete('/folders/:id', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /files/folders/{id}:
+ *   delete:
+ *     tags: [Files]
+ *     summary: Delete a folder
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Folder ID
+ *       - in: query
+ *         name: deleteFiles
+ *         schema:
+ *           type: boolean
+ *         description: Also delete contained files
+ *     responses:
+ *       200:
+ *         description: Folder deleted successfully
+ *       404:
+ *         description: Folder not found
+ */
+router.delete('/folders/:id', authMiddleware, validateParams(schemas.params.folderId), async (req, res) => {
     try {
         const { deleteFiles } = req.query;
         const deleted = await fileService.deleteFolder(req.params.id, deleteFiles);
@@ -84,6 +203,18 @@ router.delete('/folders/:id', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/storage-usage:
+ *   get:
+ *     tags: [Files]
+ *     summary: Get storage usage statistics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Storage usage data
+ */
 router.get('/storage-usage', authMiddleware, async (req, res) => {
     try {
         const usage = await fileService.getStorageUsage();
@@ -93,6 +224,27 @@ router.get('/storage-usage', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/{id}:
+ *   get:
+ *     tags: [Files]
+ *     summary: Get file download URL
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: File ID
+ *     responses:
+ *       200:
+ *         description: File URL data
+ *       404:
+ *         description: File not found
+ */
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const hostUrl = `${req.protocol}://${req.get('host')}`;
@@ -103,6 +255,27 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/{id}:
+ *   delete:
+ *     tags: [Files]
+ *     summary: Delete a file
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: File ID
+ *     responses:
+ *       200:
+ *         description: File deleted successfully
+ *       404:
+ *         description: File not found
+ */
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const deleted = await fileService.deleteFile(req.params.id);
@@ -115,6 +288,35 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/compress:
+ *   post:
+ *     tags: [Files]
+ *     summary: Compress files into a ZIP archive
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               archiveName:
+ *                 type: string
+ *               folderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Compressed archive record
+ *       400:
+ *         description: ids array required
+ */
 router.post('/compress', authMiddleware, async (req, res) => {
     try {
         const { ids, archiveName, folderId } = req.body;
@@ -128,6 +330,35 @@ router.post('/compress', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/extract/{id}:
+ *   post:
+ *     tags: [Files]
+ *     summary: Extract a ZIP archive
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Archive file ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               deleteOriginal:
+ *                 type: boolean
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Extraction result
+ */
 router.post('/extract/:id', authMiddleware, async (req, res) => {
     try {
         const { deleteOriginal, targetFolderId } = req.body;
@@ -141,6 +372,33 @@ router.post('/extract/:id', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/move:
+ *   post:
+ *     tags: [Files]
+ *     summary: Move files to a folder
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               folderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Files moved successfully
+ *       400:
+ *         description: ids array required
+ */
 router.post('/move', authMiddleware, async (req, res) => {
     try {
         const { ids, folderId } = req.body;
@@ -154,6 +412,37 @@ router.post('/move', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /files/{id}/expiry:
+ *   patch:
+ *     tags: [Files]
+ *     summary: Update file expiry date
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: File ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               expiresAt:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: File updated
+ *       403:
+ *         description: Unauthorized
+ */
 router.patch('/:id/expiry', authMiddleware, async (req, res) => {
     try {
         const { expiresAt } = req.body;

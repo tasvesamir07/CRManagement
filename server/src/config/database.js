@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 const { initJsonDb } = require('./database/jsonDb');
 const { simulateQuery } = require('./database/simulateQuery');
+const { getCorrelationId } = require('./requestContext');
+const { inc, dbQueryType } = require('../services/metrics.service');
 
 let pool = null;
 let useJsonDb = false;
-let dbInitDone = false;
 let dbInitError = null;
 const isVercel = !!process.env.VERCEL;
 
@@ -224,18 +225,39 @@ async function initDatabase() {
             initJsonDb();
         }
     }
-    dbInitDone = true;
 }
 
-let initPromise = initDatabase();
+const initPromise = initDatabase();
 
 module.exports = {
     query: (text, params) => {
         if (dbInitError) throw dbInitError;
+        const correlationId = getCorrelationId();
+        const start = Date.now();
+        const qtype = dbQueryType(text);
+        inc('dbQueriesTotal', qtype);
         if (useJsonDb) {
-            return simulateQuery(text, params);
+            const result = simulateQuery(text, params);
+            const duration = Date.now() - start;
+            if (duration > 500) {
+                inc('dbSlowQueriesTotal');
+                console.warn(`[DB:SLOW] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${text.slice(0, 100)}`);
+            }
+            return result;
         }
-        return pool.query(text, params);
+        return pool.query(text, params).then(result => {
+            const duration = Date.now() - start;
+            if (duration > 500) {
+                inc('dbSlowQueriesTotal');
+                console.warn(`[DB:SLOW] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${text.slice(0, 100)}`);
+            }
+            return result;
+        }).catch(err => {
+            const duration = Date.now() - start;
+            inc('dbErrorsTotal');
+            console.error(`[DB:ERROR] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${err.message}`);
+            throw err;
+        });
     },
     useJsonDb: () => useJsonDb,
     waitForInit: () => initPromise

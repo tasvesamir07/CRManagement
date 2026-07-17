@@ -1,4 +1,5 @@
 const pino = require('pino');
+const { getCorrelationId } = require('./requestContext');
 
 const isDev = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
 
@@ -17,4 +18,19 @@ const logger = pino({
   },
 });
 
-module.exports = logger;
+const defaultLogger = new Proxy(logger, {
+  get(target, prop) {
+    if (typeof target[prop] !== 'function') return target[prop];
+    return (...args) => {
+      const correlationId = getCorrelationId();
+      if (correlationId && correlationId !== 'none' && typeof args[0] === 'object' && args[0] !== null) {
+        args[0].correlationId = correlationId;
+      } else if (correlationId && correlationId !== 'none' && typeof args[0] === 'string') {
+        args[0] = { msg: args[0], correlationId };
+      }
+      return target[prop](...args);
+    };
+  }
+});
+
+module.exports = defaultLogger;

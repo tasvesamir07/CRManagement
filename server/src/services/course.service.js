@@ -87,7 +87,7 @@ async function getCourseById(id) {
     return course;
 }
 
-async function setDefaultPlatforms(courseId, platformIds, userId, userRole) {
+async function setDefaultPlatforms(courseId, platformIds, _userId, _userRole) {
     // Validate platforms exist and are active
     if (platformIds && platformIds.length > 0) {
         const placeholders = platformIds.map((_, i) => `$${i + 1}`).join(',');

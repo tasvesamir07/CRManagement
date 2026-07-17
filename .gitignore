@@ -49,3 +49,7 @@ Desktop.ini
 # coverage
 coverage/
 .nyc_output/
+
+test-results/
+vite.err
+playwright-report/

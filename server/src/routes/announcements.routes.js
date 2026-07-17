@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const announcementService = require('../services/announcement.service');
 const authMiddleware = require('../middleware/auth.middleware');
+const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
 
 const sendLimiter = rateLimit({
     windowMs: 5 * 1000,
@@ -12,7 +13,42 @@ const sendLimiter = rateLimit({
     legacyHeaders: false
 });
 
-router.get('/', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements:
+ *   get:
+ *     tags: [Announcements]
+ *     summary: List announcements
+ *     description: Get paginated list of announcements with filtering. CRs see their own, admins see all.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [draft, scheduled, sending, sent, partial, failed] }
+ *       - in: query
+ *         name: course_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: date_from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: date_to
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Paginated list of announcements with delivery status
+ */
+router.get('/', authMiddleware, validateQuery(schemas.announcements.listQuery), async (req, res) => {
     try {
         const { page, limit, search, status, course_id, date_from, date_to } = req.query;
         const result = await announcementService.getAnnouncements({
@@ -31,13 +67,42 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements:
+ *   post:
+ *     tags: [Announcements]
+ *     summary: Create a new announcement draft
+ *     description: Creates a draft announcement with optional file attachments and target platforms.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, content, category]
+ *             properties:
+ *               title: { type: string, maxLength: 300 }
+ *               content: { type: string }
+ *               category: { type: string, maxLength: 50 }
+ *               course_id: { type: integer, nullable: true }
+ *               custom_room: { type: string, nullable: true }
+ *               custom_time: { type: string, nullable: true }
+ *               file_id: { type: integer, nullable: true }
+ *               file_ids: { type: array, items: { type: integer } }
+ *               platform_ids: { type: array, items: { type: integer } }
+ *               metadata: { type: object }
+ *     responses:
+ *       201:
+ *         description: Announcement created
+ *       400:
+ *         description: Validation error
+ */
+router.post('/', authMiddleware, validate(schemas.announcements.create), async (req, res) => {
     try {
         const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata } = req.body;
-        
-        if (!title || !content || !category) {
-            return res.status(400).json({ error: 'title, content, and category are required' });
-        }
         
         const announcement = await announcementService.createAnnouncement({
             title,
@@ -59,7 +124,31 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 });
 
-router.get('/:id', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/{id}:
+ *   get:
+ *     tags: [Announcements]
+ *     summary: Get announcement details
+ *     description: Returns announcement with delivery status per platform and attached files.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Announcement details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Announcement'
+ *       404:
+ *         description: Not found
+ */
+router.get('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const announcement = await announcementService.getAnnouncementById(req.params.id);
         if (!announcement) {
@@ -71,12 +160,46 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-router.put('/:id', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/{id}:
+ *   put:
+ *     tags: [Announcements]
+ *     summary: Update an announcement
+ *     description: Only draft, scheduled, partial, and failed announcements can be edited. Already-sent platforms are preserved.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string, maxLength: 300 }
+ *               content: { type: string }
+ *               category: { type: string, maxLength: 50 }
+ *               course_id: { type: integer, nullable: true }
+ *               custom_room: { type: string, nullable: true }
+ *               custom_time: { type: string, nullable: true }
+ *               file_id: { type: integer, nullable: true }
+ *               file_ids: { type: array, items: { type: integer } }
+ *               platform_ids: { type: array, items: { type: integer } }
+ *               metadata: { type: object }
+ *     responses:
+ *       200:
+ *         description: Updated announcement
+ *       400:
+ *         description: Cannot edit sent announcement
+ */
+router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(schemas.announcements.update), async (req, res) => {
     try {
         const { title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata } = req.body;
-        if (!title || !content || !category) {
-            return res.status(400).json({ error: 'title, content, and category are required' });
-        }
         const announcement = await announcementService.updateAnnouncement(req.params.id, {
             title, content, category, course_id, custom_room, custom_time, file_id, file_ids, platform_ids, metadata
         });
@@ -86,12 +209,38 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/:id/schedule', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/{id}/schedule:
+ *   post:
+ *     tags: [Announcements]
+ *     summary: Schedule an announcement
+ *     description: Sets the scheduled_at timestamp. The server will broadcast at that time.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [scheduled_at]
+ *             properties:
+ *               scheduled_at: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Announcement scheduled
+ *       400:
+ *         description: Validation error
+ */
+router.post('/:id/schedule', authMiddleware, validateParams(schemas.params.id), validate(schemas.announcements.schedule), async (req, res) => {
     try {
         const { scheduled_at } = req.body;
-        if (!scheduled_at) {
-            return res.status(400).json({ error: 'scheduled_at is required' });
-        }
         const announcement = await announcementService.scheduleAnnouncement(req.params.id, scheduled_at);
         return res.json(announcement);
     } catch (err) {
@@ -99,27 +248,56 @@ router.post('/:id/schedule', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/:id/send', authMiddleware, sendLimiter, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/{id}/send:
+ *   post:
+ *     tags: [Announcements]
+ *     summary: Send/broadcast an announcement
+ *     description: Immediately broadcasts to all selected platforms. Requires confirmed:true. Rate limited to 3 per 5s.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [confirmed]
+ *             properties:
+ *               confirmed: { type: boolean, enum: [true] }
+ *     responses:
+ *       200:
+ *         description: Broadcast completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 announcement:
+ *                   $ref: '#/components/schemas/Announcement'
+ *                 successCount: { type: integer }
+ *                 failureCount: { type: integer }
+ *       400:
+ *         description: Confirmation required or large broadcast
+ */
+router.post('/:id/send', authMiddleware, validateParams(schemas.params.id), sendLimiter, validate(schemas.announcements.send), async (req, res) => {
     try {
         const ann = await announcementService.getAnnouncementById(req.params.id);
         if (!ann) return res.status(404).json({ error: 'Announcement not found' });
 
         const totalFiles = (ann.file_ids?.length || (ann.file_id ? 1 : 0));
-        // Only count platforms that are not yet successfully notified (unsent/failed/pending)
         const totalPlatforms = ann.delivery?.filter(d => d.platform_status !== 'sent').length || 0;
 
         if (totalFiles > 0 && totalFiles * totalPlatforms > 25) {
             return res.status(400).json({
                 error: 'Large broadcast detected. Please schedule instead of sending immediately.',
                 hint: 'This announcement has many file attachments and remaining target channels. Use the schedule feature.'
-            });
-        }
-
-        if (req.body.confirmed !== true) {
-            return res.status(400).json({
-                error: 'Please confirm the broadcast by setting confirmed: true in the request body.',
-                platformCount: totalPlatforms,
-                fileCount: totalFiles
             });
         }
 
@@ -132,12 +310,38 @@ router.post('/:id/send', authMiddleware, sendLimiter, async (req, res) => {
     }
 });
 
-router.post('/draft-ai', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/draft-ai:
+ *   post:
+ *     tags: [Announcements]
+ *     summary: Generate AI draft for announcement
+ *     description: Uses Gemini API to draft an announcement message. Falls back to a template if GEMINI_API_KEY is not set.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [prompt]
+ *             properties:
+ *               prompt: { type: string, maxLength: 2000 }
+ *               category: { type: string, maxLength: 50 }
+ *     responses:
+ *       200:
+ *         description: AI-generated draft text
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 draft: { type: string }
+ */
+router.post('/draft-ai', authMiddleware, validate(schemas.announcements.draftAI), async (req, res) => {
     try {
         const { prompt, category } = req.body;
-        if (!prompt) {
-            return res.status(400).json({ error: 'prompt is required' });
-        }
 
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -192,7 +396,26 @@ router.post('/draft-ai', authMiddleware, async (req, res) => {
     }
 });
 
-router.delete('/:id', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /announcements/{id}:
+ *   delete:
+ *     tags: [Announcements]
+ *     summary: Delete an announcement
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ */
+router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const deleted = await announcementService.deleteAnnouncement(req.params.id);
         if (!deleted) {

@@ -21,8 +21,7 @@ describe('File Service', () => {
   });
 
   describe('Folders operations', () => {
-    let mockUserId = 999;
-    let mockCourseId = 888;
+    const mockUserId = 999;
 
     beforeEach(async () => {
       // Clean up previous database insertions if needed

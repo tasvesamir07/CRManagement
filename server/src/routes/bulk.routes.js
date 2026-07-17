@@ -4,13 +4,34 @@ const db = require('../config/database');
 const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const cache = require('../config/cache');
+const { validate, schemas } = require('../middleware/validate.middleware');
 
-router.post('/courses/delete', adminMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /bulk/courses/delete:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Bulk delete courses (admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Deleted course count and IDs
+ */
+router.post('/courses/delete', adminMiddleware, validate(schemas.bulk.deleteIds), async (req, res) => {
     try {
         const { ids } = req.body;
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ error: 'ids array is required' });
-        }
         const result = await db.query(
             'UPDATE courses SET is_active = false WHERE id = ANY($1::int[]) RETURNING id',
             [ids]
@@ -22,12 +43,32 @@ router.post('/courses/delete', adminMiddleware, async (req, res) => {
     }
 });
 
-router.post('/platforms/delete', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /bulk/platforms/delete:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Bulk delete platforms
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Deleted platform count and IDs
+ */
+router.post('/platforms/delete', authMiddleware, validate(schemas.bulk.deleteIds), async (req, res) => {
     try {
         const { ids } = req.body;
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ error: 'ids array is required' });
-        }
         // Delete referenced rows in announcement_platforms first
         await db.query('DELETE FROM announcement_platforms WHERE platform_id = ANY($1::int[])', [ids]);
         
@@ -43,12 +84,32 @@ router.post('/platforms/delete', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/announcements/delete', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /bulk/announcements/delete:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Bulk delete announcements
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Deleted announcement count and IDs
+ */
+router.post('/announcements/delete', authMiddleware, validate(schemas.bulk.deleteIds), async (req, res) => {
     try {
         const { ids } = req.body;
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ error: 'ids array is required' });
-        }
         const result = await db.query(
             'DELETE FROM announcements WHERE id = ANY($1::int[]) RETURNING id',
             [ids]
@@ -60,12 +121,32 @@ router.post('/announcements/delete', authMiddleware, async (req, res) => {
 });
 
 const fileService = require('../services/file.service');
-router.post('/files/delete', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /bulk/files/delete:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Bulk delete files
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Deleted file count and IDs
+ */
+router.post('/files/delete', authMiddleware, validate(schemas.bulk.deleteIds), async (req, res) => {
     try {
         const { ids } = req.body;
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ error: 'ids array is required' });
-        }
         let count = 0;
         for (const id of ids) {
             const success = await fileService.deleteFile(id);
@@ -77,6 +158,18 @@ router.post('/files/delete', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /bulk/platforms/test-connections:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Test all platform connections
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Connection status for each platform
+ */
 router.post('/platforms/test-connections', authMiddleware, async (req, res) => {
     try {
         const whatsappStatus = require('../services/whatsapp.service').getStatus();
@@ -90,12 +183,47 @@ router.post('/platforms/test-connections', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/routines/batch', authMiddleware, async (req, res) => {
+/**
+ * @openapi
+ * /bulk/routines/batch:
+ *   post:
+ *     tags: [Bulk]
+ *     summary: Batch create routine entries
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               course_id:
+ *                 type: integer
+ *               days:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     day_of_week:
+ *                       type: string
+ *                     start_time:
+ *                       type: string
+ *                     end_time:
+ *                       type: string
+ *                     room_number:
+ *                       type: string
+ *                     section:
+ *                       type: string
+ *     responses:
+ *       201:
+ *         description: Routines created
+ *       400:
+ *         description: Validation error
+ */
+router.post('/routines/batch', authMiddleware, validate(schemas.bulk.createRoutines), async (req, res) => {
     try {
         const { course_id, days } = req.body;
-        if (!course_id || !days || !Array.isArray(days) || days.length === 0) {
-            return res.status(400).json({ error: 'course_id and days array are required' });
-        }
         const results = [];
         for (const day of days) {
             const { day_of_week, start_time, end_time, room_number, section } = day;

@@ -81,6 +81,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'vendor-react';
+          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/react-icons') || id.includes('node_modules/react-hot-toast')) return 'vendor-ui';
+          if (id.includes('node_modules/axios') || id.includes('node_modules/qrcode')) return 'vendor-utils';
+        }
+      }
+    }
   }
 })

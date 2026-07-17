@@ -12,7 +12,7 @@ let latestQr = '';
 let wsBroadcaster = null;
 let isMockMode = isVercel;
 let hasEverBeenConnected = false;
-let relayPollTimer = null;
+const relayPollTimer = null;
 
 function setWsBroadcaster(broadcaster) {
     wsBroadcaster = broadcaster;
