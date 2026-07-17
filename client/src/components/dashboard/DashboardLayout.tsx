@@ -5,7 +5,7 @@ import ErrorBoundary from '../ui/ErrorBoundary';
 import {
   LayoutDashboard, Megaphone, BookOpen, Calendar, Radio,
   LogOut, Menu, Shield, ClipboardList, FileUp,
-  Sun, Moon, WifiOff, type LucideIcon
+  Sun, Moon, WifiOff, Users, UserCheck, GraduationCap, type LucideIcon
 } from 'lucide-react';
 import { User as UserIcon } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -79,6 +79,9 @@ const DashboardLayout = () => {
     ? [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
         { name: 'System Logs', href: '/logs', icon: ClipboardList },
+        { name: 'Students', href: '/students', icon: Users },
+        { name: 'Attendance', href: '/attendance', icon: UserCheck },
+        { name: 'Exam Routines', href: '/exam-routines', icon: GraduationCap },
       ]
     : [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -87,6 +90,9 @@ const DashboardLayout = () => {
         { name: 'Schedules & Rooms', href: '/routines', icon: Calendar },
         { name: 'Broadcasting Targets', href: '/platforms', icon: Radio },
         { name: 'Uploaded Files', href: '/files', icon: FileUp },
+        { name: 'Students', href: '/students', icon: Users },
+        { name: 'Attendance', href: '/attendance', icon: UserCheck },
+        { name: 'Exam Routines', href: '/exam-routines', icon: GraduationCap },
         { name: 'Delivery Logs', href: '/logs', icon: ClipboardList },
       ];
 

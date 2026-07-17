@@ -19,6 +19,9 @@ const Profile = lazy(() => import('./components/profile/Profile'));
 const AdminUsers = lazy(() => import('./components/admin/AdminUsers'));
 const LogsManager = lazy(() => import('./components/logs/LogsManager'));
 const FilesManager = lazy(() => import('./components/files/FilesManager'));
+const StudentManager = lazy(() => import('./components/student/StudentManager'));
+const AttendanceManager = lazy(() => import('./components/attendance/AttendanceManager'));
+const ExamRoutineManager = lazy(() => import('./components/exam/ExamRoutineManager'));
 
 const LoadingPage = () => (
   <div className="min-h-screen bg-canvas flex flex-col justify-center items-center">
@@ -150,6 +153,9 @@ function App() {
                 <Route path="routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><RoutineManager /></ErrorBoundary></RoleRoute>} />
                 <Route path="platforms" element={<RoleRoute allowedRole="cr"><ErrorBoundary><PlatformManager /></ErrorBoundary></RoleRoute>} />
                 <Route path="files" element={<RoleRoute allowedRole="cr"><ErrorBoundary><FilesManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="students" element={<RoleRoute allowedRole="cr"><ErrorBoundary><StudentManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="attendance" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AttendanceManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="exam-routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><ExamRoutineManager /></ErrorBoundary></RoleRoute>} />
                 <Route path="logs" element={<ErrorBoundary><LogsManager /></ErrorBoundary>} />
                 <Route path="profile" element={<ErrorBoundary><Profile /></ErrorBoundary>} />
                 <Route path="admin/users" element={<RoleRoute allowedRole="admin"><ErrorBoundary><AdminUsers /></ErrorBoundary></RoleRoute>} />

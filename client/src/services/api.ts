@@ -9,3 +9,7 @@ export { announcementsAPI } from './announcements.api';
 export { templatesAPI } from './templates.api';
 export { bulkAPI } from './bulk.api';
 export { logsAPI } from './logs.api';
+export { studentsAPI } from './students.api';
+export { examRoutinesAPI } from './examRoutines.api';
+export { attendanceAPI } from './attendance.api';
+export { canvaAPI } from './canva.api';

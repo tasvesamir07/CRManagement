@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { coursesAPI, platformsAPI, announcementsAPI } from '../services/api';
 import { useWebSocket } from './useWebSocket';
-import { OfflineDrafts } from '../services/offline';
+import * as offlineService from '../services/offline';
 import useKeepAlive from './useKeepAlive';
 import toast from 'react-hot-toast';
 import { confirm } from '../components/ui/ConfirmDialog';
@@ -54,7 +54,7 @@ export default function useDashboardData(navigate: (path: string) => void) {
 
   const fetchOfflineDrafts = async () => {
     try {
-      const list = await OfflineDrafts.list();
+      const list = await offlineService.OfflineDrafts.list();
       setOfflineDrafts(list);
     } catch (e) {
       console.error('Failed to load offline drafts:', e);
@@ -80,9 +80,9 @@ export default function useDashboardData(navigate: (path: string) => void) {
       const announcementsKey = '/announcements' + JSON.stringify(announcementsParams);
 
       const [cachedCourses, cachedPlatforms, cachedAnnouncements] = await Promise.all([
-        OfflineCache.get(coursesKey),
-        OfflineCache.get(platformsKey),
-        OfflineCache.get(announcementsKey)
+        offlineService.OfflineCache.get(coursesKey),
+        offlineService.OfflineCache.get(platformsKey),
+        offlineService.OfflineCache.get(announcementsKey)
       ]);
 
       if (cachedCourses && cachedPlatforms && cachedAnnouncements) {
@@ -192,7 +192,7 @@ export default function useDashboardData(navigate: (path: string) => void) {
   const deleteOfflineDraft = async (draftId: string) => {
     if (!(await confirm('Are you sure you want to delete this local offline draft?', { title: 'Delete Draft', variant: 'danger', confirmLabel: 'Delete' }))) return;
     try {
-      await OfflineDrafts.delete(draftId);
+      await offlineService.OfflineDrafts.delete(draftId);
       toast.success('Local draft deleted');
       fetchOfflineDrafts();
     } catch {

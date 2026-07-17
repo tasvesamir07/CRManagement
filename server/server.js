@@ -219,6 +219,10 @@ const analyticsRoutes = require('./src/routes/analytics.routes'); console.log('[
 const templatesRoutes = require('./src/routes/templates.routes'); console.log('[BOOT]   templates.routes loaded');
 const bulkRoutes = require('./src/routes/bulk.routes'); console.log('[BOOT]   bulk.routes loaded');
 const logsRoutes = require('./src/routes/logs.routes'); console.log('[BOOT]   logs.routes loaded');
+const studentsRoutes = require('./src/routes/students.routes'); console.log('[BOOT]   students.routes loaded');
+const examRoutinesRoutes = require('./src/routes/examRoutines.routes'); console.log('[BOOT]   examRoutines.routes loaded');
+const attendanceRoutes = require('./src/routes/attendance.routes'); console.log('[BOOT]   attendance.routes loaded');
+const canvaRoutes = require('./src/routes/canva.routes'); console.log('[BOOT]   canva.routes loaded');
 
 // Mount routes (both legacy /api and versioned /api/v1)
 const mountRoutes = (prefix) => {
@@ -233,6 +237,10 @@ const mountRoutes = (prefix) => {
   app.use(`${prefix}/templates`, templatesRoutes);
   app.use(`${prefix}/bulk`, bulkRoutes);
   app.use(`${prefix}/logs`, logsRoutes);
+  app.use(`${prefix}/students`, studentsRoutes);
+  app.use(`${prefix}/exam-routines`, examRoutinesRoutes);
+  app.use(`${prefix}/attendance`, attendanceRoutes);
+  app.use(`${prefix}/canva`, canvaRoutes);
 };
 mountRoutes('/api');
 mountRoutes('/api/v1');

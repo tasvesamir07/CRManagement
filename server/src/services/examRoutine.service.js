@@ -26,9 +26,7 @@ async function getExamRoutines(courseId = null, examType = null, dateFrom = null
     }
 
     if (userId) {
-        queryText += ` AND (c.id IN (SELECT course_id FROM course_members WHERE user_id = $${paramIndex++})`;
-        params.push(userId);
-        queryText += ` OR er.created_by = $${paramIndex++})`;
+        queryText += ` AND c.id IN (SELECT course_id FROM course_members WHERE user_id = $${paramIndex++})`;
         params.push(userId);
     }
 
