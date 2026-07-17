@@ -126,11 +126,19 @@ const PlatformManager = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetchPlatforms().finally(() => setLoading(false));
-    fetchCourses().then(() => fetchCourseDefaults());
-    fetchTelegramStatus();
-    fetchMessengerStatus();
-  }, [fetchPlatforms, fetchCourses, fetchCourseDefaults, fetchTelegramStatus, fetchMessengerStatus]);
+    Promise.all([
+      fetchPlatforms(),
+      fetchCourses(),
+      fetchTelegramStatus(),
+      fetchMessengerStatus()
+    ]).finally(() => setLoading(false));
+  }, [fetchPlatforms, fetchCourses, fetchTelegramStatus, fetchMessengerStatus]);
+
+  useEffect(() => {
+    if (courses.length > 0) {
+      fetchCourseDefaults();
+    }
+  }, [courses, fetchCourseDefaults]);
 
   useEffect(() => {
     if (isConnected) return;
