@@ -207,17 +207,18 @@ app.get('/api/ws-available', (req, res) => {
 });
 
 // Import route modules
-const authRoutes = require('./src/routes/auth.routes');
-const coursesRoutes = require('./src/routes/courses.routes');
-const routinesRoutes = require('./src/routes/routines.routes');
-const platformsRoutes = require('./src/routes/platforms.routes');
-const filesRoutes = require('./src/routes/files.routes');
-const announcementsRoutes = require('./src/routes/announcements.routes');
-const adminRoutes = require('./src/routes/admin.routes');
-const analyticsRoutes = require('./src/routes/analytics.routes');
-const templatesRoutes = require('./src/routes/templates.routes');
-const bulkRoutes = require('./src/routes/bulk.routes');
-const logsRoutes = require('./src/routes/logs.routes');
+console.log('[BOOT] Loading route modules...');
+const authRoutes = require('./src/routes/auth.routes'); console.log('[BOOT]   auth.routes loaded');
+const coursesRoutes = require('./src/routes/courses.routes'); console.log('[BOOT]   courses.routes loaded');
+const routinesRoutes = require('./src/routes/routines.routes'); console.log('[BOOT]   routines.routes loaded');
+const platformsRoutes = require('./src/routes/platforms.routes'); console.log('[BOOT]   platforms.routes loaded');
+const filesRoutes = require('./src/routes/files.routes'); console.log('[BOOT]   files.routes loaded');
+const announcementsRoutes = require('./src/routes/announcements.routes'); console.log('[BOOT]   announcements.routes loaded');
+const adminRoutes = require('./src/routes/admin.routes'); console.log('[BOOT]   admin.routes loaded');
+const analyticsRoutes = require('./src/routes/analytics.routes'); console.log('[BOOT]   analytics.routes loaded');
+const templatesRoutes = require('./src/routes/templates.routes'); console.log('[BOOT]   templates.routes loaded');
+const bulkRoutes = require('./src/routes/bulk.routes'); console.log('[BOOT]   bulk.routes loaded');
+const logsRoutes = require('./src/routes/logs.routes'); console.log('[BOOT]   logs.routes loaded');
 
 // Mount routes (both legacy /api and versioned /api/v1)
 const mountRoutes = (prefix) => {
@@ -237,12 +238,14 @@ mountRoutes('/api');
 mountRoutes('/api/v1');
 
 // Error Handling Middleware
+console.log('[BOOT] Mounting error middleware...');
 app.use((err, req, res, _next) => {
     logger.error({ err }, 'Unhandled server error');
     res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
 // Create HTTP server
+console.log('[BOOT] Creating HTTP server...');
 const server = http.createServer(app);
 
 const isVercel = !!process.env.VERCEL;
@@ -303,6 +306,8 @@ if (!isVercel) {
         });
     });
 }
+
+console.log('[BOOT] WebSocket server setup complete');
 
 // Hook up WhatsApp service to broadcast to WS clients
 whatsappService.setWsBroadcaster((payload) => {
