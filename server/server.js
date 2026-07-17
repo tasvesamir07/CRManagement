@@ -36,14 +36,23 @@ const swaggerSpec = require('./src/config/swagger');
 // Import services & configs
 const logger = require('./src/config/logger');
 const { run: runWithContext } = require('./src/config/requestContext');
+console.log('[BOOT] Loading modules...');
 const db = require('./src/config/database');
+console.log('[BOOT]   database.js loaded');
 const authService = require('./src/services/auth.service');
+console.log('[BOOT]   auth.service loaded');
 const whatsappService = require('./src/services/whatsapp.service');
+console.log('[BOOT]   whatsapp.service loaded');
 const telegramService = require('./src/services/telegram.service');
+console.log('[BOOT]   telegram.service loaded');
 const messengerService = require('./src/services/messenger.service');
+console.log('[BOOT]   messenger.service loaded');
 const fileService = require('./src/services/file.service');
+console.log('[BOOT]   file.service loaded');
 const announcementService = require('./src/services/announcement.service');
+console.log('[BOOT]   announcement.service loaded');
 const metrics = require('./src/services/metrics.service');
+console.log('[BOOT] All modules loaded');
 
 // Initialize Express app
 const app = express();
@@ -379,9 +388,15 @@ if (!isVercel) {
 }
 
 // Start listening (skipped on Vercel — @vercel/node runtime handles this)
+console.log(`[BOOT] server.listen() reached. PORT=${PORT}, isVercel=${process.env.VERCEL ? 'yes' : 'no'}`);
 if (!isVercel) {
+    server.on('error', (err) => {
+        console.error(`[FATAL] Server failed to bind: ${err.code || err.message}`);
+        process.exit(1);
+    });
     server.listen(PORT, () => {
         logger.info({ port: PORT }, 'CR Announcement Server started');
+        console.log(`[BOOT] Server listening on port ${PORT}`);
     });
 }
 
@@ -430,6 +445,15 @@ const gracefulShutdown = async (signal) => {
         process.exit(1);
     }
 };
+
+// ---------- Crash Safety ----------
+process.on('uncaughtException', (err) => {
+    console.error(`[FATAL] Uncaught exception: ${err.message}\n${err.stack}`);
+    gracefulShutdown('uncaughtException');
+});
+process.on('unhandledRejection', (reason) => {
+    console.error(`[FATAL] Unhandled rejection: ${reason instanceof Error ? reason.message : reason}`);
+});
 
 // Listen for termination signals
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
