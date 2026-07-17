@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { coursesAPI } from '../../services/api';
 import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag } from 'lucide-react';
+import { confirm } from '../ui/ConfirmDialog';
+import toast from 'react-hot-toast';
 
 interface Course {
   id: number;
@@ -82,7 +84,7 @@ const CourseManager = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this course? This will also hide its routines.')) {
+    if (!(await confirm('Are you sure you want to delete this course? This will also hide its routines.', { title: 'Delete Course', variant: 'danger', confirmLabel: 'Delete' }))) {
       return;
     }
     try {
@@ -90,7 +92,7 @@ const CourseManager = () => {
       await coursesAPI.delete(id);
       fetchCourses(true);
     } catch (e: any) {
-      alert('Delete failed: ' + (e.response?.data?.error || e.message));
+      toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
       fetchCourses();
     }
   };
