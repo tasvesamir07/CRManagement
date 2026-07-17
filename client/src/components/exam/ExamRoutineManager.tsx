@@ -47,8 +47,18 @@ const ExamRoutineManager = () => {
         examRoutinesAPI.list({ exam_type: filterType || undefined }),
         coursesAPI.list()
       ]);
-      setRoutines(Array.isArray(routinesData) ? routinesData : []);
-      setCourses(Array.isArray(coursesData) ? coursesData : []);
+      const fetchedRoutines = Array.isArray(routinesData) ? routinesData : [];
+      const fetchedCourses = Array.isArray(coursesData) ? coursesData : [];
+      setRoutines(fetchedRoutines);
+      setCourses(fetchedCourses);
+      if (fetchedCourses.length > 0) {
+        setFormData(prev => {
+          if (!prev.course_id) {
+            return { ...prev, course_id: fetchedCourses[0].id.toString() };
+          }
+          return prev;
+        });
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -131,7 +141,7 @@ const ExamRoutineManager = () => {
           <p className="text-sm text-ink-mute mt-1.5">Manage Mid, Final, Quiz and Makeup exam schedules.</p>
         </div>
         {courses.length > 0 && (
-          <button onClick={() => setShowForm(true)}
+          <button onClick={() => { resetForm(); setShowForm(true); }}
             className="flex items-center justify-center px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-colors cursor-pointer shadow-sm self-start sm:self-auto">
             <Plus className="w-4 h-4 mr-2" /> Add Exam
           </button>
