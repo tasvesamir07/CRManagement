@@ -63,7 +63,9 @@ export function useWebSocket({ onMessage, enabled = true }: WebSocketOptions = {
       clearTimers();
 
       const token = localStorage.getItem('cr_token');
-      const baseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+      // Dynamically derive the WebSocket URL from the VITE_API_URL to keep them in sync
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const baseUrl = apiBase.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
       const wsUrl = token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
