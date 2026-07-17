@@ -37,6 +37,7 @@ const StudentManager = () => {
   const [bulkData, setBulkData] = useState('');
   const [enrollAll, setEnrollAll] = useState(true);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [selectedEnrollCourseIds, setSelectedEnrollCourseIds] = useState<number[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -58,12 +59,13 @@ const StudentManager = () => {
 
   const resetForm = () => {
     setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '' });
+    setSelectedEnrollCourseIds([]);
     setEditId(null);
     setShowForm(false);
     setErr('');
   };
 
-  const handleEdit = (s: Student) => {
+  const handleEdit = async (s: Student) => {
     setFormData({
       student_id: s.student_id,
       name: s.name,
@@ -74,6 +76,21 @@ const StudentManager = () => {
     });
     setEditId(s.id);
     setShowForm(true);
+    try {
+      const currentCourses = await studentsAPI.getCourses(s.id);
+      setSelectedEnrollCourseIds(currentCourses.map((c: any) => c.id));
+    } catch (e) {
+      console.error(e);
+      setSelectedEnrollCourseIds([]);
+    }
+  };
+
+  const handleOpenAddForm = () => {
+    setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '' });
+    setSelectedEnrollCourseIds(courses.map(c => c.id));
+    setEditId(null);
+    setShowForm(true);
+    setErr('');
   };
 
   const handleDelete = async (id: number) => {
@@ -106,9 +123,24 @@ const StudentManager = () => {
 
       if (editId) {
         await studentsAPI.update(editId, payload);
+        const currentCourses = await studentsAPI.getCourses(editId);
+        const currentCourseIds = currentCourses.map((c: any) => c.id);
+        
+        const toAdd = selectedEnrollCourseIds.filter(id => !currentCourseIds.includes(id));
+        const toRemove = currentCourseIds.filter(id => !selectedEnrollCourseIds.includes(id));
+        
+        if (toAdd.length > 0) {
+          await studentsAPI.enrollCourses(editId, toAdd);
+        }
+        for (const cid of toRemove) {
+          await studentsAPI.removeCourse(editId, cid);
+        }
         toast.success('Student updated');
       } else {
-        await studentsAPI.create(payload);
+        const student = await studentsAPI.create(payload);
+        if (selectedEnrollCourseIds.length > 0) {
+          await studentsAPI.enrollCourses(student.id, selectedEnrollCourseIds);
+        }
         toast.success('Student created');
       }
       resetForm();
@@ -164,7 +196,7 @@ const StudentManager = () => {
             className="flex items-center justify-center px-4 py-2 text-sm font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft transition-colors cursor-pointer shadow-sm">
             <Upload className="w-4 h-4 mr-2" /> Bulk Import
           </button>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={handleOpenAddForm}
             className="flex items-center justify-center px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-colors cursor-pointer shadow-sm">
             <Plus className="w-4 h-4 mr-2" /> Add Student
           </button>
@@ -184,7 +216,7 @@ const StudentManager = () => {
               <AlertCircle className="w-4 h-4 mr-2" /> {err}
             </div>
           )}
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Student ID *</label>
               <input type="text" required value={formData.student_id} onChange={e => setFormData({ ...formData, student_id: e.target.value })}
@@ -209,19 +241,58 @@ const StudentManager = () => {
                 placeholder="Phone number"
                 className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas" />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Batch</label>
-              <input type="text" value={formData.batch} onChange={e => setFormData({ ...formData, batch: e.target.value })}
-                placeholder="e.g. SWE 41"
-                className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas" />
+            
+            <div className="md:col-span-4 space-y-3">
+              <div className="flex items-center justify-between border-t border-hairline-cool pt-4">
+                <span className="text-xs font-semibold text-ink-mute uppercase tracking-wider">Course Enrollments</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedEnrollCourseIds.length === courses.length) {
+                      setSelectedEnrollCourseIds([]);
+                    } else {
+                      setSelectedEnrollCourseIds(courses.map(c => c.id));
+                    }
+                  }}
+                  className="text-xs text-primary hover:text-primary-deep font-medium cursor-pointer"
+                >
+                  {selectedEnrollCourseIds.length === courses.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+              
+              {courses.length === 0 ? (
+                <p className="text-sm text-ink-mute">No courses available. Please create courses first.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {courses.map(c => {
+                    const isSelected = selectedEnrollCourseIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedEnrollCourseIds(selectedEnrollCourseIds.filter(id => id !== c.id));
+                          } else {
+                            setSelectedEnrollCourseIds([...selectedEnrollCourseIds, c.id]);
+                          }
+                        }}
+                        className={`flex items-center justify-between px-3 h-9 rounded-sm border text-sm font-medium transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-hairline bg-canvas text-ink hover:border-hairline-cool hover:bg-canvas-soft'
+                        }`}
+                      >
+                        <span>{c.course_id}</span>
+                        {isSelected && <Check className="w-4 h-4 ml-1.5 flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Section</label>
-              <input type="text" value={formData.section} onChange={e => setFormData({ ...formData, section: e.target.value })}
-                placeholder="e.g. H"
-                className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas" />
-            </div>
-            <div className="md:col-span-3 flex justify-end gap-3 pt-3 border-t border-hairline-cool">
+
+            <div className="md:col-span-4 flex justify-end gap-3 pt-3 border-t border-hairline-cool">
               <button type="button" onClick={resetForm} className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer">Cancel</button>
               <button type="submit" className="px-4 py-2 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer">{editId ? 'Save Changes' : 'Add Student'}</button>
             </div>
