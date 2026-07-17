@@ -158,6 +158,7 @@ if (isRelayMode) {
     }
 
     let sock = null;
+    let globalKeysFlush = null;
     let _consecutive401Count = 0;
     let reconnectTimer = null;
     const pairingResolve = null;
@@ -206,6 +207,56 @@ if (isRelayMode) {
 
         if (!credsData) credsData = initAuthCreds();
 
+        let lastSaveTime = 0;
+        let saveKeysTimeout = null;
+
+        const scheduleKeysSave = () => {
+            const now = Date.now();
+            const timeSinceLastSave = now - lastSaveTime;
+            const throttleLimit = 30000; // 30 seconds throttle
+
+            if (saveKeysTimeout) clearTimeout(saveKeysTimeout);
+
+            const performSave = async () => {
+                saveKeysTimeout = null;
+                lastSaveTime = Date.now();
+                try {
+                    await db.query(
+                        `INSERT INTO whatsapp_creds (type, data, updated_at) 
+                         VALUES ('keys', $1::jsonb, NOW()) 
+                         ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+                        [JSON.stringify(keysStore)]
+                    );
+                } catch (err) {
+                    console.error('[WhatsApp] Failed to save keys to DB:', err.message);
+                }
+            };
+
+            if (timeSinceLastSave >= throttleLimit) {
+                performSave();
+            } else {
+                saveKeysTimeout = setTimeout(performSave, throttleLimit - timeSinceLastSave);
+            }
+        };
+
+        globalKeysFlush = async () => {
+            if (saveKeysTimeout) {
+                clearTimeout(saveKeysTimeout);
+                saveKeysTimeout = null;
+            }
+            try {
+                await db.query(
+                    `INSERT INTO whatsapp_creds (type, data, updated_at) 
+                     VALUES ('keys', $1::jsonb, NOW()) 
+                     ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+                    [JSON.stringify(keysStore)]
+                );
+                console.log('[WhatsApp] Flushed final keys to DB successfully.');
+            } catch (err) {
+                console.error('[WhatsApp] Failed to flush final keys:', err.message);
+            }
+        };
+
         const keys = {
             get: async (type, ids) => {
                 const data = keysStore[type] || {};
@@ -215,11 +266,19 @@ if (isRelayMode) {
                 return r;
             },
             set: async (data) => {
+                let changed = false;
                 for (const type in data) {
                     if (!keysStore[type]) keysStore[type] = {};
-                    Object.assign(keysStore[type], data[type]);
+                    for (const id in data[type]) {
+                        if (JSON.stringify(keysStore[type][id]) !== JSON.stringify(data[type][id])) {
+                            keysStore[type][id] = data[type][id];
+                            changed = true;
+                        }
+                    }
                 }
-                await db.query(`INSERT INTO whatsapp_creds (type, data, updated_at) VALUES ('keys', $1::jsonb, NOW()) ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, [JSON.stringify(keysStore)]);
+                if (changed) {
+                    scheduleKeysSave();
+                }
             },
             delete: async () => {}
         };
@@ -614,6 +673,13 @@ if (isRelayMode) {
 
     async function destroyWhatsApp() {
         console.log('Shutting down WhatsApp client...');
+        if (globalKeysFlush) {
+            try {
+                await globalKeysFlush();
+            } catch (err) {
+                console.error('[WhatsApp] Error flushing final keys on destroy:', err.message);
+            }
+        }
         if (sock) {
             try {
                 sock.end(undefined);
