@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { studentsAPI, coursesAPI } from '../../services/api';
-import { Plus, Trash2, X, AlertCircle, Upload, Search, Check, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, X, AlertCircle, Upload, Search, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 
@@ -39,6 +39,8 @@ const StudentManager = () => {
   const [enrollAll, setEnrollAll] = useState(true);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [selectedEnrollCourseIds, setSelectedEnrollCourseIds] = useState<number[]>([]);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -171,17 +173,67 @@ const StudentManager = () => {
       return;
     }
 
+    setBulkImporting(true);
+    setBulkProgress({ current: 0, total: students.length });
+
+    // Animate progress while waiting
+    let progressTick = 0;
+    const progressCap = Math.min(students.length, 10);
+    const ticker = setInterval(() => {
+      progressTick++;
+      if (progressTick <= progressCap) {
+        setBulkProgress(prev => ({ ...prev, current: prev.current + 1 }));
+      }
+    }, 300);
+
     try {
+      const startTime = Date.now();
       const result = await studentsAPI.bulkImport({
         students,
         enroll_all: enrollAll,
         course_ids: enrollAll ? undefined : selectedCourseIds
       });
-      toast.success(`Imported ${result.created?.length || 0} students` + (result.errors?.length ? ` (${result.errors.length} errors)` : ''));
-      setShowBulkModal(false);
-      setBulkData('');
-      fetchData();
+      clearInterval(ticker);
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 600) {
+        await new Promise(r => setTimeout(r, 600 - elapsed));
+      }
+
+      setBulkProgress({ current: students.length, total: students.length });
+
+      const createdCount = result.created?.length || 0;
+      const errorCount = result.errors?.length || 0;
+
+      setTimeout(() => {
+        setShowBulkModal(false);
+        setBulkData('');
+        setBulkImporting(false);
+        setBulkProgress({ current: 0, total: 0 });
+
+        if (errorCount > 0) {
+          toast.success(
+            `${createdCount} / ${students.length} students imported successfully`,
+            { duration: 4000 }
+          );
+          const errorLines = result.errors.map((e: any) => `${e.student}: ${e.error}`).join('\n');
+          toast.error(
+            `${errorCount} student${errorCount > 1 ? 's' : ''} failed:\n${errorLines}`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.success(
+            `All ${createdCount} student${createdCount > 1 ? 's' : ''} imported successfully!`,
+            { duration: 4000 }
+          );
+        }
+
+        fetchData();
+      }, 400);
     } catch (e: any) {
+      clearInterval(ticker);
+      setBulkImporting(false);
+      setBulkProgress({ current: 0, total: 0 });
       toast.error('Import failed: ' + (e.response?.data?.error || e.message));
     }
   };
@@ -340,13 +392,29 @@ const StudentManager = () => {
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-3 pt-3 border-t border-hairline-cool">
-              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 border border-hairline rounded-sm text-sm text-ink hover:bg-canvas-soft cursor-pointer">Cancel</button>
-              <button onClick={handleBulkImport} disabled={!bulkData.trim()}
-                className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep disabled:opacity-50 cursor-pointer">
-                Import {bulkData.trim().split('\n').filter(Boolean).length} Students
-              </button>
-            </div>
+            {bulkImporting ? (
+              <div className="space-y-3 pt-3 border-t border-hairline-cool">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-ink-mute flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importing students...
+                  </span>
+                  <span className="text-ink font-medium">{bulkProgress.current} / {bulkProgress.total}</span>
+                </div>
+                <div className="w-full bg-canvas-soft rounded-full h-2 overflow-hidden">
+                  <div className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min((bulkProgress.current / bulkProgress.total) * 100, 100)}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-3 pt-3 border-t border-hairline-cool">
+                <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 border border-hairline rounded-sm text-sm text-ink hover:bg-canvas-soft cursor-pointer">Cancel</button>
+                <button onClick={handleBulkImport} disabled={!bulkData.trim()}
+                  className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep disabled:opacity-50 cursor-pointer">
+                  Import {bulkData.trim().split('\n').filter(Boolean).length} Students
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
