@@ -101,11 +101,30 @@ const AttendanceManager = () => {
   const handleDownloadPdf = async () => {
     if (!selectedCourseId || !date) return;
     try {
-      const blob = await attendanceAPI.getPdf(selectedCourseId as number, date);
+      const res = await attendanceAPI.getPdf(selectedCourseId as number, date);
+      const blob = res.data;
+      
+      const disposition = res.headers['content-disposition'];
+      let filename = '';
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      
+      if (!filename) {
+        const course = courses.find(c => c.id === selectedCourseId);
+        const courseCode = course ? course.course_id : `course-${selectedCourseId}`;
+        const cleanDate = date.substring(0, 10);
+        filename = `${courseCode}_${cleanDate}.pdf`;
+      }
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `attendance-${selectedCourseId}-${date}.pdf`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -151,11 +170,30 @@ const AttendanceManager = () => {
 
   const handleDownloadSavedPdf = async (courseId: number, dateStr: string) => {
     try {
-      const blob = await attendanceAPI.getPdf(courseId, dateStr);
+      const res = await attendanceAPI.getPdf(courseId, dateStr);
+      const blob = res.data;
+      
+      const disposition = res.headers['content-disposition'];
+      let filename = '';
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      
+      if (!filename) {
+        const course = courses.find(c => c.id === courseId);
+        const courseCode = course ? course.course_id : `course-${courseId}`;
+        const cleanDate = dateStr.substring(0, 10);
+        filename = `${courseCode}_${cleanDate}.pdf`;
+      }
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `attendance-${courseId}-${dateStr}.pdf`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

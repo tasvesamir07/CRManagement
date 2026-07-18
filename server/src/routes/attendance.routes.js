@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../config/database');
 const attendanceService = require('../services/attendance.service');
 const pdfService = require('../services/pdf.service');
 const authMiddleware = require('../middleware/auth.middleware');
@@ -66,9 +67,32 @@ router.get('/course/:courseId/date/:date/pdf', authMiddleware, async (req, res) 
         const courseId = parseInt(req.params.courseId);
         const date = req.params.date;
         const exam_routine_id = req.query.exam_routine_id ? parseInt(req.query.exam_routine_id) : null;
+        
+        const courseResult = await db.query('SELECT course_id FROM courses WHERE id = $1', [courseId]);
+        const courseCode = courseResult.rows.length > 0 ? courseResult.rows[0].course_id : `course-${courseId}`;
+        
+        let section = '';
+        if (exam_routine_id) {
+            const routineResult = await db.query('SELECT section FROM exam_routines WHERE id = $1', [exam_routine_id]);
+            if (routineResult.rows.length > 0) {
+                section = routineResult.rows[0].section || '';
+            }
+        } else {
+            const routineResult = await db.query('SELECT section FROM routines WHERE course_id = $1 LIMIT 1', [courseId]);
+            if (routineResult.rows.length > 0) {
+                section = routineResult.rows[0].section || '';
+            }
+        }
+        
+        const cleanDate = date.substring(0, 10);
+        
+        const filename = section 
+            ? `${courseCode}_${section}_${cleanDate}.pdf`
+            : `${courseCode}_${cleanDate}.pdf`;
+
         const pdfBuffer = await pdfService.generateAttendancePdf(courseId, date, exam_routine_id);
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="attendance-${courseId}-${date}.pdf"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         return res.send(pdfBuffer);
     } catch (err) {
         return res.status(500).json({ error: err.message });

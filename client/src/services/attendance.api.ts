@@ -15,7 +15,7 @@ export const attendanceAPI = {
     const params: any = {};
     if (examRoutineId) params.exam_routine_id = examRoutineId;
     const res = await api.get(`/attendance/course/${courseId}/date/${date}/pdf`, { params, responseType: 'blob' });
-    return res.data;
+    return res;
   },
   bulkMark: async (data: { course_id: number; date: string; exam_routine_id?: number; records: { student_id: number; status: string; notes?: string }[] }) => {
     const res = await api.post('/attendance/bulk', data);
