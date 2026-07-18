@@ -304,7 +304,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       
       const payload = {
         course_id: parseInt(formCourseId),
-        day_of_week: selectedCell.day,
+        day_of_week: selectedCell.day.toLowerCase(),
         start_time: selectedCell.slot.start,
         end_time: selectedCell.slot.end,
         room_number: formRoomNumber,
@@ -1161,7 +1161,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                               key={dIdx}
                               onClick={() => handleCellClick(day, slot)}
                               style={{ 
-                                backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.15)' : cellBg,
+                                backgroundColor: isSelected 
+                                  ? (cellTextColor.toLowerCase() === '#f1f5f9' || 
+                                     cellTextColor.toLowerCase() === '#f8fafc' || 
+                                     cellTextColor.toLowerCase() === '#ffffff' || 
+                                     cellTextColor.toLowerCase() === '#38bdf8' 
+                                      ? '#1E293B' 
+                                      : '#E0F2FE')
+                                  : cellBg,
                                 color: cellTextColor,
                                 borderRight: `1px solid ${borderColor}`,
                                 borderStyle: isSelected ? 'solid' : 'solid',
