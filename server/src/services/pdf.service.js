@@ -98,8 +98,8 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
             doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
             doc.moveDown(0.5);
 
-            const colWidths = [50, 120, 345];
-            const headers = ['SL', 'Student ID', 'Name'];
+            const colWidths = [150, 365];
+            const headers = ['Student ID', 'Name'];
 
             const drawTableHeaders = (yPos) => {
                 doc.rect(40, yPos, 515, 20).fill('#e0e0e0');
@@ -131,7 +131,6 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
 
                 let cx = 40;
                 const rowData = [
-                    String(index + 1),
                     student.student_id || '',
                     student.name || ''
                 ];
