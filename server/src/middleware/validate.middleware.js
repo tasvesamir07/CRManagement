@@ -340,6 +340,16 @@ const schemas = {
             section: z.string().max(10).optional().nullable(),
             is_active: z.boolean().optional()
         }).partial(),
+        updateWithCourses: z.object({
+            student_id: z.string().min(1).max(50).optional(),
+            name: z.string().min(1).max(200).optional(),
+            email: z.preprocess(val => val === '' ? null : val, z.string().email().optional().nullable()),
+            phone: z.string().max(20).optional().nullable(),
+            batch: z.string().max(50).optional().nullable(),
+            section: z.string().max(10).optional().nullable(),
+            is_active: z.boolean().optional(),
+            course_ids: z.array(z.number().int().positive()).optional()
+        }).partial(),
         bulkImport: z.object({
             students: z.array(z.object({
                 student_id: z.string().min(1).max(50),

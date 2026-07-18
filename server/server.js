@@ -97,11 +97,10 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
-const allowedOrigins = corsOrigin === '*'
-    ? '*'
-    : corsOrigin.split(',').map(s => s.trim());
+const isWildcardOrigin = corsOrigin === '*';
+const allowedOrigins = isWildcardOrigin ? '*' : corsOrigin.split(',').map(s => s.trim());
 app.use(cors({
-    origin: allowedOrigins === '*'
+    origin: isWildcardOrigin
         ? '*'
         : (origin, cb) => {
             if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
@@ -110,7 +109,7 @@ app.use(cors({
                 cb(null, false);
             }
         },
-    credentials: true
+    credentials: !isWildcardOrigin
 }));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));

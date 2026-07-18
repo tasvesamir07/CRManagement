@@ -66,18 +66,28 @@ async function createStudent({ student_id, name, email, phone, batch, section })
     return result.rows[0];
 }
 
-async function updateStudent(id, { student_id, name, email, phone, batch, section, is_active }) {
-    const sanitizedId = (student_id || '').trim();
-    const sanitizedName = (name || '').trim();
-    const sanitizedEmail = (email || '').trim();
-    const sanitizedPhone = (phone || '').trim();
-    const sanitizedBatch = (batch || '').trim();
-    const sanitizedSection = (section || '').trim();
+function buildStudentUpdateQuery(id, { student_id, name, email, phone, batch, section, is_active }) {
+    const setClauses = ['student_id=$1', 'name=$2', 'email=$3', 'phone=$4', 'batch=$5', 'section=$6'];
+    const values = [
+        (student_id || '').trim(), (name || '').trim(), (email || '').trim(),
+        (phone || '').trim(), (batch || '').trim(), (section || '').trim()
+    ];
 
-    const result = await db.query(
-        'UPDATE students SET student_id=$1, name=$2, email=$3, phone=$4, batch=$5, section=$6, is_active=$7 WHERE id=$8 RETURNING *',
-        [sanitizedId, sanitizedName, sanitizedEmail, sanitizedPhone, sanitizedBatch, sanitizedSection, is_active, id]
-    );
+    if (is_active !== undefined) {
+        setClauses.push(`is_active=$${values.length + 1}`);
+        values.push(is_active);
+    }
+
+    values.push(id);
+    return {
+        text: `UPDATE students SET ${setClauses.join(', ')} WHERE id=$${values.length} RETURNING *`,
+        values
+    };
+}
+
+async function updateStudent(id, data) {
+    const { text, values } = buildStudentUpdateQuery(id, data);
+    const result = await db.query(text, values);
     return result.rows[0] || null;
 }
 
@@ -171,6 +181,67 @@ async function getStudentCourses(studentId) {
     return result.rows;
 }
 
+async function updateStudentWithCourses(id, { course_ids, ...studentData }) {
+    const client = await db.getClient();
+    if (client) {
+        try {
+            await client.query('BEGIN');
+
+            const { text, values } = buildStudentUpdateQuery(id, studentData);
+            const studentResult = await client.query(text, values);
+
+            if (course_ids !== undefined && Array.isArray(course_ids)) {
+                const currentCourses = await client.query(
+                    'SELECT course_id FROM student_courses WHERE student_id = $1', [id]
+                );
+                const currentIds = currentCourses.rows.map(r => r.course_id);
+
+                const toAdd = course_ids.filter(cid => !currentIds.includes(cid));
+                const toRemove = currentIds.filter(cid => !course_ids.includes(cid));
+
+                for (const cid of toAdd) {
+                    await client.query(
+                        'INSERT INTO student_courses (student_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                        [id, cid]
+                    );
+                }
+                for (const cid of toRemove) {
+                    await client.query(
+                        'DELETE FROM student_courses WHERE student_id = $1 AND course_id = $2',
+                        [id, cid]
+                    );
+                }
+            }
+
+            await client.query('COMMIT');
+            return studentResult.rows[0] || null;
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+    // Fallback: JSON DB mode — non-atomic
+    const student = await updateStudent(id, studentData);
+    if (course_ids !== undefined && Array.isArray(course_ids) && student) {
+        const currentCourses = await getStudentCourses(id);
+        const currentIds = currentCourses.map(c => c.id);
+
+        const toAdd = course_ids.filter(cid => !currentIds.includes(cid));
+        const toRemove = currentIds.filter(cid => !course_ids.includes(cid));
+
+        for (const cid of toAdd) {
+            await enrollStudent(id, [cid]);
+        }
+        for (const cid of toRemove) {
+            await removeStudentFromCourse(id, cid);
+        }
+    }
+    return student;
+}
+
 module.exports = {
     getStudents,
     getStudentById,
@@ -183,5 +254,6 @@ module.exports = {
     enrollStudentInAll,
     removeStudentFromCourse,
     getStudentCourses,
-    sortStudentIds
+    sortStudentIds,
+    updateStudentWithCourses
 };

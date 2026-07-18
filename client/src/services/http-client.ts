@@ -7,7 +7,8 @@ if (!API_URL.endsWith('/api')) {
 }
 
 const api: AxiosInstance = axios.create({
-    baseURL: API_URL
+    baseURL: API_URL,
+    timeout: 30000
 });
 
 api.interceptors.request.use(
@@ -23,6 +24,9 @@ api.interceptors.request.use(
     }
 );
 
+const RETRYABLE_METHODS = ['get'];
+const MAX_RETRIES = 2;
+
 api.interceptors.response.use(
     (response: AxiosResponse) => {
         const url = response.config.url;
@@ -35,6 +39,19 @@ api.interceptors.response.use(
         return response;
     },
     async (error) => {
+        const config = error.config;
+        if (config && RETRYABLE_METHODS.includes(config.method?.toLowerCase())) {
+            const retryCount = (config as any)._retryCount || 0;
+            if (retryCount < MAX_RETRIES) {
+                if (!error.response || (error.response.status >= 500 && error.response.status < 600)) {
+                    (config as any)._retryCount = retryCount + 1;
+                    const delay = Math.min(1000 * Math.pow(2, retryCount), 4000);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return api(config);
+                }
+            }
+        }
+
         if (!error.response && typeof navigator !== 'undefined' && navigator.onLine === false) {
             const config = error.config;
             const method = config.method?.toLowerCase();

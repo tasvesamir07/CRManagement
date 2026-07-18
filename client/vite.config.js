@@ -49,18 +49,20 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         runtimeCaching: [
           {
-            // Critical read endpoints: CacheFirst with 24h TTL
+            // Critical read endpoints: StaleWhileRevalidate with 24h TTL
             urlPattern: /\/api\/(courses|platforms|templates)(\?.*)?$/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache-data',
-              expiration: { maxEntries: 30, maxAgeSeconds: 86400 } // 24h
+              expiration: { maxEntries: 30, maxAgeSeconds: 86400 }
             }
           },
           {
-            // Auth and other endpoints: NetworkFirst with short cache
+            // All other API: StaleWhileRevalidate with 5min TTL
+            // Returns cached data immediately, updates in background.
+            // Error responses from server won't overwrite good cached data.
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache-general',
               expiration: { maxEntries: 50, maxAgeSeconds: 300 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { studentsAPI, coursesAPI } from '../../services/api';
 import { Plus, Trash2, X, AlertCircle, Upload, Search, Check, ChevronDown } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
@@ -12,6 +12,7 @@ interface Student {
   phone: string | null;
   batch: string | null;
   section: string | null;
+  is_active: boolean;
 }
 
 interface Course {
@@ -30,7 +31,7 @@ const StudentManager = () => {
   const [err, setErr] = useState('');
 
   const [formData, setFormData] = useState({
-    student_id: '', name: '', email: '', phone: '', batch: '', section: ''
+    student_id: '', name: '', email: '', phone: '', batch: '', section: '', is_active: true
   });
 
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -39,26 +40,34 @@ const StudentManager = () => {
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [selectedEnrollCourseIds, setSelectedEnrollCourseIds] = useState<number[]>([]);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchData = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       setLoading(true);
       const [studentsData, coursesData] = await Promise.all([
-        studentsAPI.list({ search: search || undefined }),
-        coursesAPI.list()
+        studentsAPI.list({ search: search || undefined, signal: controller.signal }),
+        coursesAPI.list({ signal: controller.signal })
       ]);
+      if (controller.signal.aborted) return;
       setStudents(Array.isArray(studentsData) ? studentsData : studentsData.rows || []);
       setCourses(Array.isArray(coursesData) ? coursesData : []);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      if (e?.name !== 'CanceledError' && e?.code !== 'ERR_CANCELED') {
+        console.error(e);
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [search]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); return () => abortRef.current?.abort(); }, [fetchData]);
 
   const resetForm = () => {
-    setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '' });
+    setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '', is_active: true });
     setSelectedEnrollCourseIds([]);
     setEditId(null);
     setShowForm(false);
@@ -72,7 +81,8 @@ const StudentManager = () => {
       email: s.email || '',
       phone: s.phone || '',
       batch: s.batch || '',
-      section: s.section || ''
+      section: s.section || '',
+      is_active: s.is_active
     });
     setEditId(s.id);
     setShowForm(true);
@@ -86,7 +96,7 @@ const StudentManager = () => {
   };
 
   const handleOpenAddForm = () => {
-    setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '' });
+    setFormData({ student_id: '', name: '', email: '', phone: '', batch: '', section: '', is_active: true });
     setSelectedEnrollCourseIds(courses.map(c => c.id));
     setEditId(null);
     setShowForm(true);
@@ -119,22 +129,14 @@ const StudentManager = () => {
         phone: formData.phone.trim() || null,
         batch: formData.batch.trim() || null,
         section: formData.section.trim() || null,
+        is_active: formData.is_active,
       };
 
       if (editId) {
-        await studentsAPI.update(editId, payload);
-        const currentCourses = await studentsAPI.getCourses(editId);
-        const currentCourseIds = currentCourses.map((c: any) => c.id);
-        
-        const toAdd = selectedEnrollCourseIds.filter(id => !currentCourseIds.includes(id));
-        const toRemove = currentCourseIds.filter(id => !selectedEnrollCourseIds.includes(id));
-        
-        if (toAdd.length > 0) {
-          await studentsAPI.enrollCourses(editId, toAdd);
-        }
-        for (const cid of toRemove) {
-          await studentsAPI.removeCourse(editId, cid);
-        }
+        await studentsAPI.updateWithCourses(editId, {
+          ...payload,
+          course_ids: selectedEnrollCourseIds,
+        });
         toast.success('Student updated');
       } else {
         const student = await studentsAPI.create(payload);

@@ -45,6 +45,16 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
     }
 });
 
+router.put('/:id/with-courses', authMiddleware, validateParams(schemas.params.id), validate(schemas.students.updateWithCourses), async (req, res) => {
+    try {
+        const student = await studentService.updateStudentWithCourses(req.params.id, req.body);
+        if (!student) return res.status(404).json({ error: 'Student not found' });
+        return res.json(student);
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
+});
+
 router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         await studentService.deleteStudent(req.params.id);

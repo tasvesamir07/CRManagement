@@ -1,8 +1,9 @@
 import api from './http-client';
 
 export const studentsAPI = {
-  list: async (params: { course_id?: number | string; search?: string; page?: number; limit?: number } = {}) => {
-    const res = await api.get('/students', { params });
+  list: async (params: { course_id?: number | string; search?: string; page?: number; limit?: number; signal?: AbortSignal } = {}) => {
+    const { signal, ...queryParams } = params;
+    const res = await api.get('/students', { params: queryParams, signal });
     return res.data;
   },
   getById: async (id: number) => {
@@ -15,6 +16,10 @@ export const studentsAPI = {
   },
   update: async (id: number, data: any) => {
     const res = await api.put(`/students/${id}`, data);
+    return res.data;
+  },
+  updateWithCourses: async (id: number, data: any) => {
+    const res = await api.put(`/students/${id}/with-courses`, data);
     return res.data;
   },
   delete: async (id: number) => {

@@ -1,8 +1,8 @@
 import api from './http-client';
 
 export const coursesAPI = {
-  list: async () => {
-    const res = await api.get('/courses');
+  list: async (options?: { signal?: AbortSignal }) => {
+    const res = await api.get('/courses', { signal: options?.signal });
     return res.data;
   },
   get: async (id: number | string) => {
