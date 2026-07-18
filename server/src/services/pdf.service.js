@@ -66,6 +66,11 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
                 if (routineResult.rows.length > 0) {
                     section = routineResult.rows[0].section || '';
                 }
+            } else {
+                const routineResult = await db.query('SELECT section FROM routines WHERE course_id = $1 LIMIT 1', [courseId]);
+                if (routineResult.rows.length > 0) {
+                    section = routineResult.rows[0].section || '';
+                }
             }
 
             const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'portrait' });
@@ -74,8 +79,13 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
             doc.on('end', () => resolve(Buffer.concat(chunks)));
             doc.on('error', reject);
 
+            let titleText = `${course.course_id} - ${course.course_name}`;
+            if (section) {
+                titleText += ` (Section: ${section})`;
+            }
+
             doc.fontSize(18).font('Helvetica-Bold')
-               .text(`${course.course_id} - ${course.course_name}`, { align: 'center' });
+               .text(titleText, { align: 'center' });
             doc.moveDown(0.3);
             doc.fontSize(14).font('Helvetica')
                .text('Attendance Sheet', { align: 'center' });
@@ -83,33 +93,39 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
 
             const formattedDate = formatDate(date);
             let headerLine = `Date: ${formattedDate}`;
-            if (section) {
-                headerLine += `              Section: ${section}`;
-            }
             doc.fontSize(11).font('Helvetica').text(headerLine);
             doc.moveDown(0.5);
-            doc.moveTo(40, doc.y).lineTo(545, doc.y).stroke();
+            doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
             doc.moveDown(0.5);
 
-            const colWidths = [40, 80, 200, 60, 80];
-            const headers = ['SL', 'Student ID', 'Name', 'Section', 'Signature'];
-            const tableTop = doc.y;
+            const colWidths = [50, 120, 345];
+            const headers = ['SL', 'Student ID', 'Name'];
 
-            doc.rect(40, tableTop, 505, 20).fill('#e0e0e0');
-            doc.fill('#000000');
-            doc.fontSize(10).font('Helvetica-Bold');
-            let hx = 40;
-            headers.forEach((header, i) => {
-                doc.text(header, hx + 5, tableTop + 4, { width: colWidths[i], align: 'left' });
-                hx += colWidths[i];
-            });
+            const drawTableHeaders = (yPos) => {
+                doc.rect(40, yPos, 515, 20).fill('#e0e0e0');
+                doc.fill('#000000');
+                doc.fontSize(10).font('Helvetica-Bold');
+                let hx = 40;
+                headers.forEach((header, i) => {
+                    doc.text(header, hx + 5, yPos + 5, { width: colWidths[i] - 10, align: 'left' });
+                    hx += colWidths[i];
+                });
+                doc.y = yPos + 20;
+            };
 
-            doc.y = tableTop + 20;
+            drawTableHeaders(doc.y);
+
             doc.fontSize(9).font('Helvetica');
             presentStudents.forEach((student, index) => {
+                if (doc.y + 18 > 780) {
+                    doc.addPage();
+                    drawTableHeaders(40);
+                    doc.fontSize(9).font('Helvetica');
+                }
+
                 const rowTop = doc.y;
                 if (index % 2 === 0) {
-                    doc.rect(40, rowTop, 505, 18).fill('#f9f9f9');
+                    doc.rect(40, rowTop, 515, 18).fill('#f9f9f9');
                     doc.fill('#000000');
                 }
 
@@ -117,13 +133,11 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
                 const rowData = [
                     String(index + 1),
                     student.student_id || '',
-                    student.name || '',
-                    student.section || '',
-                    ''
+                    student.name || ''
                 ];
 
                 rowData.forEach((text, i) => {
-                    doc.text(text, cx + 5, rowTop + 4, { width: colWidths[i], align: 'left' });
+                    doc.text(text, cx + 5, rowTop + 4, { width: colWidths[i] - 10, align: 'left' });
                     cx += colWidths[i];
                 });
 
