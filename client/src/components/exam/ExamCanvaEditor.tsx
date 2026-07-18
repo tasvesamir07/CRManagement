@@ -4,7 +4,7 @@ import { filesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
-  ZoomIn, ZoomOut, Sparkles, Sliders, Type, Grid3X3, Check
+  ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -148,7 +148,7 @@ const FONTS = [
   { name: 'Lora', family: "'Lora', serif", link: 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&display=swap' }
 ];
 
-// Custom Inline Input Component for direct in-canvas editing
+// Custom Inline Input Component (Light text editor style)
 interface InlineInputProps {
   value: string;
   onChange: (val: string) => void;
@@ -198,7 +198,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="w-full bg-white border border-primary text-black focus:outline-none p-0.5 rounded font-sans text-sm text-center shadow-inner"
+        className="w-full bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit text-center"
       />
     );
   }
@@ -211,12 +211,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
       } ${className}`}
       title={disabled ? undefined : 'Click to edit'}
     >
-      {value || <span className="text-ink-mute-2 italic font-normal text-xs">(Click to edit)</span>}
-      {!disabled && (
-        <span className="opacity-0 group-hover/inline:opacity-100 absolute -top-4 right-0 bg-primary text-on-primary text-[9px] px-1 rounded shadow-sm pointer-events-none transition-opacity">
-          Edit
-        </span>
-      )}
+      {value || <span className="text-gray-400 italic font-normal text-xs">(Click to edit)</span>}
     </div>
   );
 };
@@ -251,7 +246,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [zoom, setZoom] = useState(100);
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const [selectedFont, setSelectedFont] = useState("'Inter', sans-serif");
+  
+  // Custom font & text alignment state
+  const [selectedFont, setSelectedFont] = useState("'Montserrat', sans-serif");
+  const [headerAlign, setHeaderAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [cardAlign, setCardAlign] = useState<'left' | 'center' | 'right'>('left');
 
   // Dynamic Font Loader
   useEffect(() => {
@@ -491,12 +490,12 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[750px] animate-in fade-in duration-200">
+    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-y-auto max-h-[780px]">
+      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-hidden">
         
-        <div className="p-4 border-b border-hairline flex items-center bg-canvas">
+        <div className="p-4 border-b border-hairline flex items-center bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary animate-pulse" />
             <h2 className="font-bold text-ink">Routine Canva Editor</h2>
@@ -504,11 +503,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         </div>
 
         {/* Tab Controls */}
-        <div className="flex border-b border-hairline bg-canvas p-1 gap-1">
+        <div className="flex border-b border-hairline bg-canvas p-1 gap-1 flex-shrink-0">
           <button 
             onClick={() => setActiveTab('theme')}
             className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'theme' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+              activeTab === 'theme' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" /> Style Theme
@@ -516,7 +515,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           <button 
             onClick={() => setActiveTab('headers')}
             className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'headers' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+              activeTab === 'headers' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
             }`}
           >
             <Type className="w-3.5 h-3.5" /> Titles
@@ -524,7 +523,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           <button 
             onClick={() => setActiveTab('exams')}
             className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 relative ${
-              activeTab === 'exams' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+              activeTab === 'exams' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
             }`}
           >
             <Grid3X3 className="w-3.5 h-3.5" /> Exams ({items.length})
@@ -534,8 +533,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           </button>
         </div>
 
-        {/* Settings Sections */}
-        <div className="p-4 space-y-6 flex-1 bg-canvas-soft">
+        {/* Settings Sections (Scrollable) */}
+        <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-canvas-soft">
 
           {/* TAB 1: Theme & Style Settings */}
           {activeTab === 'theme' && (
@@ -585,6 +584,60 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 </select>
               </div>
 
+              {/* Text Alignment Customizer */}
+              <div className="space-y-3 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Alignment</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Header text</label>
+                    <div className="flex bg-canvas p-0.5 rounded border border-hairline">
+                      <button 
+                        onClick={() => setHeaderAlign('left')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setHeaderAlign('center')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setHeaderAlign('right')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Content</label>
+                    <div className="flex bg-canvas p-0.5 rounded border border-hairline">
+                      <button 
+                        onClick={() => setCardAlign('left')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setCardAlign('center')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setCardAlign('right')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Background Presets */}
               <div className="space-y-1.5 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Canvas Background</label>
@@ -613,7 +666,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Custom Colors</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Custom Card Bg</label>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Custom Card Bg</label>
                     <div className="flex gap-2 items-center bg-canvas p-1 rounded border border-hairline">
                       <input 
                         type="color" 
@@ -625,7 +678,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Text Color</label>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Text Color</label>
                     <div className="flex gap-2 items-center bg-canvas p-1 rounded border border-hairline">
                       <input 
                         type="color" 
@@ -644,7 +697,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Card Styles</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Corner Rounded</label>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Corner Rounded</label>
                     <select 
                       value={cardRoundedness} 
                       onChange={e => setCardRoundedness(e.target.value)}
@@ -658,7 +711,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Shadow</label>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Shadow</label>
                     <select 
                       value={cardShadow} 
                       onChange={e => setCardShadow(e.target.value)}
@@ -674,7 +727,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Border</label>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Border</label>
                     <select 
                       value={cardBorderType} 
                       onChange={e => setCardBorderType(e.target.value as any)}
@@ -706,18 +759,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Header Configuration</label>
-                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3">
+                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Main Title</label>
+                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Header Main Title</label>
                     <input 
                       type="text" 
                       value={headerTitle} 
                       onChange={e => setHeaderTitle(e.target.value)}
-                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Subtitle</label>
+                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Header Subtitle</label>
                     <input 
                       type="text" 
                       value={headerSubtitle} 
@@ -730,9 +783,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
               <div className="space-y-3 pt-2">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Footer Configuration</label>
-                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3">
+                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Left Text</label>
+                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Footer Left Text</label>
                     <input 
                       type="text" 
                       value={footerLeft} 
@@ -741,7 +794,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Right Text</label>
+                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Footer Right Text</label>
                     <input 
                       type="text" 
                       value={footerRight} 
@@ -771,7 +824,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {/* Registered Course Autofill */}
                     {courses.length > 0 && (
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Autofill from Registered Courses</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">Autofill from Registered Courses</label>
                         <select
                           onChange={e => {
                             const val = e.target.value;
@@ -798,7 +851,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {/* Code & Date */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Course Code</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Course Code</label>
                         <input 
                           type="text" 
                           value={selectedItem.courseCode} 
@@ -807,7 +860,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Exam Date</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Exam Date</label>
                         <input 
                           type="text" 
                           value={selectedItem.examDate} 
@@ -819,7 +872,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Course Name */}
                     <div>
-                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Course Name</label>
+                      <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Course Name</label>
                       <input 
                         type="text" 
                         value={selectedItem.courseName} 
@@ -831,7 +884,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {/* Time & Accent Custom Color */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Time</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Time</label>
                         <input 
                           type="text" 
                           value={selectedItem.examTime} 
@@ -840,7 +893,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Accent Bar Color</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Accent Bar Color</label>
                         <div className="flex items-center gap-1.5 h-8 bg-canvas px-1.5 rounded border border-hairline">
                           <input 
                             type="color" 
@@ -855,7 +908,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Rooms List */}
                     <div>
-                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Rooms & Seating Counts (one per line)</label>
+                      <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Rooms & Seating Counts (one per line)</label>
                       <textarea 
                         value={selectedItem.rooms} 
                         onChange={e => updateItemField(selectedItem.id, 'rooms', e.target.value)}
@@ -866,7 +919,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Color presets quick picker */}
                     <div>
-                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Color Accent Presets</label>
+                      <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">Color Accent Presets</label>
                       <div className="flex flex-wrap gap-1">
                         {ACCENT_COLORS.map(color => (
                           <button
@@ -904,7 +957,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   </div>
                 </div>
               ) : (
-                <div className="border border-dashed border-hairline rounded-md p-6 text-center text-xs text-ink-mute bg-canvas">
+                <div className="border border-dashed border-hairline rounded-md p-6 text-center text-xs text-gray-500 bg-canvas">
                   Click on any routine card on the right canvas to select it and edit its fields here.
                 </div>
               )}
@@ -962,7 +1015,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-hairline bg-canvas">
+        <div className="p-4 border-t border-hairline bg-canvas flex-shrink-0">
           <button
             onClick={handleAddItem}
             className="w-full flex items-center justify-center py-2.5 px-4 border border-dashed border-primary hover:border-primary-deep rounded text-xs font-bold text-primary bg-canvas hover:bg-canvas-soft transition-all cursor-pointer shadow-sm"
@@ -974,10 +1027,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-full bg-canvas-soft min-h-[500px]">
+      <div className="lg:col-span-8 flex flex-col h-full bg-[#e2e8f0] overflow-hidden">
         
         {/* Canvas Toolbar Controls */}
-        <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export">
+        <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
           
           {/* Zoom and Grid Toggles */}
           <div className="flex items-center gap-2">
@@ -986,14 +1039,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded cursor-pointer border ${
                 isLocked 
                   ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
-                  : 'bg-canvas border-hairline text-ink-secondary hover:bg-canvas-soft'
+                  : 'bg-canvas border-hairline text-gray-600 hover:bg-canvas-soft'
               }`}
               title={isLocked ? 'Unlock canvas for editing' : 'Lock canvas into design mode'}
             >
               {isLocked ? (
-                <><Lock className="w-3.5 h-3.5 text-amber-500" /> Canvas Locked</>
+                <><Lock className="w-3.5 h-3.5 text-amber-500" /> Locked</>
               ) : (
-                <><Unlock className="w-3.5 h-3.5 text-ink-mute" /> Canvas Unlocked</>
+                <><Unlock className="w-3.5 h-3.5 text-gray-400" /> Unlocked</>
               )}
             </button>
 
@@ -1002,7 +1055,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             <div className="flex items-center gap-1">
               <button 
                 onClick={() => setZoom(Math.max(50, zoom - 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-ink-mute hover:text-ink"
+                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-400 hover:text-ink"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
@@ -1010,7 +1063,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               <span className="text-xs font-mono font-medium px-1.5 w-12 text-center text-ink">{zoom}%</span>
               <button 
                 onClick={() => setZoom(Math.min(150, zoom + 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-ink-mute hover:text-ink"
+                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-400 hover:text-ink"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
@@ -1045,8 +1098,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           </div>
         </div>
 
-        {/* Scrollable Workspace Container */}
-        <div className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[500px] bg-[#f0f3f5]">
+        {/* Scrollable Workspace Container (Figma Dot Grid Style) */}
+        <div 
+          style={{
+            backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
+            backgroundSize: '16px 16px'
+          }}
+          className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[500px] bg-[#f8fafc]"
+        >
           
           {/* Zoom Wrapper */}
           <div 
@@ -1061,9 +1120,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               style={{ 
                 background: bgGradient || bgColor, 
                 width: '550px',
-                fontFamily: selectedFont
+                fontFamily: selectedFont,
+                textAlign: headerAlign
               }}
-              className="p-8 space-y-6 shadow-xl relative select-none overflow-hidden transition-all duration-300 rounded border border-hairline"
+              className="p-8 space-y-6 shadow-2xl relative select-none overflow-hidden transition-all duration-300 rounded border border-hairline"
             >
               
               {/* Header Box */}
@@ -1073,7 +1133,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   borderRadius: cardRoundedness,
                   color: cardTextColor
                 }}
-                className={`p-5 text-center border border-hairline transition-all duration-300 ${cardShadow}`}
+                className={`p-6 text-center border border-hairline transition-all duration-300 ${cardShadow}`}
               >
                 <h1 className="font-extrabold text-2xl tracking-tight leading-tight uppercase">
                   <InlineInput 
@@ -1112,7 +1172,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         backgroundColor: cardBg,
                         borderRadius: cardRoundedness,
                         color: cardTextColor,
-                        borderColor: cardBorderType === 'accent' ? item.accentColor : cardBorderColor
+                        borderColor: cardBorderType === 'accent' ? item.accentColor : cardBorderColor,
+                        textAlign: cardAlign
                       }}
                       className={`relative p-5 flex items-stretch gap-2 group cursor-pointer transition-all duration-300 ${cardShadow} ${borderStyle} ${
                         isSelected 
@@ -1120,44 +1181,39 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           : 'hover:scale-[1.005] hover:shadow-md'
                       }`}
                     >
-                      {/* Left: Date / Time Column */}
-                      <div className="w-[145px] pr-3 flex flex-col justify-center select-text">
-                        <div className="font-bold text-sm leading-tight text-center">
+                      {/* Left Column: Date & Time + Accent color pill (aligned perfectly) */}
+                      <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60">
+                        <div className="font-bold text-sm leading-tight">
                           <InlineInput 
                             value={item.examDate} 
                             onChange={val => updateItemField(item.id, 'examDate', val)} 
                             disabled={isLocked} 
                           />
                         </div>
-                        <div className="font-semibold text-xs text-ink-mute mt-1.5 text-center flex items-center justify-center gap-1.5">
+                        <div className="font-semibold text-xs text-ink-mute mt-1.5 flex items-center gap-1.5">
                           <InlineInput 
                             value={item.examTime} 
                             onChange={val => updateItemField(item.id, 'examTime', val)} 
                             disabled={isLocked} 
                           />
-                          {/* Accent line/block next to time */}
+                          {/* Accent pill style matching Reference Screenshot 3 */}
                           <div 
                             style={{ backgroundColor: item.accentColor }} 
-                            className="w-6 h-1.5 rounded shrink-0 transition-colors"
+                            className="w-5 h-2 rounded-sm shrink-0 transition-colors"
                           />
                         </div>
                       </div>
 
-                      {/* Vertical Divider 1 */}
-                      {showVerticalLines && (
-                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf] opacity-60" />
-                      )}
-
-                      {/* Middle: Course Code / Subject Name */}
-                      <div className="flex-1 px-4 flex flex-col justify-center text-center select-text">
-                        <div className="font-extrabold text-sm leading-snug">
+                      {/* Middle Column: Course Code & Subject Name */}
+                      <div className="flex-1 px-4 flex flex-col justify-center select-text">
+                        <div className="font-extrabold text-sm leading-tight text-ink">
                           <InlineInput 
                             value={item.courseCode} 
                             onChange={val => updateItemField(item.id, 'courseCode', val)} 
                             disabled={isLocked} 
                           />
                         </div>
-                        <div className="text-[11px] leading-tight font-bold tracking-wide mt-1.5 uppercase opacity-85">
+                        <div className="text-[10px] leading-snug font-bold tracking-wide mt-1 uppercase opacity-80">
                           <InlineInput 
                             value={item.courseName} 
                             onChange={val => updateItemField(item.id, 'courseName', val)} 
@@ -1166,13 +1222,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                       </div>
 
-                      {/* Vertical Divider 2 */}
+                      {/* Vertical Divider (Before Rooms list) */}
                       {showVerticalLines && (
-                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf] opacity-60" />
+                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf]/60" />
                       )}
 
-                      {/* Right: Rooms and Seating */}
-                      <div className="w-[125px] pl-3 flex flex-col justify-center text-center text-xs font-mono font-bold leading-normal select-text whitespace-pre-line opacity-90">
+                      {/* Right Column: Rooms & Capacities */}
+                      <div className="w-[115px] pl-3 flex flex-col justify-center text-xs font-mono font-bold leading-normal select-text whitespace-pre-line opacity-95">
                         <InlineInput 
                           value={item.rooms} 
                           onChange={val => updateItemField(item.id, 'rooms', val)} 

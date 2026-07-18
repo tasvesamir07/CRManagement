@@ -69,6 +69,13 @@ const RoutineManager = () => {
     fetchData();
   }, [fetchData]);
 
+  const handleSaveLayout = (days: string[], slots: Slot[]) => {
+    setCustomDays(days);
+    setCustomSlots(slots);
+    localStorage.setItem('routine_custom_days', JSON.stringify(days));
+    localStorage.setItem('routine_custom_slots', JSON.stringify(slots));
+  };
+
   if (loading) {
     return (
       <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center text-ink-mute text-sm">
@@ -79,12 +86,7 @@ const RoutineManager = () => {
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
-      <div>
-        <h1 className="text-display-md tracking-tight font-sans text-ink">Class Routines</h1>
-        <p className="text-sm text-ink-mute mt-1.5">Design, customize, and export visual class routines directly using the canvas editor.</p>
-      </div>
-
+    <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[calc(100vh-64px)] md:h-[calc(100vh-0px)] overflow-hidden">
       <ClassCanvaEditor 
         routines={routines}
         courses={courses}
@@ -99,6 +101,7 @@ const RoutineManager = () => {
         setBatchCode={setBatchCode}
         setEffectiveDate={setEffectiveDate}
         onRefresh={fetchData}
+        onSaveLayout={handleSaveLayout}
         onClose={() => {}}
       />
     </div>

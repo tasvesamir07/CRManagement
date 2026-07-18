@@ -57,12 +57,7 @@ const ExamRoutineManager = () => {
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
-      <div>
-        <h1 className="text-display-md tracking-tight font-sans text-ink">Exam Routines</h1>
-        <p className="text-sm text-ink-mute mt-1.5">Design, customize, and export visual exam routines directly using the canvas editor.</p>
-      </div>
-
+    <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[calc(100vh-64px)] md:h-[calc(100vh-0px)] overflow-hidden">
       <ExamCanvaEditor 
         routines={routines} 
         courses={courses} 

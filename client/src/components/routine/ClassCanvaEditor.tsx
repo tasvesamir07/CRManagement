@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { routinesAPI, filesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
-  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save
+  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -46,6 +46,7 @@ interface ClassCanvaEditorProps {
   setBatchCode: (val: string) => void;
   setEffectiveDate: (val: string) => void;
   onRefresh: () => Promise<void>;
+  onSaveLayout: (days: string[], slots: Slot[]) => void;
   onClose: () => void;
 }
 
@@ -65,7 +66,7 @@ const FONTS = [
 const CLASS_THEMES = [
   {
     name: 'Classic Green & White',
-    canvasBg: '#1E293B',
+    canvasBg: '#0F172A',
     headerBg: '#1E5A38',
     headerTextColor: '#FFFFFF',
     timeColumnBg: '#F1F5F9',
@@ -168,7 +169,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="bg-white border border-primary text-black focus:outline-none p-0.5 rounded text-center max-w-full font-sans"
+        className="bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit text-center max-w-full"
       />
     );
   }
@@ -200,21 +201,21 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   setBatchCode,
   setEffectiveDate,
   onRefresh,
-  onClose
+  onSaveLayout
 }) => {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Layout and theme states
-  const [selectedFont, setSelectedFont] = useState("'Inter', sans-serif");
-  const [activeTab, setActiveTab] = useState<'theme' | 'headers' | 'cell'>('theme');
+  const [selectedFont, setSelectedFont] = useState("'Montserrat', sans-serif");
+  const [activeTab, setActiveTab] = useState<'theme' | 'headers' | 'grid' | 'cell'>('theme');
   const [zoom, setZoom] = useState(100);
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
   // Active theme properties
-  const [canvasBg, setCanvasBg] = useState('#1E293B');
+  const [canvasBg, setCanvasBg] = useState('#0F172A');
   const [canvasGradient, setCanvasGradient] = useState('');
   const [headerBg, setHeaderBg] = useState('#1E5A38');
   const [headerTextColor, setHeaderTextColor] = useState('#FFFFFF');
@@ -226,6 +227,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [cellTextColor, setCellTextColor] = useState('#1E293B');
   const [borderColor, setBorderColor] = useState('#CBD5E1');
 
+  // Alignment Options
+  const [headerAlign, setHeaderAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [cellAlign, setCellAlign] = useState<'left' | 'center' | 'right'>('center');
+
   // Selected cell position
   const [selectedCell, setSelectedCell] = useState<{ day: string; slot: Slot } | null>(null);
 
@@ -234,6 +239,11 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [formSection, setFormSection] = useState('');
   const [formRoomNumber, setFormRoomNumber] = useState('');
   const [savingCell, setSavingCell] = useState(false);
+
+  // Grid layout add form states
+  const [newDayName, setNewDayName] = useState('');
+  const [newSlotStart, setNewSlotStart] = useState('08:30');
+  const [newSlotEnd, setNewSlotEnd] = useState('10:00');
 
   // Dynamic Font Loader
   useEffect(() => {
@@ -291,7 +301,6 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     setSavingCell(true);
     try {
       const cellClasses = getCellRoutines(selectedCell.day, selectedCell.slot);
-      const matchedCourse = courses.find(c => c.id === parseInt(formCourseId));
       
       const payload = {
         course_id: parseInt(formCourseId),
@@ -303,11 +312,9 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       };
 
       if (cellClasses.length > 0) {
-        // Update existing routine entry
         await routinesAPI.update(cellClasses[0].id, payload);
         toast.success('Updated class schedule entry');
       } else {
-        // Create new routine entry
         await routinesAPI.create(payload);
         toast.success('Created new class schedule entry');
       }
@@ -325,7 +332,6 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       await routinesAPI.delete(routineId);
       toast.success('Removed schedule entry');
       await onRefresh();
-      // Reset form
       setFormCourseId(courses[0]?.id?.toString() || '');
       setFormSection('');
       setFormRoomNumber('');
@@ -334,11 +340,71 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     }
   };
 
+  // Grid Configuration Handlers
+  const handleRenameDay = (idx: number, newName: string) => {
+    const updated = [...customDays];
+    updated[idx] = newName;
+    onSaveLayout(updated, customSlots);
+  };
+
+  const handleDeleteDay = (idx: number) => {
+    if (customDays.length <= 1) {
+      toast.error('Must keep at least one day in the grid');
+      return;
+    }
+    const updated = customDays.filter((_, i) => i !== idx);
+    onSaveLayout(updated, customSlots);
+    toast.success('Day removed from routine grid');
+  };
+
+  const handleAddDay = () => {
+    if (!newDayName.trim()) {
+      toast.error('Day name cannot be empty');
+      return;
+    }
+    if (customDays.map(d => d.toLowerCase()).includes(newDayName.trim().toLowerCase())) {
+      toast.error('Day already exists in layout');
+      return;
+    }
+    const updated = [...customDays, newDayName.trim()];
+    onSaveLayout(updated, customSlots);
+    setNewDayName('');
+    toast.success(`Added ${newDayName.trim()} to routine grid`);
+  };
+
+  const handleRenameSlot = (idx: number, field: keyof Slot, newTime: string) => {
+    const updated = customSlots.map((s, i) => i === idx ? { ...s, [field]: newTime } : s);
+    onSaveLayout(customDays, updated);
+  };
+
+  const handleDeleteSlot = (idx: number) => {
+    if (customSlots.length <= 1) {
+      toast.error('Must keep at least one time slot in the grid');
+      return;
+    }
+    const updated = customSlots.filter((_, i) => i !== idx);
+    onSaveLayout(customDays, updated);
+    toast.success('Time slot removed from grid');
+  };
+
+  const handleAddSlot = () => {
+    if (!newSlotStart || !newSlotEnd) {
+      toast.error('Please specify start and end times');
+      return;
+    }
+    const updated = [...customSlots, { start: newSlotStart, end: newSlotEnd }];
+    // Sort slots chronologically
+    updated.sort((a, b) => a.start.localeCompare(b.start));
+    onSaveLayout(customDays, updated);
+    toast.success('Added new time slot to routine grid');
+  };
+
   // Format time display
   const formatTimeRange = (start: string, end: string) => {
     return `${start} – ${end}`;
   };
 
+  // Apply Theme Palette
   const applyThemePalette = (theme: typeof CLASS_THEMES[number]) => {
     if (theme.canvasBg.includes('gradient')) {
       setCanvasGradient(theme.canvasBg);
@@ -442,13 +508,12 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[750px] animate-in fade-in duration-200">
+    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-y-auto max-h-[850px]">
+      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-hidden">
         
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-hairline flex items-center bg-canvas">
+        <div className="p-4 border-b border-hairline flex items-center bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary animate-pulse" />
             <h2 className="font-bold text-ink">Class Routine Canva Editor</h2>
@@ -456,14 +521,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex border-b border-hairline bg-canvas p-1 gap-1">
+        <div className="flex border-b border-hairline bg-canvas p-1 gap-1 flex-shrink-0">
           <button 
             onClick={() => setActiveTab('theme')}
             className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'theme' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" /> Design Theme
+            <Sliders className="w-3.5 h-3.5" /> Theme
           </button>
           <button 
             onClick={() => setActiveTab('headers')}
@@ -474,22 +539,30 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
             <Type className="w-3.5 h-3.5" /> Titles
           </button>
           <button 
+            onClick={() => setActiveTab('grid')}
+            className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'grid' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" /> Grid Setup
+          </button>
+          <button 
             onClick={() => setActiveTab('cell')}
             className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 relative ${
               activeTab === 'cell' ? 'bg-primary/10 text-primary shadow-sm' : 'text-gray-500 hover:bg-canvas-soft'
             }`}
           >
-            <Grid3X3 className="w-3.5 h-3.5" /> Edit Cell
+            <Grid3X3 className="w-3.5 h-3.5" /> Cell
             {selectedCell && (
               <span className="w-1.5 h-1.5 bg-primary rounded-full absolute top-1 right-2"></span>
             )}
           </button>
         </div>
 
-        {/* Tab Settings Body */}
-        <div className="p-4 space-y-6 flex-1 bg-canvas-soft">
+        {/* Settings Sections (Scrollable) */}
+        <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-canvas-soft">
 
-          {/* TAB 1: DESIGN THEME */}
+          {/* TAB 1: Theme & Style Settings */}
           {activeTab === 'theme' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               
@@ -515,7 +588,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </div>
               </div>
 
-              {/* Font selector */}
+              {/* Font Family Selection */}
               <div className="space-y-1.5 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
                 <select
@@ -535,7 +608,61 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </select>
               </div>
 
-              {/* Background Color Pickers */}
+              {/* Text Alignment */}
+              <div className="space-y-3 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Alignment</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Header text</label>
+                    <div className="flex bg-canvas p-0.5 rounded border border-hairline">
+                      <button 
+                        onClick={() => setHeaderAlign('left')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setHeaderAlign('center')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setHeaderAlign('right')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Grid Cells</label>
+                    <div className="flex bg-canvas p-0.5 rounded border border-hairline">
+                      <button 
+                        onClick={() => setCellAlign('left')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cellAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setCellAlign('center')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cellAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => setCellAlign('right')} 
+                        className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cellAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Colors */}
               <div className="space-y-3 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Custom Color Overrides</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -643,7 +770,116 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
             </div>
           )}
 
-          {/* TAB 3: CELL SCHEDULE EDITOR */}
+          {/* TAB 3: GRID LAYOUT CONFIGURATION (DAYS & TIMINGS) */}
+          {activeTab === 'grid' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              
+              {/* Days Management */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Manage Days</label>
+                <div className="space-y-2 bg-canvas border border-hairline rounded-md p-3.5">
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    {customDays.map((day, idx) => (
+                      <div key={idx} className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={day}
+                          onChange={e => handleRenameDay(idx, e.target.value)}
+                          className="flex-1 h-8 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-semibold"
+                        />
+                        <button
+                          onClick={() => handleDeleteDay(idx)}
+                          className="p-1.5 text-gray-400 hover:text-accent-tomato hover:bg-accent-tomato/5 rounded transition-colors cursor-pointer"
+                          title="Delete Day"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-hairline flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add Day (e.g. Wednesday)"
+                      value={newDayName}
+                      onChange={e => setNewDayName(e.target.value)}
+                      className="flex-1 h-8 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                    />
+                    <button
+                      onClick={handleAddDay}
+                      className="p-2 bg-primary text-on-primary rounded hover:bg-primary-deep cursor-pointer"
+                      title="Add Day"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Time Slots Management */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Manage Time Slots</label>
+                <div className="space-y-2 bg-canvas border border-hairline rounded-md p-3.5">
+                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                    {customSlots.map((slot, idx) => (
+                      <div key={idx} className="flex items-center gap-1 text-xs">
+                        <input
+                          type="text"
+                          value={slot.start}
+                          onChange={e => handleRenameSlot(idx, 'start', e.target.value)}
+                          className="w-16 h-8 text-center border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-mono"
+                        />
+                        <span className="text-gray-400 font-bold">–</span>
+                        <input
+                          type="text"
+                          value={slot.end}
+                          onChange={e => handleRenameSlot(idx, 'end', e.target.value)}
+                          className="w-16 h-8 text-center border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-mono"
+                        />
+                        <button
+                          onClick={() => handleDeleteSlot(idx)}
+                          className="p-1.5 text-gray-400 hover:text-accent-tomato hover:bg-accent-tomato/5 rounded transition-colors cursor-pointer"
+                          title="Delete slot"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-hairline space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs text-ink">
+                      <input
+                        type="text"
+                        placeholder="Start"
+                        value={newSlotStart}
+                        onChange={e => setNewSlotStart(e.target.value)}
+                        className="w-20 h-8 text-center border border-hairline bg-canvas rounded font-mono focus:border-primary focus:outline-none"
+                      />
+                      <span className="text-gray-400 font-bold">–</span>
+                      <input
+                        type="text"
+                        placeholder="End"
+                        value={newSlotEnd}
+                        onChange={e => setNewSlotEnd(e.target.value)}
+                        className="w-20 h-8 text-center border border-hairline bg-canvas rounded font-mono focus:border-primary focus:outline-none"
+                      />
+                      <button
+                        onClick={handleAddSlot}
+                        className="flex-1 h-8 flex items-center justify-center gap-1 bg-primary text-on-primary rounded hover:bg-primary-deep text-xs font-semibold cursor-pointer shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Slot
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 4: CELL SCHEDULE EDITOR */}
           {activeTab === 'cell' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               {selectedCell ? (
@@ -736,10 +972,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-full bg-[#f0f3f5] min-h-[500px]">
+      <div className="lg:col-span-8 flex flex-col h-full bg-[#f8fafc] overflow-hidden">
         
         {/* Toolbar Controls */}
-        <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export">
+        <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
           
           {/* Zoom and Lock toggles */}
           <div className="flex items-center gap-2">
@@ -806,8 +1042,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Workspace */}
-        <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[#f0f3f5]">
+        {/* Scrollable Workspace (Figma Dot Grid Style) */}
+        <div 
+          style={{
+            backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
+            backgroundSize: '16px 16px'
+          }}
+          className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[#f8fafc]"
+        >
           
           {/* Zoom Wrapper */}
           <div 
@@ -824,14 +1066,15 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 width: '750px',
                 fontFamily: selectedFont
               }}
-              className="p-8 space-y-6 shadow-xl relative select-none rounded border border-hairline transition-all duration-300"
+              className="p-8 space-y-6 shadow-2xl relative select-none rounded border border-hairline transition-all duration-300"
             >
               
               {/* Header Box */}
               <div 
                 style={{ 
                   backgroundColor: cellBg,
-                  borderColor: borderColor
+                  borderColor: borderColor,
+                  textAlign: headerAlign
                 }}
                 className="p-5 text-center border transition-all duration-300 shadow-sm rounded-sm"
               >
@@ -923,7 +1166,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                                 borderRight: `1px solid ${borderColor}`,
                                 borderStyle: isSelected ? 'solid' : 'solid',
                                 borderWidth: isSelected ? '2px' : '1px',
-                                borderColor: isSelected ? '#38bdf8' : borderColor
+                                borderColor: isSelected ? '#38bdf8' : borderColor,
+                                textAlign: cellAlign
                               }}
                               className={`p-1.5 text-center text-xs align-middle cursor-pointer transition-all relative group select-none min-w-[100px] h-20 ${
                                 isSelected ? 'shadow-inner' : 'hover:bg-slate-50'
