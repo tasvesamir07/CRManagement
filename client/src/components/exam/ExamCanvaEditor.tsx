@@ -496,15 +496,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
       <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-y-auto max-h-[780px]">
         
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-hairline flex items-center justify-between bg-canvas">
+        <div className="p-4 border-b border-hairline flex items-center bg-canvas">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary animate-pulse" />
             <h2 className="font-bold text-ink">Routine Canva Editor</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-canvas-soft rounded cursor-pointer text-ink-mute hover:text-ink transition-colors">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Tab Controls */}
