@@ -117,7 +117,11 @@ const AttendanceManager = () => {
       if (!filename) {
         const course = courses.find(c => c.id === selectedCourseId);
         const courseCode = course ? course.course_id : `course-${selectedCourseId}`;
-        const cleanDate = date.substring(0, 10);
+        const dateObj = new Date(date);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        const cleanDate = `${day}-${month}-${year}`;
         filename = `${courseCode}_${cleanDate}.pdf`;
       }
 
@@ -186,7 +190,11 @@ const AttendanceManager = () => {
       if (!filename) {
         const course = courses.find(c => c.id === courseId);
         const courseCode = course ? course.course_id : `course-${courseId}`;
-        const cleanDate = dateStr.substring(0, 10);
+        const dateObj = new Date(dateStr);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        const cleanDate = `${day}-${month}-${year}`;
         filename = `${courseCode}_${cleanDate}.pdf`;
       }
 

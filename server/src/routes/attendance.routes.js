@@ -83,8 +83,11 @@ router.get('/course/:courseId/date/:date/pdf', authMiddleware, async (req, res) 
                 section = routineResult.rows[0].section || '';
             }
         }
-        
-        const cleanDate = date.substring(0, 10);
+        const dateObj = new Date(date);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        const cleanDate = `${day}-${month}-${year}`;
         
         const filename = section 
             ? `${courseCode}_${section}_${cleanDate}.pdf`
