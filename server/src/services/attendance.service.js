@@ -80,19 +80,37 @@ async function bulkMarkAttendance({ course_id, date, exam_routine_id, records },
     const results = [];
 
     for (const record of records) {
-        const result = await db.query(
-            `INSERT INTO attendance (student_id, course_id, date, exam_routine_id, status, marked_by, notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (student_id, course_id, date, exam_routine_id)
-             DO UPDATE SET
-                 status = EXCLUDED.status,
-                 marked_by = EXCLUDED.marked_by,
-                 marked_at = NOW(),
-                 notes = EXCLUDED.notes
-             RETURNING *`,
-            [record.student_id, course_id, date, exam_routine_id || null, record.status, userId, record.notes || null]
-        );
-        results.push(result.rows[0]);
+        let existing;
+        if (exam_routine_id) {
+            existing = await db.query(
+                'SELECT id FROM attendance WHERE student_id = $1 AND course_id = $2 AND date = $3 AND exam_routine_id = $4',
+                [record.student_id, course_id, date, exam_routine_id]
+            );
+        } else {
+            existing = await db.query(
+                'SELECT id FROM attendance WHERE student_id = $1 AND course_id = $2 AND date = $3 AND exam_routine_id IS NULL',
+                [record.student_id, course_id, date]
+            );
+        }
+
+        if (existing.rows.length > 0) {
+            const result = await db.query(
+                `UPDATE attendance 
+                 SET status = $1, marked_by = $2, marked_at = NOW(), notes = $3 
+                 WHERE id = $4 
+                 RETURNING *`,
+                [record.status, userId, record.notes || null, existing.rows[0].id]
+            );
+            results.push(result.rows[0]);
+        } else {
+            const result = await db.query(
+                `INSERT INTO attendance (student_id, course_id, date, exam_routine_id, status, marked_by, notes)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 RETURNING *`,
+                [record.student_id, course_id, date, exam_routine_id || null, record.status, userId, record.notes || null]
+            );
+            results.push(result.rows[0]);
+        }
     }
 
     return results;

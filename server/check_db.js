@@ -9,12 +9,22 @@ async function main() {
     });
     
     try {
-        console.log('Updating students where is_active is NULL to true...');
-        const updateRes = await pool.query('UPDATE students SET is_active = true WHERE is_active IS NULL');
-        console.log(`Updated ${updateRes.rowCount} rows.`);
+        console.log('Cleaning up duplicate attendance records...');
+        const deleteRes = await pool.query(`
+            DELETE FROM attendance a
+            WHERE a.id < (
+                SELECT MAX(b.id)
+                FROM attendance b
+                WHERE a.student_id = b.student_id
+                  AND a.course_id = b.course_id
+                  AND a.date = b.date
+                  AND (a.exam_routine_id = b.exam_routine_id OR (a.exam_routine_id IS NULL AND b.exam_routine_id IS NULL))
+            )
+        `);
+        console.log(`Deleted ${deleteRes.rowCount} duplicate rows.`);
         
-        const res = await pool.query('SELECT * FROM students');
-        console.log('Students in database after update:', res.rows);
+        const countRes = await pool.query('SELECT COUNT(*) FROM attendance');
+        console.log('Total attendance rows after cleanup:', countRes.rows[0].count);
     } catch (e) {
         console.error('Error:', e.message);
     } finally {
