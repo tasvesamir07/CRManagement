@@ -87,13 +87,13 @@ const CourseManager = () => {
     if (!(await confirm('Are you sure you want to delete this course? This will also hide its routines.', { title: 'Delete Course', variant: 'danger', confirmLabel: 'Delete' }))) {
       return;
     }
+    const prev = courses;
+    setCourses(prev => prev.filter(c => c.id !== id));
     try {
-      setCourses(prev => prev.filter(c => c.id !== id));
       await coursesAPI.delete(id);
-      fetchCourses(true);
     } catch (e: any) {
+      setCourses(prev);
       toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
-      fetchCourses();
     }
   };
 
@@ -114,13 +114,14 @@ const CourseManager = () => {
       };
 
       if (editId) {
-        await coursesAPI.update(editId, courseData);
+        const updated = await coursesAPI.update(editId, courseData);
+        setCourses(prev => prev.map(c => c.id === editId ? { ...c, ...updated } : c));
       } else {
-        await coursesAPI.create(courseData);
+        const created = await coursesAPI.create(courseData);
+        setCourses(prev => [...prev, created]);
       }
       
       resetForm();
-      fetchCourses();
     } catch (error: any) {
       setErr(error.response?.data?.error || 'Failed to save course. Check for duplicate Course ID.');
     }

@@ -156,13 +156,13 @@ const PlatformManager = () => {
 
   const handleDelete = async (id: string) => {
     if (!(await confirm('Delete this broadcasting channel?', { title: 'Delete Channel', variant: 'danger', confirmLabel: 'Delete' }))) return;
+    const prev = platforms;
+    setPlatforms(prev => prev.filter(p => p.id !== id));
     try {
-      setPlatforms(prev => prev.filter(p => p.id !== id));
       await platformsAPI.delete(id);
-      fetchPlatforms();
     } catch {
+      setPlatforms(prev);
       toast.error('Delete failed');
-      fetchPlatforms();
     }
   };
 
@@ -215,10 +215,14 @@ const PlatformManager = () => {
       let finalChatId = pChatId.trim();
       if (pType === 'telegram' && pTopicId.trim()) finalChatId = `${finalChatId}/${pTopicId.trim()}`;
       const platformData = { platform_name: pName, platform_type: pType, chat_id: finalChatId, description: pDesc, course_id: pCourseId };
-      if (editId) await platformsAPI.update(editId, platformData);
-      else await platformsAPI.create(platformData);
+      if (editId) {
+        const updated = await platformsAPI.update(editId, platformData);
+        setPlatforms(prev => prev.map(p => p.id === editId ? { ...p, ...updated } : p));
+      } else {
+        const created = await platformsAPI.create(platformData);
+        setPlatforms(prev => [...prev, created]);
+      }
       handleCancelForm();
-      fetchPlatforms();
     } catch (error: any) {
       setErr(error.response?.data?.error || 'Operation failed');
     }

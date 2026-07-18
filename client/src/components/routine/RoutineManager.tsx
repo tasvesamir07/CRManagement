@@ -138,13 +138,13 @@ const RoutineManager = () => {
 
   const handleDelete = async (id: number) => {
     if (!(await confirm('Are you sure you want to delete this routine entry?', { title: 'Delete Routine Entry', variant: 'danger', confirmLabel: 'Delete' }))) return;
+    const prev = routines;
+    setRoutines(prev => prev.filter(r => r.id !== id));
     try {
-      setRoutines(prev => prev.filter(r => r.id !== id));
       await routinesAPI.delete(id);
-      fetchData(true);
     } catch (e: any) {
+      setRoutines(prev);
       toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
-      fetchData();
     }
   };
 
@@ -164,10 +164,14 @@ const RoutineManager = () => {
         room_number: roomNumber,
         section: section
       };
-      if (editId) await routinesAPI.update(editId, payload);
-      else await routinesAPI.create(payload);
+      if (editId) {
+        const updated = await routinesAPI.update(editId, payload);
+        setRoutines(prev => prev.map(r => r.id === editId ? { ...r, ...updated } : r));
+      } else {
+        const created = await routinesAPI.create(payload);
+        setRoutines(prev => [...prev, created]);
+      }
       resetForm();
-      fetchData();
     } catch (error: any) {
       setErr(error.response?.data?.error || 'Failed to save routine entry.');
     }
@@ -199,6 +203,10 @@ const RoutineManager = () => {
     if (!draggedRoutine) return;
     const currentStart = draggedRoutine.start_time.substring(0, 5);
     if (draggedRoutine.day_of_week.toLowerCase() === day.toLowerCase() && currentStart === slot.start) return;
+    const prev = routines;
+    setRoutines(prev => prev.map(r =>
+      r.id === routineId ? { ...r, day_of_week: day, start_time: slot.start, end_time: slot.end } : r
+    ));
     try {
       await routinesAPI.update(routineId, {
         course_id: draggedRoutine.course_id,
@@ -208,8 +216,8 @@ const RoutineManager = () => {
         room_number: draggedRoutine.room_number,
         section: draggedRoutine.section || ''
       });
-      fetchData();
     } catch (err: any) {
+      setRoutines(prev);
       toast.error('Failed to move class: ' + (err.response?.data?.error || err.message));
     }
   };

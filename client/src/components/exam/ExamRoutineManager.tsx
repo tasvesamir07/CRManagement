@@ -96,11 +96,13 @@ const ExamRoutineManager = () => {
 
   const handleDelete = async (id: number) => {
     if (!(await confirm('Delete this exam routine?', { title: 'Delete Exam Routine', variant: 'danger', confirmLabel: 'Delete' }))) return;
+    const prev = routines;
+    setRoutines(prev => prev.filter(r => r.id !== id));
     try {
       await examRoutinesAPI.delete(id);
       toast.success('Exam routine deleted');
-      fetchData();
     } catch (e: any) {
+      setRoutines(prev);
       toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
     }
   };
@@ -123,11 +125,15 @@ const ExamRoutineManager = () => {
         section: formData.section || null,
         instructions: formData.instructions || null
       };
-      if (editId) await examRoutinesAPI.update(editId, payload);
-      else await examRoutinesAPI.create(payload);
+      if (editId) {
+        const updated = await examRoutinesAPI.update(editId, payload);
+        setRoutines(prev => prev.map(r => r.id === editId ? { ...r, ...updated } : r));
+      } else {
+        const created = await examRoutinesAPI.create(payload);
+        setRoutines(prev => [...prev, created]);
+      }
       toast.success(editId ? 'Exam routine updated' : 'Exam routine created');
       resetForm();
-      fetchData();
     } catch (e: any) {
       setErr(e.response?.data?.error || 'Failed to save exam routine');
     }

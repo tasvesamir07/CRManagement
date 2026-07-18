@@ -107,11 +107,13 @@ const StudentManager = () => {
 
   const handleDelete = async (id: number) => {
     if (!(await confirm('Delete this student? This will remove all attendance records.', { title: 'Delete Student', variant: 'danger', confirmLabel: 'Delete' }))) return;
+    const prev = students;
+    setStudents(prev => prev.filter(s => s.id !== id));
     try {
       await studentsAPI.delete(id);
       toast.success('Student deleted');
-      fetchData();
     } catch (e: any) {
+      setStudents(prev);
       toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
     }
   };
@@ -135,20 +137,21 @@ const StudentManager = () => {
       };
 
       if (editId) {
-        await studentsAPI.updateWithCourses(editId, {
+        const updated = await studentsAPI.updateWithCourses(editId, {
           ...payload,
           course_ids: selectedEnrollCourseIds,
         });
+        setStudents(prev => prev.map(s => s.id === editId ? { ...s, ...updated } : s));
         toast.success('Student updated');
       } else {
         const student = await studentsAPI.create(payload);
         if (selectedEnrollCourseIds.length > 0) {
           await studentsAPI.enrollCourses(student.id, selectedEnrollCourseIds);
         }
+        setStudents(prev => [...prev, { ...student, is_active: true }]);
         toast.success('Student created');
       }
       resetForm();
-      fetchData();
     } catch (e: any) {
       setErr(e.response?.data?.error || 'Failed to save student');
     }
@@ -228,7 +231,7 @@ const StudentManager = () => {
           );
         }
 
-        fetchData();
+        setStudents(prev => [...result.created, ...prev]);
       }, 400);
     } catch (e: any) {
       clearInterval(ticker);

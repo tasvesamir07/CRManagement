@@ -162,7 +162,6 @@ export default function useDashboardData(navigate: (path: string) => void) {
         }
         return ann;
       }));
-      fetchDataRef.current(true);
     }
   }, []);
 
@@ -179,13 +178,13 @@ export default function useDashboardData(navigate: (path: string) => void) {
 
   const handleDeleteAnnouncement = async (id: number | string) => {
     if (!(await confirm('Are you sure you want to delete this broadcast notice from history?', { title: 'Delete Notice', variant: 'danger', confirmLabel: 'Delete' }))) return;
+    const prev = announcements;
+    setAnnouncements(prev => prev.filter(ann => ann.id !== id));
     try {
-      setAnnouncements(prev => prev.filter(ann => ann.id !== id));
       await announcementsAPI.delete(id);
-      fetchData(true);
     } catch (e) {
+      setAnnouncements(prev);
       toast.error('Delete failed: ' + ((e as any).response?.data?.error || (e as any).message));
-      fetchData();
     }
   };
 
