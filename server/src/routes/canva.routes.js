@@ -12,7 +12,7 @@ router.get('/auth', authMiddleware, async (req, res) => {
     const state = crypto.randomBytes(32).toString('hex');
 
     await db.query(
-      'INSERT INTO canva_oauth_states (user_id, state, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))',
+      'INSERT INTO canva_oauth_states (user_id, state, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'10 minutes\')',
       [req.user.id, state]
     );
 
@@ -32,22 +32,23 @@ router.get('/callback', async (req, res) => {
       return res.status(400).json({ error: 'Missing code or state parameter' });
     }
 
-    const [rows] = await db.query(
-      'SELECT * FROM canva_oauth_states WHERE state = ? AND expires_at > NOW() LIMIT 1',
+    const result = await db.query(
+      'SELECT * FROM canva_oauth_states WHERE state = $1 AND expires_at > NOW() LIMIT 1',
       [state]
     );
+    const rows = result.rows;
 
     if (!rows.length) {
       return res.status(400).json({ error: 'Invalid or expired state' });
     }
 
-    await db.query('DELETE FROM canva_oauth_states WHERE state = ?', [state]);
+    await db.query('DELETE FROM canva_oauth_states WHERE state = $1', [state]);
 
     const tokens = await canvaService.exchangeCode(code);
 
     await db.query(
-      'INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-      [`canva_tokens_${rows[0].user_id}`, JSON.stringify(tokens), JSON.stringify(tokens)]
+      'INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+      [`canva_tokens_${rows[0].user_id}`, JSON.stringify(tokens)]
     );
 
     res.redirect('/settings?canva=connected');
@@ -58,9 +59,10 @@ router.get('/callback', async (req, res) => {
 
 router.get('/templates', authMiddleware, async (req, res) => {
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM canva_templates WHERE is_active = 1 ORDER BY created_at DESC'
+    const result = await db.query(
+      'SELECT * FROM canva_templates WHERE is_active = true ORDER BY created_at DESC'
     );
+    const rows = result.rows;
 
     res.json({ templates: rows });
   } catch (err) {
@@ -72,12 +74,12 @@ router.post('/templates', authMiddleware, validate(schemas.canva.saveTemplate), 
   try {
     const { canva_template_id, name, dataset } = req.body;
 
-    const [result] = await db.query(
-      'INSERT INTO canva_templates (user_id, canva_template_id, name, dataset, is_active) VALUES (?, ?, ?, ?, 1)',
+    const result = await db.query(
+      'INSERT INTO canva_templates (user_id, canva_template_id, name, dataset, is_active) VALUES ($1, $2, $3, $4, true) RETURNING id',
       [req.user.id, canva_template_id, name, dataset ? JSON.stringify(dataset) : null]
     );
 
-    res.status(201).json({ id: result.insertId, canva_template_id, name });
+    res.status(201).json({ id: result.rows[0].id, canva_template_id, name });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -85,10 +87,11 @@ router.post('/templates', authMiddleware, validate(schemas.canva.saveTemplate), 
 
 router.get('/templates/:id/dataset', authMiddleware, async (req, res) => {
   try {
-    const [templates] = await db.query(
-      'SELECT * FROM canva_templates WHERE id = ? AND is_active = 1 LIMIT 1',
+    const result = await db.query(
+      'SELECT * FROM canva_templates WHERE id = $1 AND is_active = true LIMIT 1',
       [req.params.id]
     );
+    const templates = result.rows;
 
     if (!templates.length) {
       return res.status(404).json({ error: 'Template not found' });
@@ -96,16 +99,17 @@ router.get('/templates/:id/dataset', authMiddleware, async (req, res) => {
 
     const template = templates[0];
 
-    const [settings] = await db.query(
-      'SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1',
+    const settingsResult = await db.query(
+      'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
       [`canva_tokens_${req.user.id}`]
     );
+    const settings = settingsResult.rows;
 
     if (!settings.length) {
       return res.status(401).json({ error: 'Canva not connected. Please authenticate first.' });
     }
 
-    const tokens = JSON.parse(settings[0].setting_value);
+    const tokens = JSON.parse(settings[0].value);
     const dataset = await canvaService.getTemplateDataset(template.canva_template_id, tokens);
 
     res.json({ dataset });
@@ -118,10 +122,11 @@ router.post('/generate-pdf', authMiddleware, validate(schemas.canva.generatePdf)
   try {
     const { template_id, data } = req.body;
 
-    const [templates] = await db.query(
-      'SELECT * FROM canva_templates WHERE id = ? AND is_active = 1 LIMIT 1',
+    const result = await db.query(
+      'SELECT * FROM canva_templates WHERE id = $1 AND is_active = true LIMIT 1',
       [template_id]
     );
+    const templates = result.rows;
 
     if (!templates.length) {
       return res.status(404).json({ error: 'Template not found' });
@@ -129,16 +134,17 @@ router.post('/generate-pdf', authMiddleware, validate(schemas.canva.generatePdf)
 
     const template = templates[0];
 
-    const [settings] = await db.query(
-      'SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1',
+    const settingsResult = await db.query(
+      'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
       [`canva_tokens_${req.user.id}`]
     );
+    const settings = settingsResult.rows;
 
     if (!settings.length) {
       return res.status(401).json({ error: 'Canva not connected. Please authenticate first.' });
     }
 
-    const tokens = JSON.parse(settings[0].setting_value);
+    const tokens = JSON.parse(settings[0].value);
     const pdfBuffer = await canvaService.generatePdfFromTemplate(template.canva_template_id, data, tokens);
 
     res.set({

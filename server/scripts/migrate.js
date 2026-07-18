@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -220,14 +221,27 @@ async function migrate() {
             CREATE TABLE IF NOT EXISTS canva_templates (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
-                template_type TEXT NOT NULL CHECK (template_type IN ('attendance', 'exam_routine')),
+                template_type TEXT,
                 canva_template_id TEXT NOT NULL,
                 canva_design_id TEXT,
-                variables JSONB DEFAULT '[]',
+                dataset JSONB DEFAULT '[]',
                 is_active BOOLEAN DEFAULT true,
-                created_by INTEGER REFERENCES users(id),
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            CREATE TABLE IF NOT EXISTS canva_oauth_states (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                state TEXT NOT NULL UNIQUE,
+                expires_at TIMESTAMPTZ NOT NULL
+            );
+
+            -- Alter tables for compatibility if they already exist
+            ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+            ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS dataset JSONB DEFAULT '[]';
+            ALTER TABLE canva_templates ALTER COLUMN template_type DROP NOT NULL;
+            ALTER TABLE canva_templates DROP CONSTRAINT IF EXISTS canva_templates_template_type_check;
         `);
 
         // Seed default admin user if not exists (password: admin123)
