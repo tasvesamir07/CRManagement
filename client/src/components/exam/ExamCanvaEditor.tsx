@@ -4,7 +4,7 @@ import { filesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
-  ZoomIn, ZoomOut, Check, Sparkles, Sliders, Type, Grid3X3
+  ZoomIn, ZoomOut, Sparkles, Sliders, Type, Grid3X3, Check
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -68,8 +68,72 @@ const CANVAS_BG_PRESETS = [
   { name: 'Ocean Breeze', value: '', gradient: 'linear-gradient(135deg, #E0F2FE 0%, #DBEAFE 100%)' },
   { name: 'Forest Fog', value: '', gradient: 'linear-gradient(135deg, #ECFDF5 0%, #E0F2FE 100%)' },
   { name: 'Pure White', value: '#FFFFFF', gradient: '' },
-  { name: 'Dark Slate', value: '#1E293B', gradient: '' }
+  { name: 'Dark Slate', value: '#0F172A', gradient: '' }
 ];
+
+// Predefined Theme Palettes
+const THEME_PALETTES = [
+  {
+    name: 'Classic Canva Blue-Gray',
+    canvasBg: '#E4ECF0',
+    canvasGradient: '',
+    cardBg: '#FFFFFF',
+    cardTextColor: '#171717',
+    cardBorderType: 'none',
+    cardShadow: 'shadow-sm',
+    cardBorderColor: '#dfdfdf'
+  },
+  {
+    name: 'Retro Warm Cream',
+    canvasBg: '#F9F6F0',
+    canvasGradient: '',
+    cardBg: '#FFFFFF',
+    cardTextColor: '#2B2A27',
+    cardBorderType: 'hairline',
+    cardShadow: 'shadow-md',
+    cardBorderColor: '#E6E2D8'
+  },
+  {
+    name: 'Modern Dark Slate',
+    canvasBg: '#0F172A',
+    canvasGradient: '',
+    cardBg: '#1E293B',
+    cardTextColor: '#F8FAFC',
+    cardBorderType: 'none',
+    cardShadow: 'shadow-lg',
+    cardBorderColor: '#334155'
+  },
+  {
+    name: 'Lavender Breeze',
+    canvasBg: '#F3E8FF',
+    canvasGradient: 'linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%)',
+    cardBg: 'rgba(255, 255, 255, 0.92)',
+    cardTextColor: '#581C87',
+    cardBorderType: 'accent',
+    cardShadow: 'shadow-sm',
+    cardBorderColor: '#D8B4FE'
+  },
+  {
+    name: 'Forest Mint',
+    canvasBg: '#ECFDF5',
+    canvasGradient: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+    cardBg: '#FFFFFF',
+    cardTextColor: '#064E3B',
+    cardBorderType: 'hairline',
+    cardShadow: 'shadow-sm',
+    cardBorderColor: '#A7F3D0'
+  },
+  {
+    name: 'Sunset Glassmorphism',
+    canvasBg: '#FEF3C7',
+    canvasGradient: 'linear-gradient(135deg, #FFE4E6 0%, #FFEDD5 100%)',
+    cardBg: 'rgba(255, 255, 255, 0.8)',
+    cardTextColor: '#7C2D12',
+    cardBorderType: 'none',
+    cardShadow: 'shadow-md',
+    cardBorderColor: '#fed7aa'
+  }
+] as const;
 
 // Google Fonts list for Canva Routine Designer
 const FONTS = [
@@ -164,6 +228,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   // Editor states
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'theme' | 'headers' | 'exams'>('theme');
   
   // Canvas customizer states
   const [headerTitle, setHeaderTitle] = useState('MID - EXAM');
@@ -233,12 +298,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   // Initialize Canvas items from prop routines
   useEffect(() => {
     const formattedItems = routines.map((r, index) => {
-      // Parse rooms list: DB may have "814A - 9, 814B - 12" -> join with \n
       const rooms = r.room_number 
         ? r.room_number.split(',').map(s => s.trim()).join('\n') 
         : '';
       
-      // Preset color cycle
       const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length].value;
 
       return {
@@ -254,12 +317,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
     setItems(formattedItems);
 
-    // Try to pre-fill header/footer from active routine details if possible
     if (routines.length > 0) {
       const type = routines[0].exam_type || 'MID';
       setHeaderTitle(`${type.toUpperCase()} - EXAM`);
       
-      // If we find any section in routine
       const sections = Array.from(new Set(routines.map(r => r.section).filter(Boolean)));
       if (sections.length > 0) {
         setFooterLeft(`SECTION - ${sections.join(' & ')}`);
@@ -293,6 +354,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     };
     setItems([...items, newItem]);
     setSelectedItemId(newItem.id);
+    setActiveTab('exams');
     toast.success('Added new routine card');
   };
 
@@ -308,6 +370,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     updated.splice(index + 1, 0, duplicate);
     setItems(updated);
     setSelectedItemId(duplicate.id);
+    setActiveTab('exams');
     toast.success('Card duplicated');
   };
 
@@ -323,25 +386,40 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  // Get active item
+  // Set predefined theme palette
+  const applyThemePalette = (palette: typeof THEME_PALETTES[number]) => {
+    setBgColor(palette.canvasBg);
+    setBgGradient(palette.canvasGradient);
+    setCardBg(palette.cardBg);
+    setCardTextColor(palette.cardTextColor);
+    setCardBorderType(palette.cardBorderType);
+    setCardShadow(palette.cardShadow);
+    setCardBorderColor(palette.cardBorderColor);
+    toast.success(`Applied ${palette.name} theme!`);
+  };
+
+  // Select card on canvas
+  const handleSelectCard = (id: string) => {
+    setSelectedItemId(id);
+    setActiveTab('exams'); // Automatically focus the exams editor tab
+  };
+
   const selectedItem = items.find(item => item.id === selectedItemId);
 
   // Capture Canvas Node for exporting
   const captureCanvasBlob = async (): Promise<Blob | null> => {
     if (!canvasRef.current) return null;
     
-    // Temporarily hide border outline and editor-specific widgets on cards during capture
     const origTransform = canvasRef.current.style.transform;
     const origWidth = canvasRef.current.style.width;
     
-    // Render at 100% zoom scale for export
     canvasRef.current.style.transform = 'none';
     canvasRef.current.style.width = '550px';
     
     try {
       const dataUrl = await toPng(canvasRef.current, {
         quality: 0.95,
-        pixelRatio: 2, // High resolution output
+        pixelRatio: 2, 
         style: {
           transform: 'none',
           width: '550px',
@@ -394,10 +472,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       const fileName = `exam-routine-${headerSubtitle.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'design'}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
       
-      // Upload to file server
       const uploadedFileRecord = await filesAPI.upload(file, null);
       
-      // Navigate to broadcasting notice compose page with prefilled parameters
       navigate('/announcement/new', {
         state: {
           preFillTitle: `${headerTitle} - ${headerSubtitle}`,
@@ -423,342 +499,477 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         {/* Sidebar Header */}
         <div className="p-4 border-b border-hairline flex items-center justify-between bg-canvas">
           <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-primary" />
+            <Palette className="w-5 h-5 text-primary animate-pulse" />
             <h2 className="font-bold text-ink">Routine Canva Editor</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-ink-mute hover:text-ink">
+          <button onClick={onClose} className="p-1.5 hover:bg-canvas-soft rounded cursor-pointer text-ink-mute hover:text-ink transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Tab Controls */}
+        <div className="flex border-b border-hairline bg-canvas p-1 gap-1">
+          <button 
+            onClick={() => setActiveTab('theme')}
+            className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'theme' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" /> Style Theme
+          </button>
+          <button 
+            onClick={() => setActiveTab('headers')}
+            className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'headers' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+            }`}
+          >
+            <Type className="w-3.5 h-3.5" /> Titles
+          </button>
+          <button 
+            onClick={() => setActiveTab('exams')}
+            className={`flex-1 py-2 text-xs font-semibold rounded transition-all cursor-pointer flex items-center justify-center gap-1.5 relative ${
+              activeTab === 'exams' ? 'bg-primary/10 text-primary shadow-sm' : 'text-ink-mute hover:bg-canvas-soft'
+            }`}
+          >
+            <Grid3X3 className="w-3.5 h-3.5" /> Exams ({items.length})
+            {selectedItemId && (
+              <span className="w-1.5 h-1.5 bg-primary rounded-full absolute top-1 right-2"></span>
+            )}
+          </button>
+        </div>
+
         {/* Settings Sections */}
-        <div className="p-4 space-y-6 flex-1">
+        <div className="p-4 space-y-6 flex-1 bg-canvas-soft">
 
-          {/* Section: Templates & Colors */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-mute flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5" /> Canvas & Card Theme
-            </h3>
-            
-            {/* Background Presets */}
-            <div>
-              <label className="block text-xs text-ink-mute mb-1 font-medium">Canvas Background</label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {CANVAS_BG_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setBgColor(preset.value);
-                      setBgGradient(preset.gradient);
-                    }}
-                    style={{ background: preset.gradient || preset.value }}
-                    className={`h-7 rounded border shadow-sm hover:scale-105 transition-transform cursor-pointer ${
-                      (preset.gradient && bgGradient === preset.gradient) || (!preset.gradient && bgColor === preset.value && !bgGradient)
-                        ? 'border-primary ring-1 ring-primary'
-                        : 'border-hairline'
-                    }`}
-                    title={preset.name}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Font Family Selection */}
-            <div>
-              <label className="block text-xs text-ink-mute mb-1 font-medium">Font Family</label>
-              <select
-                value={selectedFont}
-                onChange={e => setSelectedFont(e.target.value)}
-                className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-              >
-                {FONTS.map(f => (
-                  <option key={f.family} value={f.family}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Custom Color Pickers */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs text-ink-mute mb-1 font-medium">Custom Card Bg</label>
-                <div className="flex gap-2 items-center">
-                  <input 
-                    type="color" 
-                    value={cardBg} 
-                    onChange={e => setCardBg(e.target.value)} 
-                    className="w-8 h-8 rounded border border-hairline p-0.5 bg-canvas cursor-pointer"
-                  />
-                  <span className="text-xs font-mono">{cardBg}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-ink-mute mb-1 font-medium">Card Text Color</label>
-                <div className="flex gap-2 items-center">
-                  <input 
-                    type="color" 
-                    value={cardTextColor} 
-                    onChange={e => setCardTextColor(e.target.value)} 
-                    className="w-8 h-8 rounded border border-hairline p-0.5 bg-canvas cursor-pointer"
-                  />
-                  <span className="text-xs font-mono">{cardTextColor}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card Layout Customizations */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs text-ink-mute mb-1 font-medium">Corner Roundedness</label>
-                <select 
-                  value={cardRoundedness} 
-                  onChange={e => setCardRoundedness(e.target.value)}
-                  className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded"
-                >
-                  <option value="0px">Sharp (0px)</option>
-                  <option value="4px">Small (4px)</option>
-                  <option value="8px">Medium (8px)</option>
-                  <option value="12px">Large (12px)</option>
-                  <option value="20px">Extra Rounded (20px)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-ink-mute mb-1 font-medium">Card Shadow</label>
-                <select 
-                  value={cardShadow} 
-                  onChange={e => setCardShadow(e.target.value)}
-                  className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded"
-                >
-                  <option value="shadow-none">None</option>
-                  <option value="shadow-sm">Soft / Subtle</option>
-                  <option value="shadow-md">Medium</option>
-                  <option value="shadow-lg">Large</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs text-ink-mute mb-1 font-medium">Card Border Style</label>
-                <select 
-                  value={cardBorderType} 
-                  onChange={e => setCardBorderType(e.target.value as any)}
-                  className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded"
-                >
-                  <option value="none">No Border</option>
-                  <option value="hairline">Light Border</option>
-                  <option value="accent">Match Accent Bar Color</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2 pt-5">
-                <input 
-                  type="checkbox" 
-                  id="v-lines"
-                  checked={showVerticalLines}
-                  onChange={e => setShowVerticalLines(e.target.checked)}
-                  className="rounded border-hairline text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                />
-                <label htmlFor="v-lines" className="text-xs text-ink select-none cursor-pointer font-medium">Vertical Dividers</label>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Text Customizer */}
-          <div className="space-y-3 pt-2 border-t border-hairline">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-mute flex items-center gap-1.5">
-              <Type className="w-3.5 h-3.5" /> Header & Footer Texts
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Title</label>
-                <input 
-                  type="text" 
-                  value={headerTitle} 
-                  onChange={e => setHeaderTitle(e.target.value)}
-                  className="w-full h-8 px-2 text-xs border border-hairline bg-canvas rounded focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Subtitle</label>
-                <input 
-                  type="text" 
-                  value={headerSubtitle} 
-                  onChange={e => setHeaderSubtitle(e.target.value)}
-                  className="w-full h-8 px-2 text-xs border border-hairline bg-canvas rounded focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Left</label>
-                <input 
-                  type="text" 
-                  value={footerLeft} 
-                  onChange={e => setFooterLeft(e.target.value)}
-                  className="w-full h-8 px-2 text-xs border border-hairline bg-canvas rounded focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Right</label>
-                <input 
-                  type="text" 
-                  value={footerRight} 
-                  onChange={e => setFooterRight(e.target.value)}
-                  className="w-full h-8 px-2 text-xs border border-hairline bg-canvas rounded focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Selected Exam Card Options */}
-          <div className="space-y-3 pt-2 border-t border-hairline">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-mute flex items-center gap-1.5">
-              <Grid3X3 className="w-3.5 h-3.5" /> Selected Item Editor
-            </h3>
-            {selectedItem ? (
-              <div className="bg-canvas border border-hairline rounded-md p-3 space-y-3 shadow-sm">
-                
-                {/* Registered Course Autofill */}
-                {courses.length > 0 && (
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Autofill from Registered Courses</label>
-                    <select
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (!val) return;
-                        const selected = courses.find(c => c.course_id === val);
-                        if (selected) {
-                          updateItemField(selectedItem.id, 'courseCode', selected.course_id);
-                          updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
-                        }
-                        e.target.value = ''; // Reset selection
-                      }}
-                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+          {/* TAB 1: Theme & Style Settings */}
+          {activeTab === 'theme' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              
+              {/* Theme Palettes */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Palette Presets</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {THEME_PALETTES.map((palette, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => applyThemePalette(palette)}
+                      className="text-left p-2 rounded border border-hairline bg-canvas hover:border-primary transition-all duration-150 cursor-pointer text-xs font-medium space-y-1 shadow-sm hover:shadow"
                     >
-                      <option value="">-- Select a registered course --</option>
-                      {courses.map(c => (
-                        <option key={c.id} value={c.course_id}>
-                          {c.course_id} - {c.course_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Course Details */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold text-ink-mute">Course Code</label>
-                    <input 
-                      type="text" 
-                      value={selectedItem.courseCode} 
-                      onChange={e => updateItemField(selectedItem.id, 'courseCode', e.target.value)}
-                      className="w-full h-7 px-1.5 text-xs border border-hairline bg-canvas rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold text-ink-mute">Exam Date</label>
-                    <input 
-                      type="text" 
-                      value={selectedItem.examDate} 
-                      onChange={e => updateItemField(selectedItem.id, 'examDate', e.target.value)}
-                      className="w-full h-7 px-1.5 text-xs border border-hairline bg-canvas rounded"
-                    />
-                  </div>
+                      <div className="truncate font-semibold text-ink-secondary">{palette.name}</div>
+                      <div className="flex gap-1 h-3.5 items-center">
+                        <span style={{ background: palette.canvasBg }} className="w-3.5 h-3.5 rounded-full border border-hairline shrink-0" />
+                        <span style={{ backgroundColor: palette.cardBg }} className="w-3.5 h-3.5 rounded-full border border-hairline shrink-0" />
+                        <span style={{ backgroundColor: palette.cardTextColor }} className="w-3.5 h-3.5 rounded-full border border-hairline shrink-0" />
+                        {palette.cardBorderColor && (
+                          <span style={{ backgroundColor: palette.cardBorderColor }} className="w-3.5 h-3.5 rounded-full border border-hairline shrink-0" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Course Name</label>
-                  <input 
-                    type="text" 
-                    value={selectedItem.courseName} 
-                    onChange={e => updateItemField(selectedItem.id, 'courseName', e.target.value)}
-                    className="w-full h-7 px-1.5 text-xs border border-hairline bg-canvas rounded"
-                  />
-                </div>
+              {/* Font Family Selection */}
+              <div className="space-y-1.5 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
+                <select
+                  value={selectedFont}
+                  onChange={e => setSelectedFont(e.target.value)}
+                  className="w-full h-9 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+                >
+                  {FONTS.map(f => (
+                    <option 
+                      key={f.family} 
+                      value={f.family}
+                      style={{ fontFamily: f.family }}
+                    >
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] uppercase font-bold text-ink-mute">Time</label>
-                    <input 
-                      type="text" 
-                      value={selectedItem.examTime} 
-                      onChange={e => updateItemField(selectedItem.id, 'examTime', e.target.value)}
-                      className="w-full h-7 px-1.5 text-xs border border-hairline bg-canvas rounded"
+              {/* Background Presets */}
+              <div className="space-y-1.5 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Canvas Background</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {CANVAS_BG_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setBgColor(preset.value);
+                        setBgGradient(preset.gradient);
+                      }}
+                      style={{ background: preset.gradient || preset.value }}
+                      className={`h-7 rounded border shadow-sm hover:scale-105 transition-transform cursor-pointer ${
+                        (preset.gradient && bgGradient === preset.gradient) || (!preset.gradient && bgColor === preset.value && !bgGradient)
+                          ? 'border-primary ring-1 ring-primary'
+                          : 'border-hairline'
+                      }`}
+                      title={preset.name}
                     />
-                  </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Colors */}
+              <div className="space-y-2 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Custom Colors</label>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[9px] uppercase font-bold text-ink-mute">Accent Bar Color</label>
-                    <div className="relative">
+                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Custom Card Bg</label>
+                    <div className="flex gap-2 items-center bg-canvas p-1 rounded border border-hairline">
                       <input 
                         type="color" 
-                        value={selectedItem.accentColor} 
-                        onChange={e => updateItemField(selectedItem.id, 'accentColor', e.target.value)}
-                        className="w-full h-7 rounded border border-hairline bg-canvas cursor-pointer p-0"
+                        value={cardBg} 
+                        onChange={e => setCardBg(e.target.value)} 
+                        className="w-6 h-6 rounded border border-hairline cursor-pointer p-0 shrink-0"
                       />
+                      <span className="text-[10px] font-mono font-semibold text-ink">{cardBg}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Text Color</label>
+                    <div className="flex gap-2 items-center bg-canvas p-1 rounded border border-hairline">
+                      <input 
+                        type="color" 
+                        value={cardTextColor} 
+                        onChange={e => setCardTextColor(e.target.value)} 
+                        className="w-6 h-6 rounded border border-hairline cursor-pointer p-0 shrink-0"
+                      />
+                      <span className="text-[10px] font-mono font-semibold text-ink">{cardTextColor}</span>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Rooms List */}
-                <div>
-                  <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Rooms & Counts (one per line)</label>
-                  <textarea 
-                    value={selectedItem.rooms} 
-                    onChange={e => updateItemField(selectedItem.id, 'rooms', e.target.value)}
-                    className="w-full p-1.5 text-xs border border-hairline bg-canvas rounded font-mono"
-                    rows={3}
-                  />
-                </div>
-
-                {/* Accent Color Preset Selector */}
-                <div>
-                  <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Color Accent Presets</label>
-                  <div className="flex flex-wrap gap-1">
-                    {ACCENT_COLORS.map(color => (
-                      <button
-                        key={color.value}
-                        onClick={() => updateItemField(selectedItem.id, 'accentColor', color.value)}
-                        style={{ backgroundColor: color.value }}
-                        className={`w-6 h-6 rounded-full border border-hairline hover:scale-110 transition-transform cursor-pointer ${
-                          selectedItem.accentColor === color.value ? 'ring-2 ring-primary border-white' : ''
-                        }`}
-                        title={color.name}
-                      />
-                    ))}
+              {/* Layout styling overrides */}
+              <div className="space-y-3 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Card Styles</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Corner Rounded</label>
+                    <select 
+                      value={cardRoundedness} 
+                      onChange={e => setCardRoundedness(e.target.value)}
+                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+                    >
+                      <option value="0px">Sharp (0px)</option>
+                      <option value="4px">Small (4px)</option>
+                      <option value="8px">Medium (8px)</option>
+                      <option value="12px">Large (12px)</option>
+                      <option value="20px">Extra (20px)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Shadow</label>
+                    <select 
+                      value={cardShadow} 
+                      onChange={e => setCardShadow(e.target.value)}
+                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+                    >
+                      <option value="shadow-none">None</option>
+                      <option value="shadow-sm">Soft / Subtle</option>
+                      <option value="shadow-md">Medium</option>
+                      <option value="shadow-lg">Large</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* Duplicate/Delete quick buttons */}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      const idx = items.findIndex(item => item.id === selectedItemId);
-                      if (idx !== -1) handleDuplicateItem(idx);
-                    }}
-                    className="flex-1 py-1 px-2 border border-hairline rounded text-[10px] font-semibold text-ink bg-canvas hover:bg-canvas-soft transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3 text-ink-mute" /> Duplicate Card
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(selectedItem.id)}
-                    className="py-1 px-2 border border-accent-tomato/20 rounded text-[10px] font-semibold text-accent-tomato bg-accent-tomato/5 hover:bg-accent-tomato/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Remove
-                  </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-ink-mute mb-1 font-semibold">Card Border</label>
+                    <select 
+                      value={cardBorderType} 
+                      onChange={e => setCardBorderType(e.target.value as any)}
+                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+                    >
+                      <option value="none">No Border</option>
+                      <option value="hairline">Light Border</option>
+                      <option value="accent">Match Accent Bar</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 pt-5 select-none">
+                    <input 
+                      type="checkbox" 
+                      id="v-lines"
+                      checked={showVerticalLines}
+                      onChange={e => setShowVerticalLines(e.target.checked)}
+                      className="rounded border-hairline text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor="v-lines" className="text-xs text-ink-secondary cursor-pointer font-semibold">Vertical Dividers</label>
+                  </div>
                 </div>
+              </div>
 
+            </div>
+          )}
+
+          {/* TAB 2: Header & Footer Text Customization */}
+          {activeTab === 'headers' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Header Configuration</label>
+                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Main Title</label>
+                    <input 
+                      type="text" 
+                      value={headerTitle} 
+                      onChange={e => setHeaderTitle(e.target.value)}
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Header Subtitle</label>
+                    <input 
+                      type="text" 
+                      value={headerSubtitle} 
+                      onChange={e => setHeaderSubtitle(e.target.value)}
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="border border-dashed border-hairline rounded-md p-6 text-center text-xs text-ink-mute">
-                Click any exam card in the canvas layout to customize its individual code, name, dates, rooms, or accent color.
+
+              <div className="space-y-3 pt-2">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Footer Configuration</label>
+                <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Left Text</label>
+                    <input 
+                      type="text" 
+                      value={footerLeft} 
+                      onChange={e => setFooterLeft(e.target.value)}
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Footer Right Text</label>
+                    <input 
+                      type="text" 
+                      value={footerRight} 
+                      onChange={e => setFooterRight(e.target.value)}
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* TAB 3: Exams Cards and Selection Editor */}
+          {activeTab === 'exams' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              
+              {/* Selected Exam Editor Panel */}
+              {selectedItem ? (
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-ink uppercase tracking-wide flex items-center justify-between">
+                    <span>Card Customizer</span>
+                    <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">Editing Selected</span>
+                  </label>
+
+                  <div className="bg-canvas border border-hairline rounded-md p-3.5 space-y-3.5 shadow-sm">
+                    
+                    {/* Registered Course Autofill */}
+                    {courses.length > 0 && (
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Autofill from Registered Courses</label>
+                        <select
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            const selected = courses.find(c => c.course_id === val);
+                            if (selected) {
+                              updateItemField(selectedItem.id, 'courseCode', selected.course_id);
+                              updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
+                            }
+                            e.target.value = ''; 
+                          }}
+                          className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none cursor-pointer"
+                        >
+                          <option value="">-- Select a registered course --</option>
+                          {courses.map(c => (
+                            <option key={c.id} value={c.course_id}>
+                              {c.course_id} - {c.course_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Code & Date */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Course Code</label>
+                        <input 
+                          type="text" 
+                          value={selectedItem.courseCode} 
+                          onChange={e => updateItemField(selectedItem.id, 'courseCode', e.target.value)}
+                          className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Exam Date</label>
+                        <input 
+                          type="text" 
+                          value={selectedItem.examDate} 
+                          onChange={e => updateItemField(selectedItem.id, 'examDate', e.target.value)}
+                          className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Course Name */}
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Course Name</label>
+                      <input 
+                        type="text" 
+                        value={selectedItem.courseName} 
+                        onChange={e => updateItemField(selectedItem.id, 'courseName', e.target.value)}
+                        className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Time & Accent Custom Color */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Time</label>
+                        <input 
+                          type="text" 
+                          value={selectedItem.examTime} 
+                          onChange={e => updateItemField(selectedItem.id, 'examTime', e.target.value)}
+                          className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-ink-mute">Accent Bar Color</label>
+                        <div className="flex items-center gap-1.5 h-8 bg-canvas px-1.5 rounded border border-hairline">
+                          <input 
+                            type="color" 
+                            value={selectedItem.accentColor} 
+                            onChange={e => updateItemField(selectedItem.id, 'accentColor', e.target.value)}
+                            className="w-6 h-6 rounded border border-hairline cursor-pointer p-0 shrink-0"
+                          />
+                          <span className="text-[10px] font-mono text-ink font-semibold">{selectedItem.accentColor}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rooms List */}
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-0.5">Rooms & Seating Counts (one per line)</label>
+                      <textarea 
+                        value={selectedItem.rooms} 
+                        onChange={e => updateItemField(selectedItem.id, 'rooms', e.target.value)}
+                        className="w-full p-1.5 text-xs border border-hairline bg-canvas rounded font-mono text-ink focus:border-primary focus:outline-none"
+                        rows={3}
+                      />
+                    </div>
+
+                    {/* Color presets quick picker */}
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Color Accent Presets</label>
+                      <div className="flex flex-wrap gap-1">
+                        {ACCENT_COLORS.map(color => (
+                          <button
+                            key={color.value}
+                            onClick={() => updateItemField(selectedItem.id, 'accentColor', color.value)}
+                            style={{ backgroundColor: color.value }}
+                            className={`w-6 h-6 rounded-full border border-hairline hover:scale-110 transition-transform cursor-pointer ${
+                              selectedItem.accentColor === color.value ? 'ring-2 ring-primary border-white' : ''
+                            }`}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="flex gap-2 pt-1.5">
+                      <button
+                        onClick={() => {
+                          const idx = items.findIndex(item => item.id === selectedItemId);
+                          if (idx !== -1) handleDuplicateItem(idx);
+                        }}
+                        className="flex-1 py-1.5 px-2 border border-hairline rounded text-[10px] font-bold text-ink bg-canvas hover:bg-canvas-soft transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Copy className="w-3 h-3 text-ink-mute" /> Duplicate
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(selectedItem.id)}
+                        className="py-1.5 px-2 border border-accent-tomato/20 rounded text-[10px] font-bold text-accent-tomato bg-accent-tomato/5 hover:bg-accent-tomato/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Remove
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-dashed border-hairline rounded-md p-6 text-center text-xs text-ink-mute bg-canvas">
+                  Click on any routine card on the right canvas to select it and edit its fields here.
+                </div>
+              )}
+
+              {/* Cards Management list */}
+              <div className="space-y-2 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Exams Order ({items.length})</label>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  {items.map((item, idx) => (
+                    <div 
+                      key={item.id}
+                      onClick={() => setSelectedItemId(item.id)}
+                      className={`flex items-center justify-between p-2 rounded text-xs border transition-all cursor-pointer ${
+                        selectedItemId === item.id 
+                          ? 'bg-primary/10 border-primary text-ink' 
+                          : 'bg-canvas border-hairline text-ink-secondary hover:bg-canvas-soft'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span style={{ backgroundColor: item.accentColor }} className="w-2.5 h-2.5 rounded shrink-0" />
+                        <span className="font-bold shrink-0">{item.courseCode || 'New'}:</span>
+                        <span className="truncate opacity-80">{item.courseName || 'Custom'}</span>
+                      </div>
+                      
+                      {/* Reorder and Delete controls */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button 
+                          disabled={idx === 0}
+                          onClick={(e) => { e.stopPropagation(); moveItem(idx, 'up'); }}
+                          className="p-0.5 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary"
+                        >
+                          <MoveUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          disabled={idx === items.length - 1}
+                          onClick={(e) => { e.stopPropagation(); moveItem(idx, 'down'); }}
+                          className="p-0.5 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary"
+                        >
+                          <MoveDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
+                          className="p-0.5 hover:bg-canvas-soft rounded text-ink hover:text-accent-tomato cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-hairline bg-canvas">
           <button
             onClick={handleAddItem}
-            className="w-full flex items-center justify-center py-2 px-4 border border-dashed border-primary hover:border-primary-deep rounded text-xs font-semibold text-primary bg-canvas hover:bg-canvas-soft transition-all cursor-pointer shadow-sm"
+            className="w-full flex items-center justify-center py-2.5 px-4 border border-dashed border-primary hover:border-primary-deep rounded text-xs font-bold text-primary bg-canvas hover:bg-canvas-soft transition-all cursor-pointer shadow-sm"
           >
             <Plus className="w-4 h-4 mr-1.5" /> Add Custom Exam Row
           </button>
@@ -839,7 +1050,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         </div>
 
         {/* Scrollable Workspace Container */}
-        <div className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[500px]">
+        <div className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[500px] bg-[#f0f3f5]">
           
           {/* Zoom Wrapper */}
           <div 
@@ -856,7 +1067,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 width: '550px',
                 fontFamily: selectedFont
               }}
-              className="p-8 space-y-6 shadow-xl relative select-none overflow-hidden"
+              className="p-8 space-y-6 shadow-xl relative select-none overflow-hidden transition-all duration-300 rounded border border-hairline"
             >
               
               {/* Header Box */}
@@ -866,7 +1077,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   borderRadius: cardRoundedness,
                   color: cardTextColor
                 }}
-                className={`p-5 text-center border border-hairline transition-all ${cardShadow}`}
+                className={`p-5 text-center border border-hairline transition-all duration-300 ${cardShadow}`}
               >
                 <h1 className="font-extrabold text-2xl tracking-tight leading-tight uppercase">
                   <InlineInput 
@@ -900,15 +1111,17 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   return (
                     <div 
                       key={item.id}
-                      onClick={() => setSelectedItemId(item.id)}
+                      onClick={() => handleSelectCard(item.id)}
                       style={{ 
                         backgroundColor: cardBg,
                         borderRadius: cardRoundedness,
                         color: cardTextColor,
                         borderColor: cardBorderType === 'accent' ? item.accentColor : cardBorderColor
                       }}
-                      className={`relative p-5 transition-all flex items-stretch gap-2 group cursor-pointer ${cardShadow} ${borderStyle} ${
-                        isSelected ? 'ring-2 ring-primary ring-offset-2' : ''
+                      className={`relative p-5 flex items-stretch gap-2 group cursor-pointer transition-all duration-300 ${cardShadow} ${borderStyle} ${
+                        isSelected 
+                          ? 'ring-2 ring-primary ring-offset-2 scale-[1.01]' 
+                          : 'hover:scale-[1.005] hover:shadow-md'
                       }`}
                     >
                       {/* Left: Date / Time Column */}
@@ -920,7 +1133,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                             disabled={isLocked} 
                           />
                         </div>
-                        <div className="font-semibold text-xs text-ink-mute mt-1.5 text-center flex items-center justify-center gap-1">
+                        <div className="font-semibold text-xs text-ink-mute mt-1.5 text-center flex items-center justify-center gap-1.5">
                           <InlineInput 
                             value={item.examTime} 
                             onChange={val => updateItemField(item.id, 'examTime', val)} 
@@ -936,7 +1149,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                       {/* Vertical Divider 1 */}
                       {showVerticalLines && (
-                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf]" />
+                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf] opacity-60" />
                       )}
 
                       {/* Middle: Course Code / Subject Name */}
@@ -959,7 +1172,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                       {/* Vertical Divider 2 */}
                       {showVerticalLines && (
-                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf]" />
+                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf] opacity-60" />
                       )}
 
                       {/* Right: Rooms and Seating */}
@@ -980,7 +1193,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           <button 
                             disabled={index === 0}
                             onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
-                            className="p-1 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary"
+                            className="p-1 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary transition-colors"
                             title="Move Up"
                           >
                             <MoveUp className="w-3 h-3" />
@@ -990,7 +1203,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           <button 
                             disabled={index === items.length - 1}
                             onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
-                            className="p-1 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary"
+                            className="p-1 hover:bg-canvas-soft rounded disabled:opacity-30 cursor-pointer text-ink hover:text-primary transition-colors"
                             title="Move Down"
                           >
                             <MoveDown className="w-3 h-3" />
@@ -1001,7 +1214,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           {/* Duplicate */}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDuplicateItem(index); }}
-                            className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-ink hover:text-primary"
+                            className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-ink hover:text-primary transition-colors"
                             title="Duplicate Card"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1010,7 +1223,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           {/* Delete */}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                            className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-accent-tomato hover:bg-accent-tomato/10"
+                            className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-accent-tomato hover:bg-accent-tomato/10 transition-colors"
                             title="Delete Card"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1031,7 +1244,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   borderRadius: cardRoundedness,
                   color: cardTextColor
                 }}
-                className={`p-4 border border-hairline text-center transition-all ${cardShadow}`}
+                className={`p-4 border border-hairline text-center transition-all duration-300 ${cardShadow}`}
               >
                 <div className="text-[13px] font-bold tracking-wider uppercase">
                   <InlineInput 

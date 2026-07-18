@@ -86,10 +86,10 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:", "*"],
-            connectSrc: ["'self'", "ws:", "wss:", "http://localhost:*", "https://*.supabase.co"],
-            fontSrc: ["'self'", "data:"],
+            connectSrc: ["'self'", "ws:", "wss:", "http://localhost:*", "https://*.supabase.co", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+            fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
             mediaSrc: ["'self'", "blob:"],
             frameSrc: ["'none'"],
         }
