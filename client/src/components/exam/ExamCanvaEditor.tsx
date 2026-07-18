@@ -71,6 +71,19 @@ const CANVAS_BG_PRESETS = [
   { name: 'Dark Slate', value: '#1E293B', gradient: '' }
 ];
 
+// Google Fonts list for Canva Routine Designer
+const FONTS = [
+  { name: 'Inter (Sans)', family: "'Inter', sans-serif", link: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap' },
+  { name: 'Outfit (Modern)', family: "'Outfit', sans-serif", link: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&display=swap' },
+  { name: 'Plus Jakarta', family: "'Plus Jakarta Sans', sans-serif", link: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap' },
+  { name: 'Poppins', family: "'Poppins', sans-serif", link: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;800&display=swap' },
+  { name: 'Playfair Display', family: "'Playfair Display', serif", link: 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap' },
+  { name: 'JetBrains Mono', family: "'JetBrains Mono', monospace", link: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap' },
+  { name: 'Montserrat', family: "'Montserrat', sans-serif", link: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&display=swap' },
+  { name: 'Cinzel (Elegant)', family: "'Cinzel', serif", link: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap' },
+  { name: 'Lora', family: "'Lora', serif", link: 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&display=swap' }
+];
+
 // Custom Inline Input Component for direct in-canvas editing
 interface InlineInputProps {
   value: string;
@@ -173,6 +186,22 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [zoom, setZoom] = useState(100);
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [selectedFont, setSelectedFont] = useState("'Inter', sans-serif");
+
+  // Dynamic Font Loader
+  useEffect(() => {
+    const fontObj = FONTS.find(f => f.family === selectedFont);
+    if (fontObj && fontObj.link) {
+      let link = document.getElementById('canva-custom-font') as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'canva-custom-font';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      link.href = fontObj.link;
+    }
+  }, [selectedFont]);
 
   // Convert Date from YYYY-MM-DD to DD-MM-YY
   const formatDateToShort = (dateStr: string) => {
@@ -434,6 +463,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               </div>
             </div>
 
+            {/* Font Family Selection */}
+            <div>
+              <label className="block text-xs text-ink-mute mb-1 font-medium">Font Family</label>
+              <select
+                value={selectedFont}
+                onChange={e => setSelectedFont(e.target.value)}
+                className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+              >
+                {FONTS.map(f => (
+                  <option key={f.family} value={f.family}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Custom Color Pickers */}
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
@@ -572,6 +615,33 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             {selectedItem ? (
               <div className="bg-canvas border border-hairline rounded-md p-3 space-y-3 shadow-sm">
                 
+                {/* Registered Course Autofill */}
+                {courses.length > 0 && (
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-ink-mute mb-1">Autofill from Registered Courses</label>
+                    <select
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const selected = courses.find(c => c.course_id === val);
+                        if (selected) {
+                          updateItemField(selectedItem.id, 'courseCode', selected.course_id);
+                          updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
+                        }
+                        e.target.value = ''; // Reset selection
+                      }}
+                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
+                    >
+                      <option value="">-- Select a registered course --</option>
+                      {courses.map(c => (
+                        <option key={c.id} value={c.course_id}>
+                          {c.course_id} - {c.course_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Course Details */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -783,9 +853,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               id="exam-routine-canva-poster"
               style={{ 
                 background: bgGradient || bgColor, 
-                width: '550px' 
+                width: '550px',
+                fontFamily: selectedFont
               }}
-              className="p-8 space-y-6 shadow-xl relative select-none font-sans overflow-hidden"
+              className="p-8 space-y-6 shadow-xl relative select-none overflow-hidden"
             >
               
               {/* Header Box */}
