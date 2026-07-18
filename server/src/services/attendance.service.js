@@ -189,6 +189,36 @@ async function getPresentStudents(courseId, date, examRoutineId = null) {
     return result.rows;
 }
 
+async function getSavedAttendanceSheets() {
+    const result = await db.query(
+        `SELECT a.course_id, c.course_id as c_id, c.course_name, a.date, 
+                a.exam_routine_id, er.exam_type,
+                COUNT(a.id) as total_students,
+                SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_count
+         FROM attendance a
+         JOIN courses c ON a.course_id = c.id
+         LEFT JOIN exam_routines er ON a.exam_routine_id = er.id
+         GROUP BY a.course_id, c.course_id, c.course_name, a.date, a.exam_routine_id, er.exam_type
+         ORDER BY a.date DESC, c.course_id ASC`
+    );
+    return result.rows;
+}
+
+async function deleteAttendanceSheet(courseId, date, examRoutineId = null) {
+    const params = [courseId, date];
+    let examFilter = 'AND exam_routine_id IS NULL';
+    if (examRoutineId) {
+        examFilter = 'AND exam_routine_id = $3';
+        params.push(examRoutineId);
+    }
+    const result = await db.query(
+        `DELETE FROM attendance WHERE course_id = $1 AND date = $2 ${examFilter} RETURNING *`,
+        params
+    );
+    return result.rows;
+}
+
 module.exports = {
     getAttendance,
     getAttendanceForCourseDate,
@@ -197,5 +227,7 @@ module.exports = {
     deleteAttendance,
     getAttendanceSummary,
     getEnrolledStudentsWithAttendance,
-    getPresentStudents
+    getPresentStudents,
+    getSavedAttendanceSheets,
+    deleteAttendanceSheet
 };

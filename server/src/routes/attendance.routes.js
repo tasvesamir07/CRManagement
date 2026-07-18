@@ -28,6 +28,27 @@ router.post('/bulk', authMiddleware, validate(schemas.attendance.bulkMark), asyn
     }
 });
 
+router.get('/saved', authMiddleware, async (req, res) => {
+    try {
+        const result = await attendanceService.getSavedAttendanceSheets();
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/course/:courseId/date/:date', authMiddleware, async (req, res) => {
+    try {
+        const courseId = parseInt(req.params.courseId);
+        const date = req.params.date;
+        const exam_routine_id = req.query.exam_routine_id ? parseInt(req.query.exam_routine_id) : null;
+        await attendanceService.deleteAttendanceSheet(courseId, date, exam_routine_id);
+        return res.json({ message: 'Attendance sheet deleted successfully' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 router.get('/course/:courseId/date/:date', authMiddleware, async (req, res) => {
     try {
         const courseId = parseInt(req.params.courseId);

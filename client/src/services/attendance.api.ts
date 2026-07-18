@@ -34,5 +34,15 @@ export const attendanceAPI = {
     if (courseId) params.course_id = courseId;
     const res = await api.get(`/attendance/student/${studentId}/summary`, { params });
     return res.data;
+  },
+  listSavedSheets: async () => {
+    const res = await api.get('/attendance/saved');
+    return res.data;
+  },
+  deleteSheet: async (courseId: number, date: string, examRoutineId?: number) => {
+    const params: any = {};
+    if (examRoutineId) params.exam_routine_id = examRoutineId;
+    const res = await api.delete(`/attendance/course/${courseId}/date/${date}`, { params });
+    return res.data;
   }
 };
