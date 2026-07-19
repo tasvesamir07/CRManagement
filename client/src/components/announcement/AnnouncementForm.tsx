@@ -6,8 +6,9 @@ import { BookOpen, Clock, Send, X, Plus, ListPlus, StickyNote, Save,
 import { DatePicker } from '../ui/date-picker';
 import { TimePicker } from '../ui/time-picker';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { TITLE_PRESETS } from '../../lib/announcementPresets';
+import { TITLE_PRESETS, formatMessageToHtml } from '../../lib/announcementPresets';
 import PlatformSelector from './PlatformSelector';
+import TipTapEditor from './TipTapEditor';
 import SchedulePicker from './SchedulePicker';
 import FileUploader from './FileUploader';
 import PreviewPanel from './PreviewPanel';
@@ -122,8 +123,7 @@ const AnnouncementForm: React.FC = () => {
                     <Sparkles className="w-3.5 h-3.5" /> Draft with AI
                   </button>
                 </label>
-                <textarea value={customText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomText(e.target.value)} placeholder="Write your notice text here... Use *bold* for emphasis." rows={8}
-                  className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150 resize-y min-h-[150px] font-sans leading-relaxed" />
+                <TipTapEditor value={customText} onChange={setCustomText} placeholder="Write your notice text here... Format it with fonts, bold, lists!" />
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-[10px] font-medium text-ink-mute flex items-center mr-1">Presets:</span>
                   {[
@@ -133,7 +133,7 @@ const AnnouncementForm: React.FC = () => {
                     { label: '❌ Class Cancelled', title: 'Class Cancelled', body: '❌ *Class Cancellation Notice*\n\n📚 *Course:* [Course Name]\n📅 *Date:* [Date]\n\nClass is cancelled for today. Make-up schedule will be shared later.' }
                   ].map(preset => (
                     <button key={preset.title} type="button"
-                      onClick={() => { handleTitleChange(0, preset.title); setCustomText(preset.body); toast.success(`Preset "${preset.title}" loaded`); }}
+                      onClick={() => { handleTitleChange(0, preset.title); setCustomText(formatMessageToHtml(preset.body)); toast.success(`Preset "${preset.title}" loaded`); }}
                       className="px-2 py-0.5 text-[10px] font-medium rounded-full border border-hairline bg-canvas hover:bg-canvas-soft text-ink-mute hover:text-ink transition-all cursor-pointer">
                       {preset.label}
                     </button>
@@ -483,7 +483,7 @@ const AnnouncementForm: React.FC = () => {
         onClose={() => { setPreviewFile(null); setPreviewUrl(null); }} />
       <AIDraftModal show={showAIModal} aiPrompt={aiPrompt} onPromptChange={setAiPrompt} aiDrafting={aiDrafting}
         generatedDraft={generatedDraft} onGenerate={handleGenerateAIDraft}
-        onUseDraft={() => { setCustomText(generatedDraft); const firstLine = generatedDraft.split('\n')[0]; if (firstLine.startsWith('📢')) { const cleanTitle = firstLine.replace(/📢\s*\**\s*/, '').replace(/\**$/, '').trim(); if (cleanTitle) handleTitleChange(0, cleanTitle); } setShowAIModal(false); setAiPrompt(''); setGeneratedDraft(''); toast.success('Draft loaded into editor!'); }}
+        onUseDraft={() => { setCustomText(generatedDraft.startsWith('<') ? generatedDraft : formatMessageToHtml(generatedDraft)); const firstLine = generatedDraft.split('\n')[0]; if (firstLine.startsWith('📢')) { const cleanTitle = firstLine.replace(/📢\s*\**\s*/, '').replace(/\**$/, '').trim(); if (cleanTitle) handleTitleChange(0, cleanTitle); } setShowAIModal(false); setAiPrompt(''); setGeneratedDraft(''); toast.success('Draft loaded into editor!'); }}
         onClose={() => { setShowAIModal(false); setAiPrompt(''); setGeneratedDraft(''); }} />
     </div>
   );

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { announcementsAPI, filesAPI } from '../../services/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import { loadFontsFromHtml } from '../../lib/fontLoader';
 import {
   ArrowLeft, Edit3, Trash2, CheckCircle, AlertTriangle, Clock, Paperclip, Clipboard, HelpCircle, Download
 } from 'lucide-react';
@@ -36,6 +37,12 @@ const AnnouncementDetail: React.FC = () => {
   useEffect(() => {
     fetchAnnouncement();
   }, [fetchAnnouncement]);
+
+  useEffect(() => {
+    if (announcement && announcement.content) {
+      loadFontsFromHtml(announcement.content);
+    }
+  }, [announcement]);
 
   useRefetchOnFocus(fetchAnnouncement);
 
@@ -185,7 +192,11 @@ const AnnouncementDetail: React.FC = () => {
           <button type="button" onClick={() => { navigator.clipboard.writeText(announcement.content); toast.success('Message copied!'); }} className="flex items-center gap-1.5 px-2.5 py-1 border border-hairline rounded-sm text-xs font-medium text-ink-mute hover:text-ink hover:bg-canvas-soft transition-colors cursor-pointer"><Clipboard className="w-3.5 h-3.5" />Copy</button>
         </div>
         <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
+          {announcement.content.startsWith('<') || /<[a-z][\s\S]*>/i.test(announcement.content) ? (
+            <div className="font-sans text-sm leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: announcement.content }} />
+          ) : (
+            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
+          )}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import { useOnlineStatus } from './useOnlineStatus';
 import { OfflineCache, OfflineDrafts } from '../services/offline';
 import toast from 'react-hot-toast';
 import { confirm } from '../components/ui/ConfirmDialog';
-import { PRESET_DEFS } from '../lib/announcementPresets';
+import { PRESET_DEFS, formatMessageToHtml } from '../lib/announcementPresets';
 import { FORM_MESSAGES, API_MESSAGES } from '../lib/validation';
 import { getCompiledMessage as getCompiledMsg } from '../lib/compileMessage';
 
@@ -76,7 +76,13 @@ export default function useAnnouncementForm() {
 
   const [broadcastMode, setBroadcastMode] = useState(() => getInitialValue('broadcastMode', 'notice'));
   const [fileCaption, setFileCaption] = useState(() => getInitialValue('fileCaption', ''));
-  const [customText, setCustomText] = useState(() => getInitialValue('customText', ''));
+  const [customText, setCustomText] = useState(() => {
+    const val = getInitialValue('customText', '');
+    if (val && !val.startsWith('<') && !/<[a-z][\s\S]*>/i.test(val)) {
+      return formatMessageToHtml(val);
+    }
+    return val;
+  });
 
   const [notices, setNotices] = useState<any[]>(() => {
     try {

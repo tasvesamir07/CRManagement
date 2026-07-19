@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Smartphone, Paperclip, Clipboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatMessageToHtml } from '../../lib/announcementPresets';
+import { loadFontsFromHtml } from '../../lib/fontLoader';
+import { htmlToWhatsappMarkdown, cleanHtmlForTelegram, stripHtml } from '../../lib/htmlParser';
 import type { UploadedFile } from './types';
 
 interface PreviewPanelProps {
@@ -13,7 +15,38 @@ interface PreviewPanelProps {
 
 export default function PreviewPanel({ compiledMessage, previewTab, onTabChange, uploadedFiles }: PreviewPanelProps) {
   const messageText = useMemo(() => compiledMessage() || 'Your message preview will appear here...', [compiledMessage]);
-  const renderedHtml = useMemo(() => formatMessageToHtml(messageText), [messageText]);
+
+  // Load fonts dynamically from HTML message if any
+  useMemo(() => {
+    loadFontsFromHtml(messageText);
+  }, [messageText]);
+
+  const renderedHtml = useMemo(() => {
+    const isHtml = messageText.startsWith('<') || /<[a-z][\s\S]*>/i.test(messageText);
+
+    if (isHtml) {
+      if (previewTab === 'whatsapp') {
+        const whatsappMarkdown = htmlToWhatsappMarkdown(messageText);
+        return formatMessageToHtml(whatsappMarkdown);
+      } else if (previewTab === 'telegram') {
+        return cleanHtmlForTelegram(messageText);
+      } else {
+        return stripHtml(messageText).replace(/\n/g, '<br/>');
+      }
+    } else {
+      if (previewTab === 'messenger') {
+        return messageText
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/__(.*?)__/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/_(.*?)_/g, '$1')
+          .replace(/~(.*?)~/g, '$1')
+          .replace(/`(.*?)`/g, '$1')
+          .replace(/\n/g, '<br/>');
+      }
+      return formatMessageToHtml(messageText);
+    }
+  }, [messageText, previewTab]);
 
   return (
     <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">

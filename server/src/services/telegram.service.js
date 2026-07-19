@@ -67,7 +67,9 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
     }
 
     const caption = (message && message.trim()) ? message : undefined;
-    const parseMode = caption ? 'Markdown' : undefined;
+    const isHtml = message && (message.startsWith('<') || /<[a-z][\s\S]*>/i.test(message));
+    const defaultParseMode = isHtml ? 'HTML' : 'Markdown';
+    const parseMode = caption ? defaultParseMode : undefined;
 
     if (files.length === 0 && !caption) {
         throw new Error('Cannot broadcast an empty text notice without file attachments.');
@@ -80,7 +82,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             const existingFiles = files.filter(f => fs.existsSync(f.path));
             if (existingFiles.length === 0) {
                 sentMsg = await bot.sendMessage(finalChatId, message, {
-                    parse_mode: 'Markdown',
+                    parse_mode: defaultParseMode,
                     message_thread_id: threadId
                 });
                 return { success: true, messageId: sentMsg.message_id };
