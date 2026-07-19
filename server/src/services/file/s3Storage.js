@@ -2,6 +2,7 @@ const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListO
 const { Upload } = require('@aws-sdk/lib-storage');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const fs = require('fs');
+const logger = require('../../config/logger');
 
 const endpoint = process.env.S3_ENDPOINT;
 const region = process.env.S3_REGION || 'auto';
@@ -24,9 +25,9 @@ if (endpoint && bucket && accessKeyId && secretAccessKey) {
             responseChecksumValidation: 'WHEN_REQUIRED'
         });
         isConfigured = true;
-        console.log(`S3-compatible storage configured: ${endpoint}/${bucket}`);
+        logger.info({ endpoint, bucket }, 'S3-compatible storage configured');
     } catch (err) {
-        console.error(`Failed to initialize S3 client: ${err.message}`);
+        logger.error({ err: err.message }, 'Failed to initialize S3 client');
     }
 }
 

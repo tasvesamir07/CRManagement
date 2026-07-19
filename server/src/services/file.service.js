@@ -1,6 +1,7 @@
 const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../config/logger');
 const { compressImage, compressPptx, compressPdf } = require('./file/compression');
 const {
     supabase, uploadsDir, bucketName, getExpiryDate, getMimetype,
@@ -102,7 +103,7 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
         try {
             fileSize = await compressImage(file, originalName);
         } catch (err) {
-            console.error('[Image Compression] Failed to compress image:', err.message);
+            logger.error({ err }, '[Image Compression] Failed to compress image');
         }
     }
 
@@ -110,7 +111,7 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
         try {
             fileSize = await compressPptx(file, originalName);
         } catch (err) {
-            console.error('[PPTX Compression] Failed to compress PPTX file:', err.message);
+            logger.error({ err }, '[PPTX Compression] Failed to compress PPTX file');
         }
     }
 
@@ -118,7 +119,7 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
         try {
             fileSize = await compressPdf(file, originalName);
         } catch (err) {
-            console.error('[PDF Compression] Failed to compress PDF file:', err.message);
+            logger.error({ err }, '[PDF Compression] Failed to compress PDF file');
         }
     }
 
@@ -130,7 +131,7 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
     try {
         savedStoragePath = await uploadToStorage(file.path, storagePath, fileType);
     } catch (err) {
-        console.error('Storage upload error:', err.message);
+        logger.error({ err }, 'Storage upload error');
         throw err;
     }
 
@@ -226,22 +227,22 @@ async function deleteFile(fileId) {
 }
 
 async function cleanupExpiredFiles() {
-    console.log('⏰ Starting expired files cleanup job...');
+    logger.info('Starting expired files cleanup job...');
     const result = await db.query(
         "SELECT * FROM files WHERE expires_at <= NOW() AND is_deleted = false"
     );
     const expired = result.rows;
-    console.log(`Found ${expired.length} expired files to delete.`);
+    logger.info({ count: expired.length }, `Found expired files to delete`);
     let count = 0;
     for (const file of expired) {
         try {
             await deleteFile(file.id);
             count++;
         } catch (err) {
-            console.error(`Error deleting file ID ${file.id} (${file.original_name}):`, err.message);
+            logger.error({ err, fileId: file.id, fileName: file.original_name }, 'Error deleting expired file');
         }
     }
-    console.log(`✅ Cleanup completed. Deleted ${count}/${expired.length} files.`);
+    logger.info({ deleted: count, found: expired.length }, 'File cleanup completed');
     return { found: expired.length, deleted: count };
 }
 
@@ -258,7 +259,7 @@ async function getStorageUsage() {
             );
             usedBytes = parseInt(result.rows[0].used_bytes, 10);
         } catch (err) {
-            console.error('Failed to get Supabase bucket size from database, falling back to files table:', err.message);
+            logger.error({ err }, 'Failed to get Supabase bucket size, falling back to files table');
             const result = await db.query('SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM files WHERE is_deleted = false');
             usedBytes = parseInt(result.rows[0].used_bytes, 10);
         }
@@ -279,7 +280,7 @@ async function getStorageUsage() {
             );
             breakdownRows = result.rows;
         } catch (err) {
-            console.error('Failed to get Supabase breakdown from storage.objects, falling back to files table:', err.message);
+            logger.error({ err }, 'Failed to get Supabase breakdown, falling back to files table');
             const result = await db.query("SELECT file_type, file_size FROM files WHERE is_deleted = false");
             breakdownRows = result.rows;
         }
@@ -450,7 +451,7 @@ async function compressFiles(fileIds, archiveName, targetFolderId, userId) {
             const buffer = await downloadFromStorage(file.storage_path);
             zip.addFile(file.original_name, buffer);
         } catch (err) {
-            console.error(`Failed to download "${file.original_name}" for compression:`, err.message);
+            logger.error({ fileName: file.original_name, err: err.message }, 'Failed to download file for compression');
         }
     }
 

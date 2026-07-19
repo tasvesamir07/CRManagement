@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const announcementService = require('../services/announcement.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
+const logger = require('../config/logger');
 
 const sendLimiter = rateLimit({
     windowMs: 5 * 1000,
@@ -305,7 +306,7 @@ router.post('/:id/send', authMiddleware, validateParams(schemas.params.id), send
         const result = await announcementService.sendAnnouncement(req.params.id, hostUrl);
         return res.json(result);
     } catch (err) {
-        console.error('Send announcement route error:', err.message);
+        logger.error({ err }, 'Send announcement route error');
         return res.status(500).json({ error: err.message });
     }
 });
@@ -391,7 +392,7 @@ router.post('/draft-ai', authMiddleware, validate(schemas.announcements.draftAI)
         const draftText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate draft content.';
         return res.json({ draft: draftText.trim() });
     } catch (err) {
-        console.error('Draft announcement AI error:', err.message);
+        logger.error({ err }, 'Draft announcement AI error');
         return res.status(500).json({ error: err.message });
     }
 });

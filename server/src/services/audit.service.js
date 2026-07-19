@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const logger = require('../config/logger');
 
 async function log(userId, action, entityType = null, entityId = null, details = null, ipAddress = null) {
   try {
@@ -8,7 +9,7 @@ async function log(userId, action, entityType = null, entityId = null, details =
       [userId, action, entityType, entityId, details ? JSON.stringify(details) : null, ipAddress]
     );
   } catch (err) {
-    console.error('Audit log error:', err.message);
+    logger.error({ err, action, entityType, entityId }, 'Audit log error');
   }
 }
 

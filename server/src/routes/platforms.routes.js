@@ -7,6 +7,7 @@ const messengerService = require('../services/messenger.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const cache = require('../config/cache');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const logger = require('../config/logger');
 
 /**
  * @openapi
@@ -410,7 +411,7 @@ router.post('/messenger/appstate', authMiddleware, async (req, res) => {
         messengerService.resetBot();
         
         // Verify connection immediately
-        console.log("Verifying newly uploaded Messenger AppState...");
+        logger.info('Verifying newly uploaded Messenger AppState...');
         const isConnected = await messengerService.checkConnection();
         
         if (isConnected) {

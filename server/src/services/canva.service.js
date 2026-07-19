@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const logger = require('../config/logger');
 
 const CANVA_API_BASE = 'https://api.canva.com/rest/v1';
 const SCOPES = 'design:content:read design:content:write brandtemplate:meta:read brandtemplate:content:read asset:read asset:write';
@@ -10,13 +11,13 @@ class CanvaService {
     this.redirectUri = process.env.CANVA_REDIRECT_URI;
 
     if (!this.clientId) {
-      console.warn('[CanvaService] CANVA_CLIENT_ID not set — service will return null for all methods');
+      logger.warn('CANVA_CLIENT_ID not set — service will return null for all methods');
     }
   }
 
   _isConfigured() {
     if (!this.clientId) {
-      console.warn('[CanvaService] Skipping call — CANVA_CLIENT_ID not configured');
+      logger.warn('Skipping Canva call — CANVA_CLIENT_ID not configured');
       return false;
     }
     return true;
@@ -31,13 +32,13 @@ class CanvaService {
 
       if (!response.ok) {
         const body = await response.text();
-        console.error(`[CanvaService] HTTP ${response.status} from ${url}: ${body}`);
+        logger.error({ status: response.status, url, body }, 'Canva API request failed');
         return null;
       }
 
       return response.status === 204 ? null : response.json();
     } catch (err) {
-      console.error(`[CanvaService] Request failed for ${url}:`, err.message);
+      logger.error({ err, url }, 'Canva API request error');
       return null;
     }
   }
@@ -144,7 +145,7 @@ class CanvaService {
     }) || {};
 
     if (!job || !job.id) {
-      console.error('[CanvaService] Failed to create export job');
+      logger.error('Failed to create Canva export job');
       return null;
     }
 
@@ -162,12 +163,12 @@ class CanvaService {
         return exportJob;
       }
       if (exportJob.status === 'failed') {
-        console.error(`[CanvaService] Export job ${job.id} failed:`, exportJob.error);
+        logger.error({ jobId: job.id, error: exportJob.error }, 'Canva export job failed');
         return null;
       }
     }
 
-    console.error(`[CanvaService] Export job ${job.id} timed out after 30 retries`);
+    logger.error({ jobId: job.id }, 'Canva export job timed out after 30 retries');
     return null;
   }
 
@@ -176,7 +177,7 @@ class CanvaService {
 
     const autofillResult = await this.createAutofillJob(accessToken, brandTemplateId, data);
     if (!autofillResult || !autofillResult.job) {
-      console.error('[CanvaService] Failed to create autofill job');
+      logger.error('Failed to create Canva autofill job');
       return null;
     }
 
@@ -195,31 +196,31 @@ class CanvaService {
         break;
       }
       if (job.status === 'failed') {
-        console.error(`[CanvaService] Autofill job ${autofillJobId} failed:`, job.error);
+        logger.error({ autofillJobId, error: job.error }, 'Canva autofill job failed');
         return null;
       }
     }
 
     if (!designId) {
-      console.error(`[CanvaService] Autofill job ${autofillJobId} timed out`);
+      logger.error({ autofillJobId }, 'Canva autofill job timed out');
       return null;
     }
 
     const exportResult = await this.exportDesign(accessToken, designId, 'pdf');
     if (!exportResult || !exportResult.download_url) {
-      console.error('[CanvaService] Failed to export design as PDF');
+      logger.error('Failed to export Canva design as PDF');
       return null;
     }
 
     try {
       const response = await fetch(exportResult.download_url);
       if (!response.ok) {
-        console.error(`[CanvaService] Failed to download PDF: HTTP ${response.status}`);
+        logger.error({ status: response.status }, 'Failed to download Canva PDF');
         return null;
       }
       return response.buffer();
     } catch (err) {
-      console.error('[CanvaService] Failed to fetch PDF buffer:', err.message);
+      logger.error({ err }, 'Failed to fetch Canva PDF buffer');
       return null;
     }
   }

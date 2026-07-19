@@ -92,7 +92,7 @@ async function generateAttendancePdf(courseId, date, examRoutineId = null) {
             doc.moveDown();
 
             const formattedDate = formatDate(date);
-            let headerLine = `Date: ${formattedDate}`;
+            const headerLine = `Date: ${formattedDate}`;
             doc.fontSize(11).font('Helvetica').text(headerLine);
             doc.moveDown(0.5);
             doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();

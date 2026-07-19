@@ -3,6 +3,7 @@ const { initJsonDb } = require('./database/jsonDb');
 const { simulateQuery } = require('./database/simulateQuery');
 const { getCorrelationId } = require('./requestContext');
 const { inc, dbQueryType } = require('../services/metrics.service');
+const logger = require('./logger');
 
 let pool = null;
 let useJsonDb = false;
@@ -12,7 +13,7 @@ const isVercel = !!process.env.VERCEL;
 // Check database URL config
 async function initDatabase() {
     if (process.env.DATABASE_URL) {
-        console.log('PostgreSQL database URL detected. Initializing database pool...');
+        logger.info('PostgreSQL database URL detected. Initializing database pool...');
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
             ssl: process.env.DATABASE_URL.includes('supabase') || process.env.DATABASE_URL.includes('render')
@@ -31,14 +32,14 @@ async function initDatabase() {
             try {
                 attempt++;
                 const client = await pool.connect();
-                console.log(`✅ PostgreSQL database connected successfully (attempt ${attempt}/${maxRetries}).`);
+                logger.info(`PostgreSQL database connected successfully (attempt ${attempt}/${maxRetries}).`);
                 
                 // Lightweight check: query information_schema for one core table
                 const tableCheck = await client.query(
                     "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') AS exists"
                 );
                 if (!tableCheck.rows[0].exists) {
-                    console.log('Tables not found. Run migration: node scripts/migrate.js');
+                    logger.warn('Tables not found. Run migration: node scripts/migrate.js');
                 }
 
                 client.release();
@@ -48,25 +49,25 @@ async function initDatabase() {
                 return;
             } catch (err) {
                 lastError = err;
-                console.warn(`⚠️ Database initialization attempt ${attempt}/${maxRetries} failed: ${err.message}`);
+                logger.warn({ err, attempt }, `Database initialization attempt ${attempt}/${maxRetries} failed`);
                 
                 if (attempt < maxRetries) {
                     const delay = 1000 + Math.random() * 2000;
-                    console.log(`Waiting ${Math.round(delay)}ms before next attempt...`);
+                    logger.info(`Waiting ${Math.round(delay)}ms before next attempt...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
 
-        console.error('❌ All database initialization attempts failed.');
+        logger.error('All database initialization attempts failed.');
         dbInitError = lastError;
         useJsonDb = false;
     } else {
         if (isVercel) {
-            console.error('⚠️ DATABASE_URL not set. Required on Vercel.');
+            logger.error('DATABASE_URL not set. Required on Vercel.');
             dbInitError = new Error('DATABASE_URL is required on Vercel');
         } else {
-            console.log('⚠️ DATABASE_URL not set. Using local JSON database (db.json) fallback.');
+            logger.warn('DATABASE_URL not set. Using local JSON database (db.json) fallback.');
             useJsonDb = true;
             initJsonDb();
         }
@@ -87,7 +88,7 @@ module.exports = {
             const duration = Date.now() - start;
             if (duration > 500) {
                 inc('dbSlowQueriesTotal');
-                console.warn(`[DB:SLOW] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${text.slice(0, 100)}`);
+                logger.warn({ duration, correlationId: correlationId.slice(0, 8), query: text.slice(0, 100) }, 'Slow database query');
             }
             return result;
         }
@@ -95,13 +96,13 @@ module.exports = {
             const duration = Date.now() - start;
             if (duration > 500) {
                 inc('dbSlowQueriesTotal');
-                console.warn(`[DB:SLOW] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${text.slice(0, 100)}`);
+                logger.warn({ duration, correlationId: correlationId.slice(0, 8), query: text.slice(0, 100) }, 'Slow database query');
             }
             return result;
         }).catch(err => {
             const duration = Date.now() - start;
             inc('dbErrorsTotal');
-            console.error(`[DB:ERROR] ${duration}ms correlationId=${correlationId.slice(0, 8)} ${err.message}`);
+            logger.error({ err, duration, correlationId: correlationId.slice(0, 8), query: text.slice(0, 100) }, 'Database query failed');
             throw err;
         });
     },

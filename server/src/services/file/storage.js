@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const WebSocket = require('ws');
+const logger = require('../../config/logger');
 const {
     isS3Configured, uploadToS3, deleteFromS3, getDownloadUrlFromS3,
     downloadFromS3, ensureFolderInS3, deleteFolderFromS3
@@ -13,7 +14,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANO
 const bucketName = process.env.SUPABASE_BUCKET_NAME || 'announcement-files';
 
 if (supabaseUrl && supabaseKey) {
-    console.log('Supabase Storage configurations detected. Initializing Supabase client...');
+    logger.info('Supabase Storage configurations detected. Initializing Supabase client...');
     const cleanSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
     supabase = createClient(cleanSupabaseUrl, supabaseKey, {
         realtime: { transport: WebSocket }
@@ -29,7 +30,7 @@ if (!fs.existsSync(uploadsDir)) {
     try {
         fs.mkdirSync(uploadsDir, { recursive: true });
     } catch (err) {
-        console.error('Failed to create uploads directory:', err.message);
+        logger.error({ err }, 'Failed to create uploads directory');
     }
 }
 
@@ -102,13 +103,13 @@ async function deleteFromStorage(storagePath) {
     }
     if (supabase) {
         const { error } = await supabase.storage.from(bucketName).remove([storagePath]);
-        if (error) console.error('Failed to remove file from Supabase storage:', error.message);
+        if (error) logger.error({ error: error.message }, 'Failed to remove file from Supabase storage');
         return;
     }
     const filePath = path.join(uploadsDir, storagePath);
     if (fs.existsSync(filePath)) {
         try { fs.unlinkSync(filePath); } catch (err) {
-            console.error('Failed to remove local file from disk:', err.message);
+            logger.error({ err }, 'Failed to remove local file from disk');
         }
     }
 }
@@ -154,7 +155,7 @@ async function ensureFolderInStorage(folderName) {
         const placeholderPath = `${cleanFolderName}/.emptyFolderPlaceholder`;
         await supabase.storage.from(bucketName).upload(placeholderPath, Buffer.from(''), {
             contentType: 'application/octet-stream', upsert: true
-        }).catch(err => console.error('Failed to create folder placeholder in Supabase:', err.message));
+        }).catch(err => logger.error({ err }, 'Failed to create folder placeholder in Supabase'));
         return;
     }
     const folderDirPath = path.join(uploadsDir, cleanFolderName);
@@ -184,12 +185,12 @@ async function deleteFolderFromStorage(folderName) {
     const folderDirPath = path.join(uploadsDir, cleanFolderName);
     if (fs.existsSync(folderDirPath)) {
         try { fs.rmSync(folderDirPath, { recursive: true, force: true }); } catch (err) {
-            console.error(`Failed to delete local folder directory: ${err.message}`);
+            logger.error({ err }, 'Failed to delete local folder directory');
         }
     }
 }
 
-console.log(`Storage backend: ${storageBackend}`);
+logger.info({ backend: storageBackend }, 'Storage backend');
 
 module.exports = {
     supabase, uploadsDir, bucketName, getExpiryDate, getMimetype,

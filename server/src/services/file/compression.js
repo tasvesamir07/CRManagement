@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('../../config/logger');
 
 async function compressImage(file, originalName) {
     const sharp = require('sharp');
@@ -8,7 +9,7 @@ async function compressImage(file, originalName) {
     const compressedBuffer = await pipeline.toBuffer();
     fs.writeFileSync(file.path, compressedBuffer);
     const newSize = compressedBuffer.length;
-    console.log(`[Image Compression] Converted & Compressed image "${originalName}" size: ${newSize} bytes.`);
+    logger.info({ originalName, newSize }, 'Image compressed');
     return newSize;
 }
 
@@ -52,7 +53,7 @@ async function compressPptx(file, originalName) {
                 compressedBytes += originalBuffer.length;
             }
         } catch (err) {
-            console.error(`[PPTX Compression] Failed to compress entry ${entry.entryName}:`, err.message);
+            logger.error({ err, entryName: entry.entryName }, 'PPTX compression failed for entry');
             compressedBytes += originalBuffer.length;
         }
     }
@@ -61,7 +62,7 @@ async function compressPptx(file, originalName) {
         zip.writeZip(file.path);
         const stats = fs.statSync(file.path);
         const savedPercentage = originalBytes > 0 ? ((originalBytes - compressedBytes) / originalBytes * 100).toFixed(1) : '0';
-        console.log(`[PPTX Compression] Compressed ${compressedCount} images in "${originalName}". New size: ${stats.size} bytes. Saved ${savedPercentage}% of media bytes.`);
+        logger.info({ originalName, compressedCount, newSize: stats.size, savedPercentage }, 'PPTX compressed');
         return stats.size;
     }
     return file.size;
@@ -79,7 +80,7 @@ async function compressPdf(file, originalName) {
     } catch (_) {}
 
     if (!gsInstalled) {
-        console.log(`[PDF Compression] Ghostscript (gs) is not installed on this system. Skipping PDF compression.`);
+        logger.warn('Ghostscript (gs) not installed. Skipping PDF compression.');
         return file.size;
     }
 
@@ -94,11 +95,11 @@ async function compressPdf(file, originalName) {
         if (compressedStats.size < originalStats.size) {
             fs.unlinkSync(file.path);
             fs.renameSync(tempOutputPath, file.path);
-            console.log(`[PDF Compression] Compressed PDF "${originalName}" from ${originalStats.size} to ${compressedStats.size} bytes.`);
+            logger.info({ originalName, originalSize: originalStats.size, compressedSize: compressedStats.size }, 'PDF compressed');
             return compressedStats.size;
         }
         fs.unlinkSync(tempOutputPath);
-        console.log(`[PDF Compression] Compression did not reduce size for "${originalName}". Keeping original.`);
+        logger.info({ originalName }, 'PDF compression skipped (no size reduction)');
     }
     return file.size;
 }

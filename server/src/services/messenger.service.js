@@ -2,6 +2,7 @@ const { createMessengerBot } = require("@dongdev/fca-unofficial");
 const fs = require("fs");
 const path = require("path");
 const db = require("../config/database");
+const logger = require("../config/logger");
 
 let isMockMode = false;
 let botInstance = null;
@@ -16,7 +17,7 @@ async function loadAppState() {
             return JSON.parse(res.rows[0].value);
         }
     } catch (err) {
-        console.error("Failed to load appState from DB:", err.message);
+        logger.error({ err }, "Failed to load appState from DB");
     }
     return null;
 }
@@ -34,7 +35,7 @@ async function saveAppState(appState) {
              DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
             ['messenger_appstate', serialized]
         );
-        console.log("✅ Messenger appState successfully persisted to database.");
+        logger.info("Messenger appState successfully persisted to database.");
 
         // Local file backup
         try {
@@ -43,16 +44,16 @@ async function saveAppState(appState) {
             // Ignore file write error
         }
     } catch (err) {
-        console.error("Failed to save appState to DB:", err.message);
+        logger.error({ err }, "Failed to save appState to DB");
     }
 }
 async function checkConnection() {
     try {
-        console.log("Running proactive Messenger connection check...");
+        logger.info("Running proactive Messenger connection check...");
         const appStateData = await loadAppState();
         const hasAppState = appStateData || process.env.MESSENGER_APPSTATE || fs.existsSync(APPSTATE_PATH);
         if (!hasAppState) {
-            console.log("No Messenger appstate found. Staying in Mock Mode.");
+            logger.info("No Messenger appstate found. Staying in Mock Mode.");
             resetBot();
             isMockMode = true;
             return false;
@@ -61,7 +62,7 @@ async function checkConnection() {
         const bot = await getBot();
         
         const isMqttConnected = !!(bot.ctx && bot.ctx.mqttClient && bot.ctx.mqttClient.connected);
-        console.log(`Messenger connection check info - MQTT connected: ${isMqttConnected}`);
+        logger.info({ isMqttConnected }, 'Messenger connection check info');
 
         const myId = bot.api.getCurrentUserID();
         if (!myId) {
@@ -75,11 +76,11 @@ async function checkConnection() {
             });
         });
 
-        console.log(`✅ Messenger connection check passed. Active User ID: ${myId}`);
+        logger.info({ userId: myId }, 'Messenger connection check passed');
         isMockMode = false;
         return true;
     } catch (err) {
-        console.warn(`❌ Messenger connection check failed: ${err.message}. Transitioning to Mock Mode.`);
+        logger.warn({ err: err.message }, 'Messenger connection check failed. Transitioning to Mock Mode.');
         resetBot();
         isMockMode = true;
         return false;
@@ -94,39 +95,39 @@ async function initMessenger() {
         if (!appStateData) {
             const appStateEnv = process.env.MESSENGER_APPSTATE;
             if (appStateEnv) {
-                console.log('Facebook MESSENGER_APPSTATE env variable detected. Initializing...');
+                logger.info('Facebook MESSENGER_APPSTATE env variable detected. Initializing...');
                 try {
                     appStateData = JSON.parse(appStateEnv);
                     await saveAppState(appStateData);
                 } catch (err) {
-                    console.error('Failed to parse appState from env:', err.message);
+                    logger.error({ err }, 'Failed to parse appState from env');
                 }
             }
         }
 
         if (!appStateData && fs.existsSync(APPSTATE_PATH)) {
-            console.log('Facebook appstate.json file detected. Initializing...');
+            logger.info('Facebook appstate.json file detected. Initializing...');
             try {
                 appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
                 await saveAppState(appStateData);
             } catch (err) {
-                console.error('Failed to parse appstate.json file:', err.message);
+                logger.error({ err }, 'Failed to parse appstate.json file');
             }
         }
 
         if (appStateData) {
             isMockMode = false;
-            console.log('✅ Messenger Bot service is ready for broadcasting.');
+            logger.info('Messenger Bot service is ready for broadcasting.');
             
             setTimeout(async () => {
                 try {
                     await checkConnection();
                 } catch (err) {
-                    console.error("Initial Messenger connection check failed:", err.message);
+                    logger.error({ err }, 'Initial Messenger connection check failed');
                 }
             }, 5000);
         } else {
-            console.log('⚠️ No Messenger appState found in DB/env/file. Messenger service will run in Mock Mode.');
+            logger.warn('No Messenger appState found in DB/env/file. Running in Mock Mode.');
             isMockMode = true;
         }
 
@@ -134,11 +135,11 @@ async function initMessenger() {
             try {
                 await checkConnection();
             } catch (err) {
-                console.error("Scheduled Messenger connection check error:", err.message);
+                logger.error({ err }, 'Scheduled Messenger connection check error');
             }
         }, 6 * 60 * 60 * 1000);
     } catch (err) {
-        console.error('⚠️ Failed to initialize Messenger. Running in Mock Mode.', err.message);
+        logger.error({ err }, 'Failed to initialize Messenger. Running in Mock Mode.');
         isMockMode = true;
     }
 }
@@ -157,7 +158,7 @@ function resetBot() {
             }
             oldBot.detachStopSignals?.();
         } catch (err) {
-            console.error("Error stopping Messenger bot manually during reset:", err.message);
+            logger.error({ err }, 'Error stopping Messenger bot manually during reset');
         }
     }
     botInstance = null;
@@ -200,13 +201,13 @@ async function getBot() {
                 while (attempts < 20) { // 20 * 500ms = 10s
                     const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
                     if (isConnected) {
-                        console.log("✅ Messenger MQTT client is fully connected and initialized.");
+                        logger.info("Messenger MQTT client is fully connected and initialized.");
                         return;
                     }
                     attempts++;
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
-                console.warn("⚠️ Messenger MQTT client failed to connect in background within timeout. Messages may still work via HTTP.");
+                logger.warn("Messenger MQTT client failed to connect in background within timeout. Messages may still work via HTTP.");
             })();
 
             // Save fresh login appState (may contain refreshed/new cookies)
@@ -216,12 +217,12 @@ async function getBot() {
                     await saveAppState(freshAppState);
                 }
             } catch (saveErr) {
-                console.error("Failed to save refreshed appState on login:", saveErr.message);
+                logger.error({ err: saveErr }, 'Failed to save refreshed appState on login');
             }
 
             // Attach runtime error listener to reset on connection drop
             instance.on("error", (err) => {
-                console.error("Messenger bot runtime error:", err.message);
+                logger.error({ err }, 'Messenger bot runtime error');
                 resetBot();
             });
 
@@ -236,7 +237,7 @@ async function getBot() {
 }
 
 async function sendMessageToGroup(chatId, message, filePath = null) {
-    console.log(`Sending Messenger announcement to thread: ${chatId}`);
+    logger.info({ chatId }, 'Sending Messenger announcement to thread');
 
     let files = [];
     if (filePath) {
@@ -251,11 +252,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 
     if (isMockMode) {
         if (process.env.NODE_ENV === 'test') {
-            console.log(`[MOCK MESSENGER] Sending message to ${chatId}:`);
-            console.log(message);
-            files.forEach((f, index) => {
-                console.log(`[MOCK MESSENGER] Attachment path ${index + 1}: ${f.path} (Original Name: ${f.originalName})`);
-            });
+            logger.debug({ chatId }, 'Mock Messenger send');
 
             return { success: true, messageId: `mock-msg-id-${Date.now()}` };
         }
@@ -268,14 +265,14 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
             return new Promise((resolve, reject) => {
-                console.log(`[FCA] Calling sendMessage to thread ${chatId} with payload:`, JSON.stringify(payload));
+                logger.debug({ chatId, payload: JSON.stringify(payload) }, 'FCA sendMessage called');
                 bot.api.sendMessage(payload, chatId, (err, messageInfo) => {
                     if (err) {
-                        console.error(`[FCA] sendMessage to thread ${chatId} failed:`, err);
+                        logger.error({ chatId, err }, 'FCA sendMessage failed');
                         const errMsg = err.message || err.error || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Unknown FCA error';
                         reject(new Error(errMsg));
                     } else {
-                        console.log(`[FCA] sendMessage to thread ${chatId} succeeded. messageInfo:`, JSON.stringify(messageInfo));
+                        logger.debug({ chatId, messageInfo: JSON.stringify(messageInfo) }, 'FCA sendMessage succeeded');
                         resolve(messageInfo);
                     }
                 });
@@ -297,9 +294,9 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 }
             }
             if (uploadInputs.length > 0) {
-                console.log(`Uploading ${uploadInputs.length} attachment(s) to Facebook...`);
+                logger.info({ count: uploadInputs.length }, 'Uploading attachments to Facebook...');
                 const uploadedIds = await bot.api.uploadAttachment(uploadInputs);
-                console.log("Successfully uploaded attachments:", uploadedIds);
+                logger.debug({ uploadedIds }, 'Successfully uploaded attachments');
 
                 // Map results to [filename, fbid] tuples
                 const unorderedTuples = uploadedIds.map(file => {
@@ -329,7 +326,7 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             lastResult = await sendMsgPromise({ body: message });
         }
         if (attachmentTuples.length > 0) {
-            console.log(`Sending ${attachmentTuples.length} attachment(s) to thread: ${chatId} sequentially...`);
+            logger.debug({ count: attachmentTuples.length, chatId }, 'Sending attachments sequentially');
             for (const tuple of attachmentTuples) {
                 lastResult = await sendMsgPromise({ attachment: tuple });
             }
@@ -342,12 +339,12 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 await saveAppState(freshAppState);
             }
         } catch (saveErr) {
-            console.error("Failed to save rotated appState after broadcast:", saveErr.message);
+            logger.error({ err: saveErr }, 'Failed to save rotated appState after broadcast');
         }
 
         return { success: true, messageId: lastResult?.messageID || 'fca-msg-id' };
     } catch (err) {
-        console.error(`Error sending Messenger message to ${chatId}:`, err.message);
+        logger.error({ chatId, err }, 'Error sending Messenger message');
         resetBot();
         throw err;
     }

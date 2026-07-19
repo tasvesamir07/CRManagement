@@ -1,9 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const fileService = require('../services/file.service');
 const uploadMiddleware = require('../middleware/upload.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
+const logger = require('../config/logger');
+
+const uploadLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { error: 'Too many uploads. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 /**
  * @openapi
@@ -33,7 +43,7 @@ const { validate, validateQuery, validateParams, schemas } = require('../middlew
  *       400:
  *         description: No file uploaded
  */
-router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (req, res) => {
+router.post('/upload', authMiddleware, uploadLimiter, uploadMiddleware.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -44,7 +54,7 @@ router.post('/upload', authMiddleware, uploadMiddleware.single('file'), async (r
         const fileRecord = await fileService.uploadFile(req.file, req.user.id, { overwrite, folderId });
         return res.status(201).json(fileRecord);
     } catch (err) {
-        console.error('File upload route error:', err.message);
+        logger.error({ err }, 'File upload route error');
         return res.status(500).json({ error: err.message });
     }
 });

@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const logger = require('../config/logger');
 
 async function track(eventType, userId = null, metadata = null) {
   try {
@@ -7,7 +8,7 @@ async function track(eventType, userId = null, metadata = null) {
       [eventType, userId, metadata ? JSON.stringify(metadata) : null]
     );
   } catch (err) {
-    console.error('Analytics track error:', err.message);
+    logger.error({ err, eventType, userId }, 'Analytics track error');
   }
 }
 

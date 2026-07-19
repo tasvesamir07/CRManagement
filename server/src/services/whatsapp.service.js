@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
+const appLogger = require('../config/logger');
 
 const isVercel = !!process.env.VERCEL;
 const RELAY_URL = process.env.WHATSAPP_RELAY_URL;
@@ -49,7 +50,7 @@ if (isRelayMode) {
             else if (connectionStatus !== 'QR_READY') latestQr = '';
             broadcastStatus();
         } catch (err) {
-            console.error('[Relay] Status poll failed:', err.message);
+            appLogger.error({ err: err.message }, 'Relay status poll failed');
             connectionStatus = 'DISCONNECTED';
             broadcastStatus();
         }
@@ -57,7 +58,7 @@ if (isRelayMode) {
 
     const initWhatsApp = async () => {
         if (isMockMode) return;
-        console.log(`[Relay] Using remote relay at ${RELAY_URL}`);
+        appLogger.info({ relayUrl: RELAY_URL }, 'Using remote relay');
         isMockMode = false;
         connectionStatus = 'CONNECTING';
         broadcastStatus();
@@ -78,7 +79,7 @@ if (isRelayMode) {
 
     const sendMessageToGroup = async (chatId, message, filePath = null) => {
         if (isMockMode) {
-            console.log(`[Mock] WhatsApp message sent to ${chatId}: ${message}`);
+            appLogger.debug({ chatId }, 'Mock WhatsApp send (relay)');
             return { success: true, messageId: 'mock_msg_id' };
         }
         const rawFiles = filePath ? (Array.isArray(filePath) ? filePath : [filePath]) : [];
@@ -153,7 +154,7 @@ if (isRelayMode) {
             DisconnectReason = baileys.DisconnectReason;
             Browsers = baileys.Browsers;
         } catch (err) {
-            console.error('Failed to load @whiskeysockets/baileys:', err.message);
+            appLogger.error({ err: err.message }, 'Failed to load @whiskeysockets/baileys');
         }
     }
 
@@ -198,7 +199,7 @@ if (isRelayMode) {
                 const kr = await db.query("SELECT data FROM whatsapp_creds WHERE type = 'keys'");
                 if (kr.rows[0]) keysStore = reviveBuffers(kr.rows[0].data) || {};
             } catch (err) {
-                console.error('DB auth init failed, using file fallback:', err.message);
+                appLogger.error({ err: err.message }, 'DB auth init failed, using file fallback');
                 return useMultiFileAuthState(AUTH_FOLDER);
             }
         } else {
@@ -228,7 +229,7 @@ if (isRelayMode) {
                         [JSON.stringify(keysStore)]
                     );
                 } catch (err) {
-                    console.error('[WhatsApp] Failed to save keys to DB:', err.message);
+                    appLogger.error({ err: err.message }, 'Failed to save keys to DB');
                 }
             };
 
@@ -251,9 +252,9 @@ if (isRelayMode) {
                      ON CONFLICT (type) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
                     [JSON.stringify(keysStore)]
                 );
-                console.log('[WhatsApp] Flushed final keys to DB successfully.');
+                appLogger.info('Flushed final keys to DB successfully.');
             } catch (err) {
-                console.error('[WhatsApp] Failed to flush final keys:', err.message);
+                appLogger.error({ err: err.message }, 'Failed to flush final keys');
             }
         };
 
@@ -292,18 +293,18 @@ if (isRelayMode) {
 
     async function initWhatsApp() {
         if (isMockMode) {
-            console.log('WhatsApp service running in Mock Mode. Skipping initialization.');
+            appLogger.warn('WhatsApp service running in Mock Mode. Skipping initialization.');
             connectionStatus = 'DISCONNECTED';
             broadcastStatus();
             return;
         }
 
         if (sock) {
-            console.log('WhatsApp client already initialized.');
+            appLogger.info('WhatsApp client already initialized.');
             return;
         }
 
-        console.log('Initializing WhatsApp Client (Baileys)...');
+        appLogger.info('Initializing WhatsApp Client (Baileys)...');
         connectionStatus = 'CONNECTING';
         broadcastStatus();
 
@@ -324,12 +325,12 @@ if (isRelayMode) {
 
             const proxyUrl = process.env.PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
             if (proxyUrl) {
-                console.log(`[WhatsApp] Using proxy for connection: ${proxyUrl.replace(/:[^:@]+@/, ':***@')}`);
+                appLogger.info('Using proxy for WhatsApp connection');
                 try {
                     const { HttpsProxyAgent } = require('https-proxy-agent');
                     socketConfig.agent = new HttpsProxyAgent(proxyUrl);
                 } catch (err) {
-                    console.error('Failed to initialize HttpsProxyAgent:', err.message);
+                    appLogger.error({ err: err.message }, 'Failed to initialize HttpsProxyAgent');
                 }
             }
 
@@ -339,7 +340,7 @@ if (isRelayMode) {
                 const wasQrReady = connectionStatus === 'QR_READY';
                 saveCreds(update);
                 if (wasQrReady) {
-                    console.log('WhatsApp QR scanned, authenticating...');
+                    appLogger.info('WhatsApp QR scanned, authenticating...');
                     connectionStatus = 'CONNECTING';
                     broadcastStatus();
                 }
@@ -349,20 +350,20 @@ if (isRelayMode) {
                 const { connection, lastDisconnect, qr } = update;
 
                 if (qr) {
-                    console.log('WhatsApp QR emitted (new code ready for scanning)');
+                    appLogger.info('WhatsApp QR emitted (new code ready for scanning)');
                     latestQr = qr;
                     connectionStatus = 'QR_READY';
                     broadcastStatus();
                 }
 
                 if (connection === 'connecting') {
-                    console.log('🔄 WhatsApp client is connecting...');
+                    appLogger.info('WhatsApp client is connecting...');
                     connectionStatus = 'CONNECTING';
                     broadcastStatus();
                 }
 
                 if (connection === 'open') {
-                    console.log('✅ WhatsApp client is ready and connected!');
+                    appLogger.info('WhatsApp client is ready and connected!');
                     connectionStatus = 'CONNECTED';
                     latestQr = '';
                     hasEverBeenConnected = true;
@@ -383,23 +384,23 @@ if (isRelayMode) {
 
                     if (statusCode === DisconnectReason.loggedOut) {
                         _consecutive401Count++;
-                        console.error(`WhatsApp connection error: ${errMsg}`);
-                        console.log(`WhatsApp disconnected (reason=${statusCode}, wasConnected=${hasEverBeenConnected}). ${_consecutive401Count}/5 consecutive 401 failures.`);
+                        appLogger.error({ err: errMsg }, 'WhatsApp connection error');
+                        appLogger.warn({ reason: statusCode, wasConnected: hasEverBeenConnected, consecutive401: _consecutive401Count }, 'WhatsApp disconnected');
                         
                         try {
                             const db = require('../config/database');
                             if (process.env.DATABASE_URL && !db.useJsonDb()) {
-                                db.query("DELETE FROM whatsapp_creds").catch(e => console.error(e));
+                                db.query("DELETE FROM whatsapp_creds").catch(e => appLogger.error({ err: e }, 'Failed to delete creds on logout'));
                             }
                             if (fs.existsSync(AUTH_FOLDER)) {
                                 fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
                             }
                         } catch (e) {
-                            console.error('Failed to clean up credentials on logout:', e.message);
+                            appLogger.error({ err: e.message }, 'Failed to clean up credentials on logout');
                         }
 
                         if (_consecutive401Count >= 5) {
-                            console.log('⚠️ Too many consecutive 401 failures (likely invalid credentials). Falling back to mock mode.');
+                            appLogger.warn('Too many consecutive 401 failures. Falling back to mock mode.');
                             isMockMode = true;
                             return;
                         }
@@ -410,7 +411,7 @@ if (isRelayMode) {
                     if (!isMockMode) {
                         let delay = 10000;
                         if (statusCode === 408) delay = 10000;
-                        console.log(`Reconnecting in ${delay / 1000}s...`);
+                        appLogger.info({ delaySeconds: delay / 1000 }, 'Reconnecting...');
                         clearTimeout(reconnectTimer);
                         reconnectTimer = setTimeout(initWhatsApp, delay);
                     }
@@ -419,7 +420,7 @@ if (isRelayMode) {
 
             sock.ev.on('messages.upsert', () => {});
         } catch (err) {
-            console.error('⚠️ Failed to initialize WhatsApp client. Running in Mock Mode.', err.message);
+            appLogger.error({ err: err.message }, 'Failed to initialize WhatsApp client. Running in Mock Mode.');
             isMockMode = true;
             connectionStatus = 'DISCONNECTED';
             broadcastStatus();
@@ -460,7 +461,7 @@ if (isRelayMode) {
             throw new Error(`WhatsApp connection not ready (status: ${connectionStatus}). Please wait for QR code and try again.`);
         }
 
-        console.log(`Waiting for socket stabilization before requesting code for: ${cleanPhone}...`);
+        appLogger.info({ phone: cleanPhone.replace(/\d(?=\d{4})/g, '*') }, 'Waiting for socket stabilization before requesting pairing code');
         await new Promise(r => setTimeout(r, 3000));
 
         try {
@@ -468,13 +469,13 @@ if (isRelayMode) {
             const formattedCode = code?.match(/.{1,4}/g)?.join("-") || code;
             return { code: formattedCode };
         } catch (err) {
-            console.error('Pairing code request failed:', err.message);
+            appLogger.error({ err: err.message }, 'Pairing code request failed');
             throw new Error('Failed to request pairing code: ' + err.message);
         }
     }
 
     async function sendMessageToGroup(chatId, message, filePath = null) {
-        console.log(`Sending WhatsApp message to group: ${chatId}`);
+        appLogger.info({ chatId }, 'Sending WhatsApp message to group');
 
         let files = [];
         if (filePath) {
@@ -488,10 +489,7 @@ if (isRelayMode) {
         }
 
         if (isMockMode) {
-            console.log(`[Mock] WhatsApp message sent to ${chatId}: ${message}`);
-            files.forEach((f, idx) => {
-                console.log(`[Mock] WhatsApp attachment ${idx + 1}: ${f.path} (Original: ${f.originalName})`);
-            });
+            appLogger.debug({ chatId }, 'Mock WhatsApp send');
             return { success: true, messageId: 'mock_msg_id' };
         }
 
@@ -557,7 +555,7 @@ if (isRelayMode) {
                             await sock.sendMessage(targetId, { document: extraData, mimetype: extraMime, fileName: fi.originalName });
                         }
                     } catch (err) {
-                        console.error(`Failed to send extra file ${fi.path} to WhatsApp:`, err.message);
+                        appLogger.error({ filePath: fi.path, err: err.message }, 'Failed to send extra file to WhatsApp');
                     }
                 });
                 await Promise.all(remainderSends);
@@ -568,7 +566,7 @@ if (isRelayMode) {
             const msgId = sentMsg?.key?.id || 'unknown';
             return { success: true, messageId: msgId };
         } catch (err) {
-            console.error(`Error sending WhatsApp message to ${chatId}:`, err.message);
+            appLogger.error({ chatId, err: err.message }, 'Error sending WhatsApp message');
             throw err;
         }
     }
@@ -609,19 +607,19 @@ if (isRelayMode) {
 
             return groups;
         } catch (err) {
-            console.error('Error fetching WhatsApp chats:', err.message);
+            appLogger.error({ err: err.message }, 'Error fetching WhatsApp chats');
             return [];
         }
     }
 
     async function restartWhatsApp() {
-        console.log('🔄 Restarting WhatsApp Client...');
+        appLogger.info('Restarting WhatsApp Client...');
         clearTimeout(reconnectTimer);
         if (sock) {
             try {
                 sock.end(undefined);
             } catch (err) {
-                console.error('Error ending socket:', err.message);
+                appLogger.error({ err: err.message }, 'Error ending socket');
             }
             sock = null;
         }
@@ -633,13 +631,13 @@ if (isRelayMode) {
     }
 
     async function clearSession() {
-        console.log('🧹 Clearing WhatsApp Session...');
+        appLogger.info('Clearing WhatsApp Session...');
         clearTimeout(reconnectTimer);
         if (sock) {
             try {
                 sock.end(undefined);
             } catch (err) {
-                console.error('Error ending socket:', err.message);
+                appLogger.error({ err: err.message }, 'Error ending socket');
             }
             sock = null;
         }
@@ -647,9 +645,9 @@ if (isRelayMode) {
         if (fs.existsSync(AUTH_FOLDER)) {
             try {
                 fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-                console.log('✅ Baileys auth folder cleared successfully.');
+                appLogger.info('Baileys auth folder cleared successfully.');
             } catch (err) {
-                console.error('❌ Failed to delete Baileys auth directory:', err.message);
+                appLogger.error({ err: err.message }, 'Failed to delete Baileys auth directory');
                 throw err;
             }
         }
@@ -658,10 +656,10 @@ if (isRelayMode) {
             const db = require('../config/database');
             if (process.env.DATABASE_URL && !db.useJsonDb()) {
                 await db.query("DELETE FROM whatsapp_creds");
-                console.log('✅ Database auth credentials cleared successfully.');
+                appLogger.info('Database auth credentials cleared successfully.');
             }
         } catch (err) {
-            console.error('❌ Failed to clear database auth credentials:', err.message);
+            appLogger.error({ err: err.message }, 'Failed to clear database auth credentials');
         }
 
         latestQr = '';
@@ -672,19 +670,19 @@ if (isRelayMode) {
     }
 
     async function destroyWhatsApp() {
-        console.log('Shutting down WhatsApp client...');
+        appLogger.info('Shutting down WhatsApp client...');
         if (globalKeysFlush) {
             try {
                 await globalKeysFlush();
             } catch (err) {
-                console.error('[WhatsApp] Error flushing final keys on destroy:', err.message);
+                appLogger.error({ err: err.message }, 'Error flushing final keys on destroy');
             }
         }
         if (sock) {
             try {
                 sock.end(undefined);
             } catch (err) {
-                console.error('Error ending socket:', err.message);
+                appLogger.error({ err: err.message }, 'Error ending socket');
             }
             sock = null;
         }

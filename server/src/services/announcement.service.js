@@ -6,6 +6,8 @@ const messengerService = require('./messenger.service');
 const path = require('path');
 const fs = require('fs');
 const auditService = require('./audit.service');
+const logger = require('../config/logger');
+const { ANNOUNCEMENT_STATUS, PLATFORM_STATUS } = require('../config/constants');
 
 function htmlToWhatsappMarkdown(html) {
     if (!html) return '';
@@ -153,17 +155,17 @@ async function createAnnouncement({ title, content, category, course_id, custom_
     const result = await db.query(
         'INSERT INTO announcements (title, content, category, course_id, custom_room, custom_time, file_id, file_ids, created_by, status, metadata) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], created_by, 'draft', metadata ? JSON.stringify(metadata) : null]
+        [title, content, category, course_id || null, custom_room || null, custom_time || null, file_id || null, file_ids || [], created_by, ANNOUNCEMENT_STATUS.DRAFT, metadata ? JSON.stringify(metadata) : null]
     );
     const announcement = result.rows[0];
 
     // 2. Link selected platforms in pending status
     if (platform_ids && platform_ids.length > 0) {
         for (const pid of platform_ids) {
-            await db.query(
-                'INSERT INTO announcement_platforms (announcement_id, platform_id, platform_status) VALUES ($1, $2, $3)',
-                [announcement.id, pid, 'pending']
-            );
+                await db.query(
+                    'INSERT INTO announcement_platforms (announcement_id, platform_id, platform_status) VALUES ($1, $2, $3)',
+                    [announcement.id, pid, PLATFORM_STATUS.PENDING]
+                );
         }
     }
 
@@ -392,7 +394,7 @@ async function sendAnnouncement(id, _hostUrl = '') {
 
             return { platform_id: p.platform_id, status: 'sent', skipped: false };
         } catch (err) {
-            console.error(`Failed delivery to platform ID ${p.platform_id}:`, err.message);
+            logger.error({ platformId: p.platform_id, err: err.message }, 'Failed delivery to platform');
             await db.query(
                 'UPDATE announcement_platforms SET platform_status = $1, error_message = $2 WHERE announcement_id = $3 AND platform_id = $4',
                 ['failed', err.message, id, p.platform_id]
@@ -448,7 +450,7 @@ async function sendAnnouncement(id, _hostUrl = '') {
                     fs.unlinkSync(f.path);
                 }
             } catch (e) {
-                console.error('Failed to delete temp file:', e.message);
+                logger.error({ err: e.message }, 'Failed to delete temp file');
             }
         }
     }

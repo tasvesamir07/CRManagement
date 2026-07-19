@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const crypto = require('crypto');
+const { OTP_TYPE } = require('../config/constants');
+const logger = require('../config/logger');
 
 if (!process.env.JWT_SECRET) {
     throw new Error('FATAL: JWT_SECRET environment variable is not set. Please define it in your .env file.');
@@ -74,7 +76,7 @@ async function login(username, password) {
     delete user.two_factor_secret;
 
     const token = generateToken(user);
-    console.log('[AUTH] login response:', { hasUser: !!user, userId: user?.id, username: user?.username, hasToken: !!token, userKeys: Object.keys(user || {}) });
+    logger.debug({ userId: user?.id, username: user?.username }, 'Login response sent');
     return { user, token };
 }
 
@@ -217,7 +219,7 @@ async function forgotPassword(email) {
 
     await db.query(
         'INSERT INTO otps (email, otp, type, expires_at) VALUES ($1, $2, $3, $4)',
-        [email, otp, 'password_reset', expiresAt]
+        [email, otp, OTP_TYPE.PASSWORD_RESET, expiresAt]
     );
 
     // Send email via nodemailer if configured
@@ -240,11 +242,11 @@ async function forgotPassword(email) {
                 text: `Your OTP for password reset is: ${otp}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`
             });
         } else {
-            console.log(`[OTP] Password reset OTP for ${email}: ${otp}`);
+            logger.info({ email, otp }, 'Password reset OTP (email not configured)');
         }
     } catch (err) {
-        console.error('Failed to send OTP email:', err.message);
-        console.log(`[OTP] Password reset OTP for ${email}: ${otp}`);
+        logger.error({ err, email }, 'Failed to send OTP email, logging OTP instead');
+        logger.info({ email, otp }, 'Password reset OTP (email send failed)');
     }
 
     return { message: 'If an account with that email exists, an OTP has been sent.' };
@@ -253,7 +255,7 @@ async function forgotPassword(email) {
 async function verifyOtp(email, otp) {
     const otpResult = await db.query(
         'SELECT * FROM otps WHERE email = $1 AND type = $2 AND used = false',
-        [email, 'password_reset']
+        [email, OTP_TYPE.PASSWORD_RESET]
     );
 
     if (otpResult.rows.length === 0) {
@@ -276,7 +278,7 @@ async function verifyOtp(email, otp) {
 async function resetPassword(email, otp, newPassword) {
     const otpResult = await db.query(
         'SELECT * FROM otps WHERE email = $1 AND type = $2 AND used = false',
-        [email, 'password_reset']
+        [email, OTP_TYPE.PASSWORD_RESET]
     );
 
     if (otpResult.rows.length === 0) {

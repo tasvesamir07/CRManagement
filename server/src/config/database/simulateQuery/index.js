@@ -5,6 +5,7 @@ const platform = require('./platform');
 const file = require('./file');
 const announcement = require('./announcement');
 const misc = require('./misc');
+const logger = require('../../logger');
 
 async function simulateQuery(text, params = []) {
     const db = readJsonDb();
@@ -17,7 +18,7 @@ async function simulateQuery(text, params = []) {
         if (result !== null) return result;
     }
 
-    console.warn(`[JSON DB] Unhandled query: ${text}`, params);
+    logger.warn({ query: text.slice(0, 200), params }, 'Unhandled JSON DB query');
     return { rows: [] };
 }
 
