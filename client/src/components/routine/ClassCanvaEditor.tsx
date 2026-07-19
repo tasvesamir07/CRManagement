@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { routinesAPI, filesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
-  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight
+  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight, ChevronDown, Bold, Italic
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -234,6 +234,16 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+
+  // Text Styling States
+  const [semesterTitleBold, setSemesterTitleBold] = useState(true);
+  const [semesterTitleItalic, setSemesterTitleItalic] = useState(false);
+  const [sectionGroupBold, setSectionGroupBold] = useState(true);
+  const [sectionGroupItalic, setSectionGroupItalic] = useState(false);
+  const [batchCodeBold, setBatchCodeBold] = useState(true);
+  const [batchCodeItalic, setBatchCodeItalic] = useState(false);
+  const [effectiveDateBold, setEffectiveDateBold] = useState(false);
+  const [effectiveDateItalic, setEffectiveDateItalic] = useState(true);
 
   // Active theme properties
   const [canvasBg, setCanvasBg] = useState('#0F172A');
@@ -612,21 +622,26 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
               {/* Font Family Selection */}
               <div className="space-y-1.5 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
-                <select
-                  value={selectedFont}
-                  onChange={e => setSelectedFont(e.target.value)}
-                  className="w-full h-9 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-                >
-                  {FONTS.map(f => (
-                    <option 
-                      key={f.family} 
-                      value={f.family}
-                      style={{ fontFamily: f.family }}
-                    >
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedFont}
+                    onChange={e => setSelectedFont(e.target.value)}
+                    className="w-full h-9 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                  >
+                    {FONTS.map(f => (
+                      <option 
+                        key={f.family} 
+                        value={f.family}
+                        style={{ fontFamily: f.family }}
+                      >
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
 
               {/* Text Alignment */}
@@ -752,7 +767,25 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Semester Title</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-gray-500">Semester Title</label>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setSemesterTitleBold(!semesterTitleBold)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${semesterTitleBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Bold"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setSemesterTitleItalic(!semesterTitleItalic)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${semesterTitleItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Italic"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <input 
                     type="text" 
                     value={semesterTitle} 
@@ -761,7 +794,25 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Sections</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-gray-500">Sections</label>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setSectionGroupBold(!sectionGroupBold)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${sectionGroupBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Bold"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setSectionGroupItalic(!sectionGroupItalic)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${sectionGroupItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Italic"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <input 
                     type="text" 
                     value={sectionGroup} 
@@ -770,7 +821,25 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Batch Code</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-gray-500">Batch Code</label>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setBatchCodeBold(!batchCodeBold)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${batchCodeBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Bold"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setBatchCodeItalic(!batchCodeItalic)}
+                        className={`p-1 rounded cursor-pointer transition-colors ${batchCodeItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                        title="Toggle Italic"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <input 
                     type="text" 
                     value={batchCode} 
@@ -915,19 +984,24 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   <div className="bg-canvas border border-hairline rounded-md p-3.5 space-y-4 shadow-sm">
                     {/* Course selector */}
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Registered Courses (Autofill)</label>
-                      <select
-                        value={formCourseId}
-                        onChange={e => setFormCourseId(e.target.value)}
-                        className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none cursor-pointer"
-                      >
-                        <option value="">-- Choose registered course --</option>
-                        {courses.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.course_id} ({c.teacher_initials}) - {c.course_name}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Teacher & Course</label>
+                      <div className="relative">
+                        <select
+                          value={formCourseId}
+                          onChange={e => setFormCourseId(e.target.value)}
+                          className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                        >
+                          <option value="">-- Choose registered course --</option>
+                          {courses.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.course_id} ({c.teacher_initials}) - {c.course_name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Section */}
@@ -1099,28 +1173,52 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 }}
                 className="p-5 text-center border transition-all duration-300 shadow-sm rounded-sm"
               >
-                <h1 className="font-extrabold text-2xl tracking-tight leading-tight uppercase text-gray-900">
+                <h1 
+                  style={{
+                    fontWeight: semesterTitleBold ? 'bold' : 'normal',
+                    fontStyle: semesterTitleItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-2xl tracking-tight leading-tight uppercase text-gray-900"
+                >
                   <InlineInput 
                     value={semesterTitle} 
                     onChange={setSemesterTitle} 
                     disabled={isLocked}
                   />
                 </h1>
-                <h2 className="text-sm tracking-widest font-semibold uppercase mt-1 text-gray-700 opacity-90">
+                <h2 
+                  style={{
+                    fontWeight: sectionGroupBold ? 'bold' : 'normal',
+                    fontStyle: sectionGroupItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-sm tracking-widest uppercase mt-1 text-gray-700 opacity-90"
+                >
                   <InlineInput 
                     value={sectionGroup} 
                     onChange={setSectionGroup} 
                     disabled={isLocked}
                   />
                 </h2>
-                <div className="text-xs text-gray-600 font-semibold mt-1 uppercase">
+                <div 
+                  style={{
+                    fontWeight: batchCodeBold ? 'bold' : 'normal',
+                    fontStyle: batchCodeItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-xs text-gray-600 mt-1 uppercase"
+                >
                   <InlineInput 
                     value={batchCode} 
                     onChange={setBatchCode} 
                     disabled={isLocked}
                   />
                 </div>
-                <div className="text-[11px] text-gray-500 italic mt-0.5">
+                <div 
+                  style={{
+                    fontWeight: effectiveDateBold ? 'bold' : 'normal',
+                    fontStyle: effectiveDateItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-[11px] text-gray-500 mt-0.5"
+                >
                   <InlineInput 
                     value={effectiveDate} 
                     onChange={setEffectiveDate} 

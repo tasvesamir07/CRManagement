@@ -4,7 +4,8 @@ import { filesAPI, examRoutinesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
-  ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight, Save
+  ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight, Save,
+  ChevronDown, Bold, Italic
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -249,11 +250,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   // Helper: Parse DD-MM-YY back to YYYY-MM-DD
   const parseShortDateToYYYYMMDD = (shortDate: string) => {
     if (!shortDate) return '';
+    const cleaned = shortDate.trim();
     try {
-      const parts = shortDate.split('-');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+        return cleaned;
+      }
+      const parts = cleaned.split('-');
       if (parts.length === 3) {
-        // parts[0]: DD, parts[1]: MM, parts[2]: YY
-        return `20${parts[2]}-${parts[1]}-${parts[0]}`;
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        let year = parts[2];
+        if (year.length === 2) {
+          year = `20${year}`;
+        }
+        return `${year}-${month}-${day}`;
       }
     } catch {}
     return shortDate;
@@ -262,8 +272,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   // Helper: Parse 12-hour AM/PM back to 24-hour HH:MM
   const parse12HourTo24Hour = (time12: string) => {
     if (!time12) return '09:00';
+    const cleaned = time12.trim();
     try {
-      const parts = time12.trim().match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+      const parts = cleaned.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
       if (parts) {
         let hours = parseInt(parts[1], 10);
         const minutes = parts[2];
@@ -273,7 +284,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         return `${hours.toString().padStart(2, '0')}:${minutes}`;
       }
     } catch {}
-    return time12;
+    return cleaned;
   };
 
   const handleSaveRoutineData = async () => {
@@ -295,9 +306,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         const cleanCode = item.courseCode.trim().split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         const matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode) || courses[0];
         
-        let examType = 'MID';
-        if (headerTitle.toLowerCase().includes('final')) examType = 'FINAL';
-        else if (headerTitle.toLowerCase().includes('makeup') || headerTitle.toLowerCase().includes('make-up')) examType = 'MAKEUP';
+        let examType = 'mid';
+        if (headerTitle.toLowerCase().includes('final')) examType = 'final';
+        else if (headerTitle.toLowerCase().includes('makeup') || headerTitle.toLowerCase().includes('make-up')) examType = 'makeup';
+        else if (headerTitle.toLowerCase().includes('quiz')) examType = 'quiz';
         
         const parsedDate = parseShortDateToYYYYMMDD(item.examDate);
         const parsedTime = parse12HourTo24Hour(item.examTime);
@@ -342,6 +354,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [headerSubtitle, setHeaderSubtitle] = useState('SUMMER - 2026');
   const [footerLeft, setFooterLeft] = useState('SECTION - CS-(A & H)');
   const [footerRight, setFooterRight] = useState('ROUTINE - SWE - 41');
+
+  // Text Styling States
+  const [headerTitleBold, setHeaderTitleBold] = useState(true);
+  const [headerTitleItalic, setHeaderTitleItalic] = useState(false);
+  const [headerSubtitleBold, setHeaderSubtitleBold] = useState(true);
+  const [headerSubtitleItalic, setHeaderSubtitleItalic] = useState(false);
+  const [footerLeftBold, setFooterLeftBold] = useState(true);
+  const [footerLeftItalic, setFooterLeftItalic] = useState(false);
+  const [footerRightBold, setFooterRightBold] = useState(true);
+  const [footerRightItalic, setFooterRightItalic] = useState(false);
   
   const [bgColor, setBgColor] = useState('#E4ECF0');
   const [bgGradient, setBgGradient] = useState('');
@@ -679,21 +701,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               {/* Font Family Selection */}
               <div className="space-y-1.5 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
-                <select
-                  value={selectedFont}
-                  onChange={e => setSelectedFont(e.target.value)}
-                  className="w-full h-9 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-                >
-                  {FONTS.map(f => (
-                    <option 
-                      key={f.family} 
-                      value={f.family}
-                      style={{ fontFamily: f.family }}
-                    >
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedFont}
+                    onChange={e => setSelectedFont(e.target.value)}
+                    className="w-full h-9 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                  >
+                    {FONTS.map(f => (
+                      <option 
+                        key={f.family} 
+                        value={f.family}
+                        style={{ fontFamily: f.family }}
+                      >
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
 
               {/* Text Alignment Customizer */}
@@ -810,45 +837,60 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Corner Rounded</label>
-                    <select 
-                      value={cardRoundedness} 
-                      onChange={e => setCardRoundedness(e.target.value)}
-                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-                    >
-                      <option value="0px">Sharp (0px)</option>
-                      <option value="4px">Small (4px)</option>
-                      <option value="8px">Medium (8px)</option>
-                      <option value="12px">Large (12px)</option>
-                      <option value="20px">Extra (20px)</option>
-                    </select>
+                    <div className="relative">
+                      <select 
+                        value={cardRoundedness} 
+                        onChange={e => setCardRoundedness(e.target.value)}
+                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                      >
+                        <option value="0px">Sharp (0px)</option>
+                        <option value="4px">Small (4px)</option>
+                        <option value="8px">Medium (8px)</option>
+                        <option value="12px">Large (12px)</option>
+                        <option value="20px">Extra (20px)</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Shadow</label>
-                    <select 
-                      value={cardShadow} 
-                      onChange={e => setCardShadow(e.target.value)}
-                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-                    >
-                      <option value="shadow-none">None</option>
-                      <option value="shadow-sm">Soft / Subtle</option>
-                      <option value="shadow-md">Medium</option>
-                      <option value="shadow-lg">Large</option>
-                    </select>
+                    <div className="relative">
+                      <select 
+                        value={cardShadow} 
+                        onChange={e => setCardShadow(e.target.value)}
+                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                      >
+                        <option value="shadow-none">None</option>
+                        <option value="shadow-sm">Soft / Subtle</option>
+                        <option value="shadow-md">Medium</option>
+                        <option value="shadow-lg">Large</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Border</label>
-                    <select 
-                      value={cardBorderType} 
-                      onChange={e => setCardBorderType(e.target.value as any)}
-                      className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none"
-                    >
-                      <option value="none">No Border</option>
-                      <option value="hairline">Light Border</option>
-                      <option value="accent">Match Accent Bar</option>
-                    </select>
+                    <div className="relative">
+                      <select 
+                        value={cardBorderType} 
+                        onChange={e => setCardBorderType(e.target.value as any)}
+                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                      >
+                        <option value="none">No Border</option>
+                        <option value="hairline">Light Border</option>
+                        <option value="accent">Match Accent Bar</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 pt-5 select-none">
                     <input 
@@ -873,7 +915,25 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Header Configuration</label>
                 <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Header Main Title</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-gray-500">Header Main Title</label>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setHeaderTitleBold(!headerTitleBold)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${headerTitleBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Bold"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setHeaderTitleItalic(!headerTitleItalic)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${headerTitleItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Italic"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                     <input 
                       type="text" 
                       value={headerTitle} 
@@ -882,12 +942,30 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Header Subtitle</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-gray-500">Header Subtitle</label>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setHeaderSubtitleBold(!headerSubtitleBold)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${headerSubtitleBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Bold"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setHeaderSubtitleItalic(!headerSubtitleItalic)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${headerSubtitleItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Italic"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                     <input 
                       type="text" 
                       value={headerSubtitle} 
                       onChange={e => setHeaderSubtitle(e.target.value)}
-                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
+                      className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-medium"
                     />
                   </div>
                 </div>
@@ -897,7 +975,25 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Footer Configuration</label>
                 <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Footer Left Text</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-gray-500">Footer Left Text</label>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setFooterLeftBold(!footerLeftBold)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${footerLeftBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Bold"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setFooterLeftItalic(!footerLeftItalic)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${footerLeftItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Italic"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                     <input 
                       type="text" 
                       value={footerLeft} 
@@ -906,7 +1002,25 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Footer Right Text</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-gray-500">Footer Right Text</label>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setFooterRightBold(!footerRightBold)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${footerRightBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Bold"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setFooterRightItalic(!footerRightItalic)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${footerRightItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                          title="Toggle Italic"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                     <input 
                       type="text" 
                       value={footerRight} 
@@ -937,26 +1051,31 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {courses.length > 0 && (
                       <div>
                         <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">Autofill from Registered Courses</label>
-                        <select
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (!val) return;
-                            const selected = courses.find(c => c.course_id === val);
-                            if (selected) {
-                              updateItemField(selectedItem.id, 'courseCode', selected.course_id);
-                              updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
-                            }
-                            e.target.value = ''; 
-                          }}
-                          className="w-full h-8 px-2 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none cursor-pointer"
-                        >
-                          <option value="">-- Select a registered course --</option>
-                          {courses.map(c => (
-                            <option key={c.id} value={c.course_id}>
-                              {c.course_id} - {c.course_name}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              const selected = courses.find(c => c.course_id === val);
+                              if (selected) {
+                                updateItemField(selectedItem.id, 'courseCode', selected.course_id);
+                                updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
+                              }
+                              e.target.value = ''; 
+                            }}
+                            className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
+                          >
+                            <option value="">-- Select a registered course --</option>
+                            {courses.map(c => (
+                              <option key={c.id} value={c.course_id}>
+                                {c.course_id} - {c.course_name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1258,14 +1377,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 }}
                 className={`p-6 text-center border border-hairline transition-all duration-300 ${cardShadow}`}
               >
-                <h1 className="font-extrabold text-2xl tracking-tight leading-tight uppercase">
+                <h1 
+                  style={{
+                    fontWeight: headerTitleBold ? 'bold' : 'normal',
+                    fontStyle: headerTitleItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-2xl tracking-tight leading-tight uppercase"
+                >
                   <InlineInput 
                     value={headerTitle} 
                     onChange={setHeaderTitle} 
                     disabled={isLocked}
                   />
                 </h1>
-                <h2 className="text-base tracking-widest font-semibold uppercase mt-1 opacity-80">
+                <h2 
+                  style={{
+                    fontWeight: headerSubtitleBold ? 'bold' : 'normal',
+                    fontStyle: headerSubtitleItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-base tracking-widest uppercase mt-1 opacity-80"
+                >
                   <InlineInput 
                     value={headerSubtitle} 
                     onChange={setHeaderSubtitle} 
@@ -1421,14 +1552,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 }}
                 className={`p-4 border border-hairline text-center transition-all duration-300 ${cardShadow}`}
               >
-                <div className="text-[13px] font-bold tracking-wider uppercase">
+                <div 
+                  style={{
+                    fontWeight: footerLeftBold ? 'bold' : 'normal',
+                    fontStyle: footerLeftItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-[13px] tracking-wider uppercase"
+                >
                   <InlineInput 
                     value={footerLeft} 
                     onChange={setFooterLeft} 
                     disabled={isLocked}
                   />
                 </div>
-                <div className="text-[12px] font-bold tracking-wide uppercase mt-1 opacity-80">
+                <div 
+                  style={{
+                    fontWeight: footerRightBold ? 'bold' : 'normal',
+                    fontStyle: footerRightItalic ? 'italic' : 'normal'
+                  }}
+                  className="text-[12px] tracking-wide uppercase mt-1 opacity-80"
+                >
                   <InlineInput 
                     value={footerRight} 
                     onChange={setFooterRight} 
