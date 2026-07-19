@@ -255,9 +255,15 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
         return cleaned;
       }
+      
+      // Handle the case where it contains T00:00:00
+      if (cleaned.includes('T') && !cleaned.includes('-')) {
+        return cleaned.substring(0, 10);
+      }
+
       const parts = cleaned.split('-');
       if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
+        const day = parts[0].split('T')[0].padStart(2, '0');
         const month = parts[1].padStart(2, '0');
         let year = parts[2];
         if (year.length === 2) {
@@ -405,8 +411,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const formatDateToShort = (dateStr: string) => {
     if (!dateStr) return '';
     try {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
+      const cleaned = dateStr.trim();
+      
+      // If it matches the corrupted pattern from previous saves: '01T00:00:00.000Z-01-26'
+      if (cleaned.includes('T') && cleaned.includes('-')) {
+        const parts = cleaned.split('-');
+        if (parts.length === 3 && parts[0].includes('T')) {
+          const day = parts[0].split('T')[0];
+          const month = parts[1];
+          const year = parts[2];
+          return `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`;
+        }
+      }
+
+      let datePortion = cleaned;
+      if (cleaned.includes('T')) {
+        datePortion = cleaned.substring(0, 10);
+      }
+      
+      if (/^\d{4}-\d{2}-\d{2}$/.test(datePortion)) {
+        const parts = datePortion.split('-');
         return `${parts[2]}-${parts[1]}-${parts[0].slice(2)}`;
       }
     } catch {}
