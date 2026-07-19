@@ -30,9 +30,25 @@ interface Notice {
   customMakeupText?: string;
 }
 
+const CATEGORY_EMOJIS: Record<string, string> = {
+  quiz: '📝',
+  makeup_quiz: '🔄',
+  exam: '🎯',
+  syllabus: '📚',
+  suggestion: '💡',
+  presentation: '📢',
+  assignment: '📁',
+  lab_report: '📊',
+  lab_performance: '💪',
+  class_cancel: '❌',
+  notice: '📣'
+};
+
 export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const course = courses.find(c => c.id === parseInt(notice.selectedCourseId || '0'));
-  let msg = notice.title?.trim() ? `📢 *${notice.title}*\n\n` : '📢 *Title*\n\n';
+  const emoji = CATEGORY_EMOJIS[notice.category] || '📢';
+  const cleanTitle = notice.title?.trim() || 'Title';
+  let msg = `${emoji} *${cleanTitle}*\n\n`;
   if (notice.category === 'class_cancel') {
     if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
     const sectionNames = notice.sections.map(sec => sec.name).filter(Boolean);
@@ -80,10 +96,12 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const firstSection = notice.sections[0];
   const isSingleSection = notice.sections.length === 1 && hasSections;
   if (isSingleSection && firstSection?.name) msg += `👥 *Section ${firstSection.name}*\n`;
+  const isAssignment = notice.category === 'assignment' || notice.category === 'lab_report';
+  const dateLabel = isAssignment ? 'Deadline' : 'Date';
   if (notice.selectedDate) {
     const [yearStr, monthStr, dayStr] = notice.selectedDate.split('-');
     const eventDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-    msg += `📅 *Date:* ${String(eventDate.getDate()).padStart(2, '0')}/${String(eventDate.getMonth() + 1).padStart(2, '0')}/${String(eventDate.getFullYear()).substring(2)} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
+    msg += `📅 *${dateLabel}:* ${String(eventDate.getDate()).padStart(2, '0')}/${String(eventDate.getMonth() + 1).padStart(2, '0')}/${String(eventDate.getFullYear()).substring(2)} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
   }
   if (hasSections) {
     notice.sections.forEach(sec => {
@@ -103,7 +121,16 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
     });
   }
   if (notice.topics.length > 0) {
-    const labels: Record<string, string> = { quiz: 'Quiz Topics:', makeup_quiz: 'Quiz Topics:', exam: 'Exam Topics:', syllabus: 'Syllabus Details:', suggestion: 'Suggestions:', presentation: 'Presentation Topics:' };
+    const labels: Record<string, string> = { 
+      quiz: 'Quiz Topics:', 
+      makeup_quiz: 'Quiz Topics:', 
+      exam: 'Exam Topics:', 
+      syllabus: 'Syllabus Details:', 
+      suggestion: 'Suggestions:', 
+      presentation: 'Presentation Topics:',
+      assignment: 'Assignment Topic(s):',
+      lab_report: 'Report Topic(s):'
+    };
     msg += `\n📝 *${labels[notice.category] || 'Topics:'}*\n`;
     notice.topics.forEach(t => msg += ` · *${t}*\n`);
   }
@@ -145,7 +172,7 @@ export function getCompiledMessage({ notices, broadcastMode, customText, fileCap
     let compiled = compileSingleNotice(n, courses);
     const currentCourseId = n.selectedCourseId || null;
     if (currentCourseId && currentCourseId === lastCourseId) {
-      compiled = compiled.replace(/^📚 \*Course: .+\n/m, '');
+      compiled = compiled.replace(/^📚 \*Course:\* .+\n/m, '');
     }
     lastCourseId = currentCourseId;
     parts.push(compiled);

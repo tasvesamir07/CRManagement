@@ -57,7 +57,7 @@ const ExamRoutineManager = () => {
   }
 
   return (
-    <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[calc(100vh-64px)] md:h-[calc(100vh-0px)] overflow-hidden">
+    <div className="-mx-2 sm:-mx-6 lg:-mx-8 -my-4 sm:-my-8 h-[calc(100vh-120px)] md:h-[calc(100vh-0px)] overflow-hidden">
       <ExamCanvaEditor 
         routines={routines} 
         courses={courses} 

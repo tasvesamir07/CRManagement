@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { filesAPI } from '../../services/api';
+import { filesAPI, examRoutinesAPI } from '../../services/api';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
-  ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight
+  ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight, Save
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -244,6 +244,98 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'theme' | 'headers' | 'exams'>('theme');
+  const [savingData, setSavingData] = useState(false);
+
+  // Helper: Parse DD-MM-YY back to YYYY-MM-DD
+  const parseShortDateToYYYYMMDD = (shortDate: string) => {
+    if (!shortDate) return '';
+    try {
+      const parts = shortDate.split('-');
+      if (parts.length === 3) {
+        // parts[0]: DD, parts[1]: MM, parts[2]: YY
+        return `20${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    } catch {}
+    return shortDate;
+  };
+
+  // Helper: Parse 12-hour AM/PM back to 24-hour HH:MM
+  const parse12HourTo24Hour = (time12: string) => {
+    if (!time12) return '09:00';
+    try {
+      const parts = time12.trim().match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+      if (parts) {
+        let hours = parseInt(parts[1], 10);
+        const minutes = parts[2];
+        const ampm = parts[3].toUpperCase();
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+        return `${hours.toString().padStart(2, '0')}:${minutes}`;
+      }
+    } catch {}
+    return time12;
+  };
+
+  const handleSaveRoutineData = async () => {
+    setSavingData(true);
+    try {
+      // 1. Identify which routines were deleted
+      const currentRoutineIds = items
+        .filter(item => item.id.startsWith('routine-'))
+        .map(item => parseInt(item.id.replace('routine-', ''), 10));
+        
+      const deletedRoutines = routines.filter(r => !currentRoutineIds.includes(r.id));
+      
+      for (const r of deletedRoutines) {
+        await examRoutinesAPI.delete(r.id);
+      }
+      
+      // 2. Add or Update routines
+      for (const item of items) {
+        const cleanCode = item.courseCode.trim().split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode) || courses[0];
+        
+        let examType = 'MID';
+        if (headerTitle.toLowerCase().includes('final')) examType = 'FINAL';
+        else if (headerTitle.toLowerCase().includes('makeup') || headerTitle.toLowerCase().includes('make-up')) examType = 'MAKEUP';
+        
+        const parsedDate = parseShortDateToYYYYMMDD(item.examDate);
+        const parsedTime = parse12HourTo24Hour(item.examTime);
+        const parsedRooms = item.rooms.replace(/\n/g, ', ').trim();
+        
+        const parts = item.courseCode.trim().split(/\s+/);
+        const parsedSection = parts.length > 1 ? parts.slice(1).join(' ') : '';
+        
+        const payload = {
+          course_id: matchedCourse ? matchedCourse.id : null,
+          exam_type: examType,
+          exam_date: parsedDate,
+          start_time: parsedTime,
+          end_time: parsedTime,
+          room_number: parsedRooms,
+          section: parsedSection,
+          instructions: '',
+          canva_template_id: null
+        };
+        
+        if (item.id.startsWith('routine-')) {
+          const rId = parseInt(item.id.replace('routine-', ''), 10);
+          await examRoutinesAPI.update(rId, payload);
+        } else {
+          await examRoutinesAPI.create(payload);
+        }
+      }
+      
+      toast.success('Successfully saved all routine data to the database!');
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (err: any) {
+      toast.error('Failed to save routine data: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSavingData(false);
+    }
+  };
   
   // Canvas customizer states
   const [headerTitle, setHeaderTitle] = useState('MID - EXAM');
@@ -510,10 +602,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
+    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-hidden">
+      <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
         
         <div className="p-4 border-b border-hairline flex items-center bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -554,7 +646,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         </div>
 
         {/* Settings Sections (Scrollable) */}
-        <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-canvas-soft">
+        <div className="p-4 space-y-6 flex-grow lg:flex-1 lg:overflow-y-auto bg-canvas-soft">
 
           {/* TAB 1: Theme & Style Settings */}
           {activeTab === 'theme' && (
@@ -1047,7 +1139,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-full bg-[#e2e8f0] overflow-hidden">
+      <div className="lg:col-span-8 flex flex-col h-[550px] lg:h-full bg-[#e2e8f0] overflow-hidden">
         
         {/* Canvas Toolbar Controls */}
         <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
@@ -1093,6 +1185,17 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
           {/* Export Actions */}
           <div className="flex items-center gap-2">
+            <button
+              disabled={savingData}
+              onClick={handleSaveRoutineData}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-sm disabled:opacity-50"
+            >
+              {savingData ? (
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Saving...</>
+              ) : (
+                <><Save className="w-3.5 h-3.5 text-primary" /> Save Routine Data</>
+              )}
+            </button>
             <button
               disabled={exporting}
               onClick={handleDownload}

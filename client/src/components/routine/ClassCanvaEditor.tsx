@@ -529,10 +529,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
+    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className="lg:col-span-4 border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-hidden">
+      <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
         
         <div className="p-4 border-b border-hairline flex items-center bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -581,7 +581,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         </div>
 
         {/* Settings Sections (Scrollable) */}
-        <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-canvas-soft">
+        <div className="p-4 space-y-6 flex-grow lg:flex-1 lg:overflow-y-auto bg-canvas-soft">
 
           {/* TAB 1: Theme & Style Settings */}
           {activeTab === 'theme' && (
@@ -993,7 +993,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+      <div className="lg:col-span-8 flex flex-col h-[550px] lg:h-full bg-[#f8fafc] overflow-hidden">
         
         {/* Toolbar Controls */}
         <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
