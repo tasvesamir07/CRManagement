@@ -139,7 +139,18 @@ export function getCompiledMessage({ notices, broadcastMode, customText, fileCap
     return msg;
   }
   if (broadcastMode === 'share_file') return fileCaption;
-  let msg = notices.map(n => compileSingleNotice(n, courses)).join('\n━━━━━━━━━━━━━━━━━━━━\n\n');
+  let lastCourseId: string | null = null;
+  let parts: string[] = [];
+  for (const n of notices) {
+    let compiled = compileSingleNotice(n, courses);
+    const currentCourseId = n.selectedCourseId || null;
+    if (currentCourseId && currentCourseId === lastCourseId) {
+      compiled = compiled.replace(/^📚 \*Course: .+\n/m, '');
+    }
+    lastCourseId = currentCourseId;
+    parts.push(compiled);
+  }
+  let msg = parts.join('\n━━━━━━━━━━━━━━━━━━━━\n\n');
   if (closingText) msg += `\n_${closingText}_`;
   return msg;
 }

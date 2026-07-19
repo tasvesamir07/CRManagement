@@ -257,7 +257,7 @@ const DashboardLayout = () => {
             You're offline — drafts will be saved locally and synced when reconnected
           </div>
         )}
-        <main id="main-content" className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
+        <main id="main-content" className="flex-1 py-4 sm:py-8 px-2 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
           <ErrorBoundary>
             <div key={location.pathname} className="route-enter-active">
               <Outlet />

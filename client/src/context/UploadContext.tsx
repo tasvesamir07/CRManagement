@@ -101,10 +101,16 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
         const filesArray = Array.from(fileList);
 
         const processFilesQueue = async () => {
+            let cumulativeBytes = currentUsage.usedBytes;
             for (const file of filesArray) {
                 if (file.size > 50 * 1024 * 1024) {
                     toast.error(`"${file.name}" exceeds the 50MB limit.`);
                     continue;
+                }
+                cumulativeBytes += file.size;
+                if (cumulativeBytes > currentUsage.limitBytes) {
+                    toast.error(`Upload stopped: "${file.name}" would exceed storage limit.`);
+                    break;
                 }
 
                 try {
@@ -115,13 +121,13 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
                             { title: 'File Already Exists', confirmLabel: 'Overwrite', variant: 'danger' }
                         );
                         if (overwrite) {
-                            uploadSingleFile(file, folderId, true);
+                            await uploadSingleFile(file, folderId, true);
                         }
                     } else {
-                        uploadSingleFile(file, folderId, false);
+                        await uploadSingleFile(file, folderId, false);
                     }
                 } catch (e) {
-                    uploadSingleFile(file, folderId, false);
+                    await uploadSingleFile(file, folderId, false);
                 }
             }
         };

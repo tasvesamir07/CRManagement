@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Smartphone, Paperclip, Clipboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatMessageToHtml } from '../../lib/announcementPresets';
@@ -11,7 +12,8 @@ interface PreviewPanelProps {
 }
 
 export default function PreviewPanel({ compiledMessage, previewTab, onTabChange, uploadedFiles }: PreviewPanelProps) {
-  const messageText = compiledMessage() || 'Your message preview will appear here...';
+  const messageText = useMemo(() => compiledMessage() || 'Your message preview will appear here...', [compiledMessage]);
+  const renderedHtml = useMemo(() => formatMessageToHtml(messageText), [messageText]);
 
   return (
     <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">
@@ -66,7 +68,7 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
             {previewTab === 'telegram' && (
               <div className="text-[10px] font-semibold text-[#5288c1] mb-1 select-none">CR Announcements</div>
             )}
-            <div className="pb-4 leading-relaxed break-words text-[11px] font-sans" dangerouslySetInnerHTML={{ __html: formatMessageToHtml(messageText) }} />
+            <div className="pb-4 leading-relaxed break-words text-[11px] font-sans" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
             <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[9px] text-zinc-300/80 select-none">
               <span>9:41 AM</span>
               {previewTab === 'whatsapp' ? (

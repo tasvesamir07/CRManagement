@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { coursesAPI, platformsAPI, filesAPI, announcementsAPI, templatesAPI } from '../services/api';
 import { useWebSocket } from './useWebSocket';
@@ -325,7 +325,8 @@ getInitialValue('uploadedFiles', []));
     }
   }, [previewFile, previewUrl]);
 
-  const getCompiledMessage = () => getCompiledMsg({ notices, broadcastMode, customText, fileCaption, closingText, courses });
+  const compiledMsg = useMemo(() => getCompiledMsg({ notices, broadcastMode, customText, fileCaption, closingText, courses }), [notices, broadcastMode, customText, fileCaption, closingText, courses]);
+  const getCompiledMessage = useCallback(() => compiledMsg, [compiledMsg]);
 
   const buildPayload = () => {
     const finalCategory = broadcastMode === 'share_file' ? 'share_file' : (broadcastMode === 'custom' ? 'custom' : notices[0]?.category || 'notice');
@@ -497,10 +498,15 @@ getInitialValue('uploadedFiles', []));
     finally { setSubmitting(false); }
   };
 
-  // Effects
+  // Effects - debounced draft save
+  const draftTimer = useRef<number>(0);
   useEffect(() => {
-    const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText };
-    sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
+    clearTimeout(draftTimer.current);
+    draftTimer.current = window.setTimeout(() => {
+      const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText };
+      sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
+    }, 500);
+    return () => clearTimeout(draftTimer.current);
   }, [broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText]);
 
   useEffect(() => {

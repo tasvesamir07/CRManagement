@@ -200,7 +200,78 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile card view */}
+          <div className="md:hidden space-y-3">
+            {announcements.map((ann: any) => (
+              <div key={ann.id} onClick={() => navigate(`/announcement/${ann.id}`)}
+                className="bg-canvas border border-hairline rounded-lg p-4 space-y-3 hover:border-hairline-strong transition-colors cursor-pointer active:scale-[0.99]">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-ink truncate" title={ann.title}>{ann.title}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[11px] font-mono text-ink-mute bg-canvas-soft px-1.5 py-0.5 rounded">{ann.c_id || 'General'}</span>
+                      <span className="text-[11px] text-ink-mute">{new Date(ann.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      <Link to={`/announcement/${ann.id}`}
+                        className="p-1.5 text-ink-mute hover:text-primary hover:bg-primary/10 rounded transition-colors" title="View Details">
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                      {(ann.status === 'draft' || ann.status === 'scheduled' || ann.status === 'partial' || ann.status === 'failed') && (
+                        <button onClick={(e: React.MouseEvent) => handleEditClick(ann, e)}
+                          className="p-1.5 text-ink-mute hover:text-accent-violet hover:bg-accent-violet/10 rounded transition-colors" title="Edit">
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteAnnouncement(ann.id); }}
+                        className="p-1.5 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-hairline">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {getDeliveries(ann.delivery).map((d: any, i: number) => (
+                        <span key={i}
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded ${d.platform_status === 'sent' ? 'bg-primary/10' : d.platform_status === 'failed' ? 'bg-accent-tomato/10' : 'bg-hairline'}`}
+                          title={d.title}>
+                          {d.platform_type === 'whatsapp' ? (<FaWhatsapp className={`w-3 h-3 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#25D366' }} />)
+                            : d.platform_type === 'telegram' ? (<FaTelegram className={`w-3 h-3 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#0088CC' }} />)
+                              : (<FaFacebookMessenger className={`w-3 h-3 ${d.platform_status !== 'sent' ? 'opacity-60' : ''}`} style={{ color: '#00B2FF' }} />)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>{getStatusBadge(ann.status)}</div>
+                </div>
+                {ann.files && ann.files.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1 border-t border-hairline">
+                    {ann.files.map((file: any, fIdx: number) => (
+                      <span key={file.id || fIdx} className="inline-flex items-center text-[10px] text-ink-mute bg-canvas-soft px-1.5 py-0.5 rounded">📎 {file.original_name}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 pb-1">
+                <span className="text-xs text-ink-mute">Page {page} of {totalPages}</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setPage((p: number) => Math.max(1, p - 1))} disabled={page <= 1}
+                    className="px-3 py-1.5 text-xs font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+                  <button onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                    className="px-3 py-1.5 text-xs font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-hairline-cool">
               <thead>
                 <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider">
@@ -290,6 +361,7 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
               </div>
             )}
           </div>
+          </>
         )}
       </div>
     </div>

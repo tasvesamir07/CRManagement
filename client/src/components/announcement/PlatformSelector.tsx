@@ -93,7 +93,7 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
 
         return (
           <div key={p.id}
-            className={`flex items-center justify-between p-3 border rounded-sm transition-all cursor-pointer ${containerClass}`}
+            className={`flex items-center justify-between p-2.5 sm:p-3 border rounded-sm transition-all cursor-pointer ${containerClass}`}
             onClick={() => { if (!isUnavailable) onToggle(p.id); }}>
             <div className="flex items-center gap-3 min-w-0">
               <div className="shrink-0">

@@ -79,11 +79,11 @@ const AnnouncementForm: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); handleConfirmBroadcast(); }} className="lg:col-span-7 bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-6">
-          <div className="flex gap-2 p-1 bg-canvas-soft border border-hairline rounded-sm w-fit mb-6">
-            <button type="button" onClick={() => setBroadcastMode('notice')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'notice' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📢 Structured Notice</button>
-            <button type="button" onClick={() => setBroadcastMode('custom')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'custom' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>✍️ Custom Text Notice</button>
-            <button type="button" onClick={() => setBroadcastMode('share_file')} className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'share_file' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📎 Share File Only</button>
+        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); handleConfirmBroadcast(); }} className="lg:col-span-7 bg-canvas border border-hairline rounded-lg p-3.5 sm:p-6 shadow-sm space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 p-1 bg-canvas-soft border border-hairline rounded-sm w-full sm:w-fit mb-4 sm:mb-6">
+            <button type="button" onClick={() => setBroadcastMode('notice')} className={`flex-1 sm:flex-none text-center px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'notice' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📢 Structured Notice</button>
+            <button type="button" onClick={() => setBroadcastMode('custom')} className={`flex-1 sm:flex-none text-center px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'custom' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>✍️ Custom Text Notice</button>
+            <button type="button" onClick={() => setBroadcastMode('share_file')} className={`flex-1 sm:flex-none text-center px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-sm transition-colors cursor-pointer ${broadcastMode === 'share_file' ? 'bg-primary text-on-primary shadow-sm' : 'text-ink-mute hover:text-ink hover:bg-canvas'}`}>📎 Share File Only</button>
           </div>
 
           {broadcastMode === 'share_file' && (
@@ -150,7 +150,7 @@ const AnnouncementForm: React.FC = () => {
                 return (
                   <div key={notice.id || nIdx} className="border border-hairline rounded-md bg-canvas shadow-sm overflow-hidden transition-all">
                     <div onClick={() => handleNoticeFieldChange(nIdx, 'isExpanded', !notice.isExpanded)}
-                      className="flex items-center justify-between px-4 py-3 bg-canvas-soft border-b border-hairline cursor-pointer select-none hover:bg-canvas-soft-strong transition-colors">
+                      className="flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 bg-canvas-soft border-b border-hairline cursor-pointer select-none hover:bg-canvas-soft-strong transition-colors">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-ink">Notice #{nIdx + 1}: {notice.title || 'Untitled'}</span>
                         <span className="text-[10px] font-mono text-ink-mute bg-canvas border border-hairline px-1.5 py-0.5 rounded-sm uppercase">{notice.category}</span>
@@ -175,8 +175,8 @@ const AnnouncementForm: React.FC = () => {
                     </div>
 
                     {notice.isExpanded && (
-                      <div className="p-4 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-2.5 sm:p-4 space-y-4 sm:space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                           <div>
                             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Notice Preset</label>
                             <div className="custom-select-wrapper">
@@ -206,7 +206,7 @@ const AnnouncementForm: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-5">
+                        <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3.5 sm:space-y-5">
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className={(notice.category === 'syllabus' || notice.category === 'suggestion') ? "md:col-span-2" : ""}>
@@ -230,14 +230,14 @@ const AnnouncementForm: React.FC = () => {
                         </div>
 
                         {(notice.category !== 'class_cancel' && notice.category !== 'syllabus' && notice.category !== 'suggestion' || (notice.category === 'class_cancel' && (notice.makeupStatus === 'rescheduled' || notice.makeupStatus === 'online'))) && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
+                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                             <div className="flex items-center justify-between border-b border-hairline-cool pb-2">
                               <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><Clock className="w-4 h-4 mr-1.5 text-primary" /> Timings & Class Rooms (Sections)</h4>
                               <button type="button" onClick={() => addSectionField(nIdx)} className="flex items-center text-xs font-semibold text-primary hover:text-primary-deep cursor-pointer border-none bg-transparent"><Plus className="w-3.5 h-3.5 mr-1" /> Add Section</button>
                             </div>
-                            <div className="space-y-4">
+                            <div className="space-y-3 sm:space-y-4">
                               {notice.sections.map((sec: any, idx: number) => (
-                                <div key={idx} className="flex flex-col md:flex-row items-end gap-3 p-3 bg-canvas border border-hairline rounded-sm relative">
+                                <div key={idx} className="flex flex-col md:flex-row items-end gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-canvas border border-hairline rounded-sm relative">
                                   {notice.sections.length > 1 && <button type="button" onClick={() => removeSectionField(nIdx, idx)} className="absolute top-2 right-2 p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent"><X className="w-3.5 h-3.5" /></button>}
                                   <div className="w-full md:w-[10%]">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Section *</label></div>
@@ -312,7 +312,7 @@ const AnnouncementForm: React.FC = () => {
                         )}
 
                         {notice.category === 'class_cancel' && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-3">
+                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3">
                             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Make-up / Rescheduling Option</label>
                             <div className="custom-select-wrapper">
                               <select value={notice.makeupStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { const statusVal = e.target.value; handleNoticeFieldChange(nIdx, 'makeupStatus', statusVal); if (statusVal === 'online') setNotices((prev: any[]) => { const u = [...prev]; u[nIdx].sections = u[nIdx].sections.map((s: any) => ({ ...s, mode: 'Online', room: '' })); return u; }); }}
@@ -336,7 +336,7 @@ const AnnouncementForm: React.FC = () => {
                         )}
 
                         {showTopics && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
+                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                             <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><ListPlus className="w-4 h-4 mr-1.5 text-primary" /> {notice.category === 'syllabus' ? 'Syllabus Details' : notice.category === 'suggestion' ? 'Suggestions' : 'Topics / Syllabus'}</h4>
                             <div className="flex gap-2">
                               <input type="text" value={notice.currentTopic || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNoticeFieldChange(nIdx, 'currentTopic', e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); addTopic(nIdx); } }} placeholder={notice.category === 'syllabus' ? 'Type syllabus detail...' : notice.category === 'suggestion' ? 'Type suggestion...' : 'Type topic and press Enter...'}
@@ -357,7 +357,7 @@ const AnnouncementForm: React.FC = () => {
                           </div>
                         )}
 
-                        <div className="bg-canvas-soft border border-hairline rounded-sm p-4 space-y-4">
+                        <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><StickyNote className="w-4 h-4 mr-1.5 text-primary" /> Instructions & Notes</h4>
                           <div className="flex gap-2">
                             <select value={notice.noteType || 'note'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleNoticeFieldChange(nIdx, 'noteType', e.target.value)}
@@ -411,12 +411,12 @@ const AnnouncementForm: React.FC = () => {
                 );
               })}
 
-              <button type="button" onClick={() => setNotices((prev: any[]) => [...prev, createNewNoticeObj(prev.length)])}
+              <button type="button" onClick={() => setNotices((prev: any[]) => { const lastCourseId = prev[prev.length - 1]?.selectedCourseId || ''; return [...prev, { ...createNewNoticeObj(prev.length), selectedCourseId: lastCourseId }]; })}
                 className="w-full flex items-center justify-center py-2.5 px-4 border border-dashed border-primary hover:border-primary-deep rounded bg-canvas hover:bg-canvas-soft text-sm font-semibold text-primary hover:text-primary-deep transition-all cursor-pointer shadow-sm">
                 <Plus className="w-4 h-4 mr-2" /> Add Another Notice
               </button>
 
-              <div className="bg-canvas border border-hairline rounded-md p-4 space-y-2">
+              <div className="bg-canvas border border-hairline rounded-md p-3 sm:p-4 space-y-2">
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider">Global Closing / Remarks Text (Optional)</label>
                 <textarea value={closingText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setClosingText(e.target.value)} placeholder="e.g. Please be prepared and attend on time. Good luck! 🍀📖" rows={3}
                   className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink font-sans resize-y min-h-[60px]" />
@@ -430,25 +430,42 @@ const AnnouncementForm: React.FC = () => {
 
           <PlatformSelector platforms={platforms} selectedPlatforms={selectedPlatforms} onToggle={handlePlatformToggle} waStatus={waStatus} alreadySentPlatforms={alreadySentPlatforms} />
 
-          <div className="pt-4 border-t border-hairline-cool space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          <div className="pt-4 border-t border-hairline-cool space-y-4">
+            {showSchedulePicker && (
+              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                <SchedulePicker 
+                  scheduleDateTime={scheduleDateTime} 
+                  setScheduleDateTime={setScheduleDateTime} 
+                  show={showSchedulePicker}
+                  onToggle={() => setShowSchedulePicker(false)}
+                />
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
                 <button type="button" onClick={handleSaveDraft} disabled={submitting || uploading}
-                  className="flex items-center justify-center py-2 px-4 border border-hairline rounded-sm shadow-sm text-sm font-medium text-ink bg-canvas hover:bg-canvas-soft focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50">
-                  <Save className="w-4 h-4 mr-1.5" />{submitting ? 'Saving...' : announcementId ? 'Update Draft' : 'Save Draft'}
+                  className="flex-1 sm:flex-none flex items-center justify-center py-2 px-3 sm:px-4 border border-hairline rounded-sm shadow-sm text-sm font-medium text-ink bg-canvas hover:bg-canvas-soft focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50 whitespace-nowrap">
+                  <Save className="w-4 h-4 mr-1.5 shrink-0" />
+                  <span className="truncate">{submitting ? 'Saving...' : announcementId ? 'Update Draft' : 'Save Draft'}</span>
                 </button>
-                <SchedulePicker scheduleDateTime={scheduleDateTime} setScheduleDateTime={setScheduleDateTime} show={showSchedulePicker}
-                  onToggle={() => { if (!announcementId) { toast.error('Please save the draft first.'); return; } setShowSchedulePicker(!showSchedulePicker); }} />
-                {showSchedulePicker && (
+                {!showSchedulePicker ? (
+                  <button type="button" 
+                    onClick={() => { if (!announcementId) { toast.error('Please save the draft first.'); return; } setShowSchedulePicker(true); }}
+                    className="flex-1 sm:flex-none flex items-center justify-center py-2 px-3 border border-hairline rounded-sm text-sm font-medium text-ink bg-canvas hover:bg-canvas-soft transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <Clock className="w-4 h-4 mr-1.5 shrink-0" />
+                    <span className="truncate">Schedule</span>
+                  </button>
+                ) : (
                   <button type="button" onClick={handleScheduleBroadcast} disabled={submitting}
-                    className="flex items-center px-3 py-1.5 rounded-sm text-xs font-medium text-on-primary bg-primary hover:bg-primary-deep transition-colors disabled:opacity-50 cursor-pointer">
-                    <Clock className="w-3.5 h-3.5 mr-1" /> Confirm Schedule
+                    className="flex-1 sm:flex-none flex items-center justify-center py-2 px-3 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap">
+                    <Clock className="w-4 h-4 mr-1.5 shrink-0" /> Confirm Schedule
                   </button>
                 )}
               </div>
               <button type="submit" disabled={submitting || uploading}
-                className="flex items-center justify-center py-2 px-6 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50">
-                <Send className="w-4 h-4 mr-2" />{submitting ? 'Dispatching...' : 'Broadcast Notice'}
+                className="w-full sm:w-auto flex items-center justify-center py-2 px-6 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer disabled:opacity-50">
+                <Send className="w-4 h-4 mr-2 shrink-0" />{submitting ? 'Dispatching...' : 'Broadcast Notice'}
               </button>
             </div>
           </div>

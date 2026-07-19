@@ -34,7 +34,7 @@ export default function FileUploader({
         )}
       </div>
       <div
-        className={`border-2 border-dashed rounded-sm p-6 text-center transition-colors cursor-pointer ${dragActive ? 'border-primary bg-primary/5' : 'border-hairline-strong hover:border-primary/50'}`}
+        className={`border-2 border-dashed rounded-sm p-4 sm:p-6 text-center transition-colors cursor-pointer ${dragActive ? 'border-primary bg-primary/5' : 'border-hairline-strong hover:border-primary/50'}`}
         onDragEnter={onDrag} onDragLeave={onDrag} onDragOver={onDrag} onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -53,7 +53,7 @@ export default function FileUploader({
       {uploadedFiles.length > 0 && (
         <div className="space-y-2">
           {uploadedFiles.map((file, i) => (
-            <div key={file.id || i} className="flex items-center justify-between p-3 border border-hairline rounded-sm">
+            <div key={file.id || i} className="flex items-center justify-between p-2 sm:p-3 border border-hairline rounded-sm">
               <div className="flex items-center gap-3 min-w-0">
                 <Paperclip className="w-4 h-4 text-ink-mute shrink-0" />
                 <span className="text-sm text-ink truncate">{file.original_name}</span>
