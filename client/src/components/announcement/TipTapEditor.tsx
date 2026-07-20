@@ -4,10 +4,12 @@ import StarterKit from '@tiptap/starter-kit';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Underline } from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
 import { FONTS_LIST, loadGoogleFont } from '../../lib/fontLoader';
 import { 
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, 
-  Code, List, ListOrdered, Trash2, ChevronDown 
+  Code, List, ListOrdered, Trash2, ChevronDown,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify
 } from 'lucide-react';
 
 interface TipTapEditorProps {
@@ -32,6 +34,9 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write you
       TextStyle,
       FontFamily,
       Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -189,10 +194,57 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write you
 
         <div className="h-6 w-px bg-hairline mx-1" />
 
+        {/* Alignment Controls */}
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            editor.isActive({ textAlign: 'left' }) ? 'bg-primary/20 text-primary' : 'text-ink-mute hover:bg-canvas hover:text-ink'
+          }`}
+          title="Align Left"
+        >
+          <AlignLeft className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            editor.isActive({ textAlign: 'center' }) ? 'bg-primary/20 text-primary' : 'text-ink-mute hover:bg-canvas hover:text-ink'
+          }`}
+          title="Align Center"
+        >
+          <AlignCenter className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            editor.isActive({ textAlign: 'right' }) ? 'bg-primary/20 text-primary' : 'text-ink-mute hover:bg-canvas hover:text-ink'
+          }`}
+          title="Align Right"
+        >
+          <AlignRight className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            editor.isActive({ textAlign: 'justify' }) ? 'bg-primary/20 text-primary' : 'text-ink-mute hover:bg-canvas hover:text-ink'
+          }`}
+          title="Align Justify"
+        >
+          <AlignJustify className="w-4 h-4" />
+        </button>
+
+        <div className="h-6 w-px bg-hairline mx-1" />
+
         {/* Clear formatting */}
         <button
           type="button"
-          onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+          onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().unsetTextAlign().run()}
           className="p-1.5 rounded text-ink-mute hover:bg-accent-tomato/10 hover:text-accent-tomato transition-all cursor-pointer"
           title="Clear Formatting"
         >
