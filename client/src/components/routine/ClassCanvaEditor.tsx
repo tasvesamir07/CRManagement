@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routinesAPI, filesAPI } from '../../services/api';
+import TipTapEditor from '../announcement/TipTapEditor';
+import { htmlToWhatsappMarkdown } from '../../lib/htmlParser';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
-  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight, ChevronDown, Bold, Italic
+  Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight, ChevronDown, Bold, Italic, FileText
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -234,6 +236,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [routineNotes, setRoutineNotes] = useState<string>('');
 
   // Text Styling States
   const [semesterTitleBold, setSemesterTitleBold] = useState(true);
@@ -522,10 +525,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       
       const uploadedFileRecord = await filesAPI.upload(file, null);
 
+      const notesMarkdown = routineNotes ? htmlToWhatsappMarkdown(routineNotes) : '';
+      const defaultBody = `📢 *Updated Class Routine Notice*\n\nClass routine for *${semesterTitle}* (${sectionGroup}) Swe ${batchCode} has been updated. Please check the attached routine schedule image for details.\n\n_Effective from: ${effectiveDate}_\n\nAdjust your plans accordingly. Thank you! 📅`;
+      const preFillBody = notesMarkdown ? `${defaultBody}\n\n📝 *Routine Notes & Instructions:*\n${notesMarkdown}` : defaultBody;
+
       navigate('/announcement/new', {
         state: {
           preFillTitle: `Updated Class Routine - ${semesterTitle}`,
-          preFillBody: `📢 *Updated Class Routine Notice*\n\nClass routine for *${semesterTitle}* (${sectionGroup}) Swe ${batchCode} has been updated. Please check the attached routine schedule image for details.\n\n_Effective from: ${effectiveDate}_\n\nAdjust your plans accordingly. Thank you! 📅`,
+          preFillBody,
           preFillCategory: 'notice',
           preAttachedFiles: [uploadedFileRecord]
         }
@@ -856,6 +863,20 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none italic"
                   />
                 </div>
+              </div>
+
+              {/* Routine Notes & Instructions (TipTap Rich Text Editor) */}
+              <div className="space-y-2 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide flex items-center justify-between">
+                  <span>Routine Instructions / Notes</span>
+                  <span className="text-[10px] text-primary font-semibold font-mono">TipTap Powered</span>
+                </label>
+                <p className="text-[11px] text-gray-500">Format instructions or class notes with custom fonts, bold, and lists!</p>
+                <TipTapEditor 
+                  value={routineNotes} 
+                  onChange={setRoutineNotes} 
+                  placeholder="e.g. 1. Classes start sharp on time. 2. Lab classes held in 6th floor lab room..." 
+                />
               </div>
             </div>
           )}
@@ -1342,6 +1363,27 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Optional Routine Notes / Instructions Box (Rendered from TipTap Editor) */}
+              {routineNotes && (
+                <div 
+                  style={{ 
+                    backgroundColor: cellBg,
+                    color: cellTextColor,
+                    borderColor: borderColor
+                  }}
+                  className={`p-4 border text-left transition-all duration-300 rounded-lg space-y-2 mt-4`}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span>Instructions & Notes</span>
+                  </div>
+                  <div 
+                    className="prose prose-xs max-w-none text-xs leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: routineNotes }}
+                  />
+                </div>
+              )}
 
             </div>
 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { filesAPI, examRoutinesAPI } from '../../services/api';
+import TipTapEditor from '../announcement/TipTapEditor';
+import { htmlToWhatsappMarkdown } from '../../lib/htmlParser';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
   ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight, Save,
-  ChevronDown, Bold, Italic
+  ChevronDown, Bold, Italic, FileText
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -360,6 +362,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [headerSubtitle, setHeaderSubtitle] = useState('SUMMER - 2026');
   const [footerLeft, setFooterLeft] = useState('SECTION - CS-(A & H)');
   const [footerRight, setFooterRight] = useState('ROUTINE - SWE - 41');
+  const [routineNotes, setRoutineNotes] = useState<string>('');
 
   // Text Styling States
   const [headerTitleBold, setHeaderTitleBold] = useState(true);
@@ -631,10 +634,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       
       const uploadedFileRecord = await filesAPI.upload(file, null);
       
+      const notesMarkdown = routineNotes ? htmlToWhatsappMarkdown(routineNotes) : '';
+      const defaultBody = `📢 *Exam Routine Notice*\n\nThe exam routine for *${headerSubtitle}* (${footerLeft}) has been published. Please review the attached custom routine schedule card for details on dates, rooms, and sessions.\n\nGood luck with your preparations! 📝🎓`;
+      const preFillBody = notesMarkdown ? `${defaultBody}\n\n📝 *Routine Notes & Instructions:*\n${notesMarkdown}` : defaultBody;
+
       navigate('/announcement/new', {
         state: {
           preFillTitle: `${headerTitle} - ${headerSubtitle}`,
-          preFillBody: `📢 *Exam Routine Notice*\n\nThe exam routine for *${headerSubtitle}* (${footerLeft}) has been published. Please review the attached custom routine schedule card for details on dates, rooms, and sessions.\n\nGood luck with your preparations! 📝🎓`,
+          preFillBody,
           preFillCategory: 'notice',
           preAttachedFiles: [uploadedFileRecord]
         }
@@ -1053,6 +1060,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Routine Instructions / Notes (TipTap Rich Text Editor) */}
+              <div className="space-y-2 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide flex items-center justify-between">
+                  <span>Routine Instructions / Notes</span>
+                  <span className="text-[10px] text-primary font-semibold font-mono">TipTap Powered</span>
+                </label>
+                <p className="text-[11px] text-gray-500">Format instructions or rules with custom fonts, bold, and lists!</p>
+                <TipTapEditor 
+                  value={routineNotes} 
+                  onChange={setRoutineNotes} 
+                  placeholder="e.g. 1. Bring student ID card. 2. Mobile phones strictly prohibited..." 
+                />
               </div>
             </div>
           )}
@@ -1603,6 +1624,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   />
                 </div>
               </div>
+
+              {/* Optional Routine Notes Box (Rendered from TipTap Editor) */}
+              {routineNotes && (
+                <div 
+                  style={{ 
+                    backgroundColor: cardBg,
+                    borderRadius: cardRoundedness,
+                    color: cardTextColor
+                  }}
+                  className={`p-4 border border-hairline text-left transition-all duration-300 ${cardShadow} space-y-2`}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span>Instructions & Notes</span>
+                  </div>
+                  <div 
+                    className="prose prose-xs max-w-none text-xs leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: routineNotes }}
+                  />
+                </div>
+              )}
 
             </div>
 
