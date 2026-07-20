@@ -602,6 +602,19 @@ async function simulateQuery(text, params = []) {
         return { rows: [] };
     }
 
+    if (normalizedText.includes('UPDATE files SET folder_id = NULL WHERE folder_id =')) {
+        const folderId = parseInt(params[0]);
+        let updatedCount = 0;
+        db.files.forEach(f => {
+            if (f.folder_id === folderId) {
+                f.folder_id = null;
+                updatedCount++;
+            }
+        });
+        if (updatedCount > 0) writeJsonDb(db);
+        return { rowCount: updatedCount };
+    }
+
     // 6. Announcement Queries
     if (normalizedText.includes('SELECT COUNT(*) FROM announcements')) {
         let filtered = [...db.announcements];

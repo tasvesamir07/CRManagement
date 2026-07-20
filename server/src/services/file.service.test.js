@@ -69,7 +69,7 @@ describe('File Service', () => {
       expect(selectResult.rows.length).toBe(0);
     });
 
-    it('should delete all files in a folder when deleteFolder is called', async () => {
+    it('should delete all files in a folder when deleteFolder is called with deleteFiles=true', async () => {
       const folder = await fileService.createFolder('Parent Folder', null, mockUserId);
       
       const file1Result = await db.query(
@@ -84,8 +84,8 @@ describe('File Service', () => {
       const file1 = file1Result.rows[0];
       const file2 = file2Result.rows[0];
 
-      // Delete the folder (should delete all files inside as well)
-      const deleteSuccess = await fileService.deleteFolder(folder.id);
+      // Delete the folder and all files inside
+      const deleteSuccess = await fileService.deleteFolder(folder.id, true);
       expect(deleteSuccess).toBe(true);
 
       // Verify files are deleted from the database
@@ -93,6 +93,22 @@ describe('File Service', () => {
       const select2 = await db.query('SELECT * FROM files WHERE id = $1', [file2.id]);
       expect(select1.rows.length).toBe(0);
       expect(select2.rows.length).toBe(0);
+    });
+
+    it('should keep files and move to root when deleteFolder is called with deleteFiles=false', async () => {
+      const folder = await fileService.createFolder('Keep Files Folder', null, mockUserId);
+      const fileResult = await db.query(
+        'INSERT INTO files (original_name, storage_path, file_type, file_size, uploaded_by, expires_at, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        ['kept.txt', 'kept.txt', 'text/plain', 100, mockUserId, new Date().toISOString(), folder.id]
+      );
+      const file = fileResult.rows[0];
+
+      const deleteSuccess = await fileService.deleteFolder(folder.id, false);
+      expect(deleteSuccess).toBe(true);
+
+      const selectResult = await db.query('SELECT * FROM files WHERE id = $1', [file.id]);
+      expect(selectResult.rows.length).toBe(1);
+      expect(selectResult.rows[0].folder_id).toBeNull();
     });
   });
 

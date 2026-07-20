@@ -100,7 +100,7 @@ router.post('/users', adminMiddleware, audit('admin.create_user', 'user'), valid
  *       400:
  *         description: Validation error
  */
-router.put('/users/:id', adminMiddleware, audit('admin.update_user', 'user'), validateParams(schemas.params.userId), validate(schemas.admin.updateUser), async (req, res) => {
+router.put('/users/:id', adminMiddleware, audit('admin.update_user', 'user'), validateParams(schemas.params.id), validate(schemas.admin.updateUser), async (req, res) => {
     try {
         const { displayName, role } = req.body;
         const user = await adminService.adminUpdateUser(parseInt(req.params.id), { displayName, role });
@@ -131,7 +131,7 @@ router.put('/users/:id', adminMiddleware, audit('admin.update_user', 'user'), va
  *       400:
  *         description: Error
  */
-router.delete('/users/:id', adminMiddleware, audit('admin.delete_user', 'user'), validateParams(schemas.params.userId), async (req, res) => {
+router.delete('/users/:id', adminMiddleware, audit('admin.delete_user', 'user'), validateParams(schemas.params.id), async (req, res) => {
     try {
         const result = await adminService.adminDeleteUser(parseInt(req.params.id));
         return res.json(result);

@@ -44,15 +44,22 @@ async function createFolder(name, courseId, userId) {
     return folder;
 }
 
-async function deleteFolder(folderId) {
+async function deleteFolder(folderId, deleteFiles = false) {
     const id = parseInt(folderId);
     let folderName = '';
     const folderRes = await db.query('SELECT name FROM folders WHERE id = $1', [id]);
     if (folderRes.rows.length > 0) folderName = folderRes.rows[0].name;
-    const filesResult = await db.query('SELECT * FROM files WHERE folder_id = $1', [id]);
-    for (const file of filesResult.rows) {
-        await deleteFile(file.id);
+
+    const shouldDeleteFiles = String(deleteFiles) === 'true' || deleteFiles === true;
+    if (shouldDeleteFiles) {
+        const filesResult = await db.query('SELECT * FROM files WHERE folder_id = $1', [id]);
+        for (const file of filesResult.rows) {
+            await deleteFile(file.id);
+        }
+    } else {
+        await db.query('UPDATE files SET folder_id = NULL WHERE folder_id = $1', [id]);
     }
+
     const result = await db.query('DELETE FROM folders WHERE id = $1', [id]);
     await deleteFolderFromStorage(folderName);
     return result.rowCount > 0;

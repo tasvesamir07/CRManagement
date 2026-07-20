@@ -346,7 +346,7 @@ router.post('/whatsapp/clear-session', authMiddleware, async (req, res) => {
  *       404:
  *         description: Platform not found
  */
-router.put('/:id', authMiddleware, validateParams(schemas.params.platformId), validate(schemas.platforms.update), async (req, res) => {
+router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(schemas.platforms.update), async (req, res) => {
     try {
         const { platform_name, platform_type, chat_id, description, course_id } = req.body;
         

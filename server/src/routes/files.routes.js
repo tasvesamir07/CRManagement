@@ -221,7 +221,7 @@ router.post('/folders', authMiddleware, validate(schemas.files.createFolder), as
  *       404:
  *         description: Folder not found
  */
-router.delete('/folders/:id', authMiddleware, validateParams(schemas.params.folderId), async (req, res) => {
+router.delete('/folders/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         const { deleteFiles } = req.query;
         const deleted = await fileService.deleteFolder(req.params.id, deleteFiles);

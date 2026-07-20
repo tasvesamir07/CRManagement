@@ -75,7 +75,7 @@ describe('Audit Service', () => {
     });
 
     it('should delete a log by id and userId', async () => {
-      vi.spyOn(db, 'query').mockResolvedValue({ rows: [{ id: 1 }] });
+      const spy = vi.spyOn(db, 'query').mockResolvedValue({ rows: [{ id: 1 }] });
       const result = await auditService.deleteLog(1, 5);
       expect(result).toBe(true);
       expect(spy.mock.calls[0][0]).toContain('user_id = $2');

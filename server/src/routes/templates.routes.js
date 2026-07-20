@@ -146,7 +146,7 @@ router.post('/', authMiddleware, validate(schemas.templates.create), async (req,
  *       400:
  *         description: Validation error
  */
-router.put('/:id', authMiddleware, validateParams(schemas.params.templateId), validate(schemas.templates.update), async (req, res) => {
+router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(schemas.templates.update), async (req, res) => {
     try {
         const { name, description, category, title_template, content_template, variables } = req.body;
         const template = await templateService.updateTemplate(req.params.id, { name, description, category, title_template, content_template, variables });
@@ -175,7 +175,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.templateId), va
  *       200:
  *         description: Template deleted
  */
-router.delete('/:id', authMiddleware, validateParams(schemas.params.templateId), async (req, res) => {
+router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
     try {
         await templateService.deleteTemplate(req.params.id);
         return res.json({ message: 'Template deleted' });
