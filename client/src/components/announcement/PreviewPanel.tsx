@@ -21,6 +21,57 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
     loadFontsFromHtml(messageText);
   }, [messageText]);
 
+  const platformName = useMemo(() => {
+    return previewTab.charAt(0).toUpperCase() + previewTab.slice(1);
+  }, [previewTab]);
+
+  const getFormattedMessageForCopy = useCallback(() => {
+    const rawText = compiledMessage() || '';
+    if (!rawText) return '';
+    const isHtml = rawText.startsWith('<') || /<[a-z][\s\S]*>/i.test(rawText);
+
+    if (previewTab === 'telegram') {
+      if (isHtml) {
+        return cleanHtmlForTelegram(rawText);
+      } else {
+        return rawText
+          .replace(/\*(.*?)\*/g, '<b>$1</b>')
+          .replace(/_(.*?)_/g, '<i>$1</i>')
+          .replace(/~(.*?)~/g, '<s>$1</s>')
+          .replace(/`(.*?)`/g, '<code>$1</code>');
+      }
+    } else if (previewTab === 'messenger') {
+      if (isHtml) {
+        return stripHtml(rawText);
+      } else {
+        return rawText
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/__(.*?)__/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/_(.*?)_/g, '$1')
+          .replace(/~(.*?)~/g, '$1')
+          .replace(/`(.*?)`/g, '$1');
+      }
+    } else {
+      // WhatsApp format
+      if (isHtml) {
+        return htmlToWhatsappMarkdown(rawText);
+      } else {
+        return rawText;
+      }
+    }
+  }, [compiledMessage, previewTab]);
+
+  const handleCopy = () => {
+    const formatted = getFormattedMessageForCopy();
+    if (!formatted) {
+      toast.error('Nothing to copy!');
+      return;
+    }
+    navigator.clipboard.writeText(formatted);
+    toast.success(`Copied formatted message for ${platformName}!`);
+  };
+
   const renderedHtml = useMemo(() => {
     const isHtml = messageText.startsWith('<') || /<[a-z][\s\S]*>/i.test(messageText);
 
@@ -119,10 +170,10 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
 
       <button
         type="button"
-        onClick={() => { navigator.clipboard.writeText(compiledMessage() || ''); toast.success('Message copied!'); }}
+        onClick={handleCopy}
         className="w-full flex items-center justify-center py-2.5 px-4 border-2 border-dashed border-primary/40 hover:border-primary rounded-sm text-sm font-medium text-primary hover:bg-primary/5 transition-colors cursor-pointer mt-4"
       >
-        <Clipboard className="w-4 h-4 mr-2" />Copy Message to Clipboard
+        <Clipboard className="w-4 h-4 mr-2" />Copy Message for {platformName}
       </button>
     </div>
   );

@@ -250,14 +250,14 @@ const AnnouncementForm: React.FC = () => {
                             </div>
                             <div className="space-y-3 sm:space-y-4">
                               {notice.sections.map((sec: any, idx: number) => (
-                                <div key={idx} className="flex flex-col md:flex-row items-end gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-canvas border border-hairline rounded-sm relative">
+                                <div key={idx} className="flex flex-wrap lg:flex-nowrap items-end gap-2 sm:gap-2.5 p-2.5 sm:p-3 bg-canvas border border-hairline rounded-sm relative">
                                   {notice.sections.length > 1 && <button type="button" onClick={() => removeSectionField(nIdx, idx)} className="absolute top-2 right-2 p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent"><X className="w-3.5 h-3.5" /></button>}
-                                  <div className="w-full md:w-[10%]">
+                                  <div className="w-16 flex-shrink-0 min-w-0">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Section *</label></div>
                                     <input type="text" required value={sec.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'name', e.target.value)} placeholder="e.g. A"
-                                      className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
+                                      className="w-full h-9 px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 text-center font-semibold" />
                                   </div>
-                                  <div className="w-full md:w-[16%]">
+                                  <div className="flex-1 min-w-[125px]">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Time Option</label></div>
                                     <CustomSelect
                                       value={sec.timeOption || 'select'}
@@ -275,18 +275,18 @@ const AnnouncementForm: React.FC = () => {
                                     />
                                   </div>
                                   {sec.timeOption === 'custom' ? (
-                                    <div className="w-full md:w-[36%]">
+                                    <div className="flex-1 min-w-[180px]">
                                       <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Custom Time Text</label></div>
                                       <input type="text" value={sec.startTime || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'startTime', e.target.value)} placeholder="e.g. 11:30 AM (Tentative)"
                                         className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
                                     </div>
                                   ) : (!sec.timeOption || sec.timeOption === 'select') ? (
                                     <>
-                                      <div className="w-full md:w-[18%]">
+                                      <div className="flex-1 min-w-[110px]">
                                         <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Start Time</label></div>
                                         <TimePicker value={sec.startTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'startTime', val)} placeholder="Start Time" className="text-xs" />
                                       </div>
-                                      <div className="w-full md:w-[18%]">
+                                      <div className="flex-1 min-w-[110px]">
                                         <div className="h-5 flex items-end justify-between mb-1">
                                           <label className="block text-[10px] font-semibold text-ink-mute leading-none">End Time</label>
                                           <label className="inline-flex items-center text-[9px] font-semibold text-primary cursor-pointer select-none leading-none pb-0.5">
@@ -301,14 +301,14 @@ const AnnouncementForm: React.FC = () => {
                                       </div>
                                     </>
                                   ) : (
-                                    <div className="w-full md:w-[36%]">
+                                    <div className="flex-1 min-w-[150px]">
                                       <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Timing Status</label></div>
                                       <div className="w-full px-3 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-xs text-ink-mute h-9 flex items-center justify-center select-none font-medium">
                                         {sec.timeOption === 'tbd' ? '⏳ Will announce later' : '❌ No time needed'}
                                       </div>
                                     </div>
                                   )}
-                                  <div className="w-full md:w-[20%]">
+                                  <div className="flex-1 min-w-[135px]">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Mode</label></div>
                                     <CustomSelect
                                       value={sec.mode}
@@ -322,10 +322,10 @@ const AnnouncementForm: React.FC = () => {
                                     />
                                   </div>
                                   {sec.mode === 'Offline' && (
-                                    <div className="w-full md:w-[18%]">
+                                    <div className="w-20 flex-shrink-0 min-w-0">
                                       <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Room #</label></div>
                                       <input type="text" value={sec.room} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'room', e.target.value)} placeholder="e.g. 611"
-                                        className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150" />
+                                        className="w-full h-9 px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 text-center font-medium" />
                                     </div>
                                   )}
                                 </div>

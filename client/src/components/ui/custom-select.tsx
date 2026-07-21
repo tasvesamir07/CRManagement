@@ -52,13 +52,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         <button
           type="button"
           className={cn(
-            'flex items-center justify-between gap-2 border border-hairline rounded-sm bg-canvas text-ink hover:border-hairline-strong focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none font-sans text-left',
+            'w-full min-w-0 flex items-center justify-between gap-1.5 border border-hairline rounded-sm bg-canvas text-ink hover:border-hairline-strong focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none font-sans text-left',
             sizeClasses,
             triggerClassName,
             className
           )}
         >
-          <span className="truncate flex items-center gap-1.5 font-medium flex-1">
+          <span className="truncate flex items-center gap-1.5 font-medium flex-1 min-w-0">
             {selectedOption ? (
               <>
                 {selectedOption.icon}
