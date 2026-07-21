@@ -8,6 +8,7 @@ import { StatCardSkeleton, TableSkeleton } from '../ui/LoadingSkeleton';
 import OfflineDraftsPanel from './OfflineDraftsPanel';
 import DashboardFiltersDrawer from './DashboardFiltersDrawer';
 import useDashboardData from '../../hooks/useDashboardData';
+import CustomSelect from '../ui/custom-select';
 
 interface CRDashboardProps {
   navigate: NavigateFunction;
@@ -134,21 +135,30 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <select value={statusFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary">
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="sending">Sending</option>
-            <option value="sent">Delivered</option>
-            <option value="partial">Partial</option>
-            <option value="failed">Failed</option>
-          </select>
-          <select value={courseFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setCourseFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary max-w-[180px]">
-            <option value="">All Courses</option>
-            {courses.map((c: any) => (<option key={c.id} value={c.id}>{c.course_id}</option>))}
-          </select>
+          <CustomSelect
+            value={statusFilter}
+            onChange={(val) => { setStatusFilter(val); setPage(1); }}
+            placeholder="All Status"
+            options={[
+              { value: '', label: 'All Status' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'sending', label: 'Sending' },
+              { value: 'sent', label: 'Delivered' },
+              { value: 'partial', label: 'Partial' },
+              { value: 'failed', label: 'Failed' },
+            ]}
+          />
+          <CustomSelect
+            value={courseFilter}
+            onChange={(val) => { setCourseFilter(val); setPage(1); }}
+            placeholder="All Courses"
+            className="max-w-[180px]"
+            options={[
+              { value: '', label: 'All Courses' },
+              ...courses.map((c: any) => ({ value: String(c.id), label: c.course_id })),
+            ]}
+          />
           <input type="date" value={dateFrom} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDateFrom(e.target.value); setPage(1); }}
             className="px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary" title="From date" />
           <span className="text-xs text-ink-mute">to</span>

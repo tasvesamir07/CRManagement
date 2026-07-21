@@ -18,6 +18,7 @@ import LightboxPreviewModal from './LightboxPreviewModal';
 import AIDraftModal from './AIDraftModal';
 import LibraryModal from './LibraryModal';
 import useAnnouncementForm, { createNewNoticeObj } from '../../hooks/useAnnouncementForm';
+import CustomSelect from '../ui/custom-select';
 
 const AnnouncementForm: React.FC = () => {
   const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
@@ -78,10 +79,16 @@ const AnnouncementForm: React.FC = () => {
       {templates.length > 0 && (
         <div className="flex items-center gap-3 p-3 bg-accent-violet/5 border border-accent-violet/20 rounded-sm">
           <span className="text-xs font-medium text-accent-violet">Quick-fill from template:</span>
-          <select value={selectedTemplate} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleTemplateApply(e.target.value)} className="px-3 py-1.5 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary flex-1 max-w-[300px]">
-            <option value="">Select a template...</option>
-            {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          <CustomSelect
+            value={selectedTemplate}
+            onChange={(val) => handleTemplateApply(val)}
+            placeholder="Select a template..."
+            className="flex-1 max-w-[300px]"
+            options={[
+              { value: '', label: 'Select a template...' },
+              ...templates.map((t: any) => ({ value: String(t.id), label: t.name })),
+            ]}
+          />
         </div>
       )}
 
@@ -111,14 +118,15 @@ const AnnouncementForm: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Target Course (Optional)</label>
-                  <div className="custom-select-wrapper">
-                    <select value={notices[0]?.selectedCourseId || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleCourseChange(0, e.target.value)}
-                      className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150">
-                      <option value="">General Notice (No Course)</option>
-                      {courses.map((c: any) => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="h-4 w-4" /></div>
-                  </div>
+                  <CustomSelect
+                    value={notices[0]?.selectedCourseId || ''}
+                    onChange={(val) => handleCourseChange(0, val)}
+                    placeholder="General Notice (No Course)"
+                    options={[
+                      { value: '', label: 'General Notice (No Course)' },
+                      ...courses.map((c: any) => ({ value: String(c.id), label: `${c.course_id} - ${c.course_name}` })),
+                    ]}
+                  />
                 </div>
               </div>
               <div>
@@ -185,13 +193,11 @@ const AnnouncementForm: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                           <div>
                             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Notice Preset</label>
-                            <div className="custom-select-wrapper">
-                              <select value={notice.titlePreset} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handlePresetChange(nIdx, e.target.value)}
-                                className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150">
-                                {TITLE_PRESETS.map((p: any) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="w-4 w-4" /></div>
-                            </div>
+                            <CustomSelect
+                              value={notice.titlePreset}
+                              onChange={(val) => handlePresetChange(nIdx, val)}
+                              options={TITLE_PRESETS.map((p: any) => ({ value: p.value, label: p.label }))}
+                            />
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {[
                                 { value: 'Quiz - 1', label: '📝 Quiz' }, { value: 'Class Cancelled', label: '❌ Cancel' },
@@ -217,14 +223,15 @@ const AnnouncementForm: React.FC = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className={(notice.category === 'syllabus' || notice.category === 'suggestion') ? "md:col-span-2" : ""}>
                               <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
-                              <div className="custom-select-wrapper">
-                                <select value={notice.selectedCourseId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleCourseChange(nIdx, e.target.value)}
-                                  className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150">
-                                  <option value="">General Notice (No Course)</option>
-                                  {courses.map((c: any) => <option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>)}
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="w-4 h-4" /></div>
-                              </div>
+                              <CustomSelect
+                                value={notice.selectedCourseId}
+                                onChange={(val) => handleCourseChange(nIdx, val)}
+                                placeholder="General Notice (No Course)"
+                                options={[
+                                  { value: '', label: 'General Notice (No Course)' },
+                                  ...courses.map((c: any) => ({ value: String(c.id), label: `${c.course_id} - ${c.course_name}` })),
+                                ]}
+                              />
                             </div>
                             {(notice.category !== 'syllabus' && notice.category !== 'suggestion') && (
                               <div>
@@ -252,13 +259,20 @@ const AnnouncementForm: React.FC = () => {
                                   </div>
                                   <div className="w-full md:w-[16%]">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Time Option</label></div>
-                                    <div className="custom-select-wrapper">
-                                      <select value={sec.timeOption || 'select'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { const opt = e.target.value; handleSectionChange(nIdx, idx, 'timeOption', opt); if (opt !== 'select' && opt !== 'custom') handleSectionChange(nIdx, idx, 'startTime', ''); }}
-                                        className="custom-select block w-full pl-2 pr-7 h-9 py-1.5 border border-hairline bg-canvas rounded-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-ink hover:border-hairline-strong transition-all duration-150">
-                                        <option value="select">⏱️ Set Time</option><option value="custom">✏️ Custom Text</option><option value="tbd">⏳ Not Decided</option><option value="none">❌ No Time</option>
-                                      </select>
-                                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-ink-mute"><ChevronDown className="h-3.5 w-3.5" /></div>
-                                    </div>
+                                    <CustomSelect
+                                      value={sec.timeOption || 'select'}
+                                      onChange={(opt) => {
+                                        handleSectionChange(nIdx, idx, 'timeOption', opt);
+                                        if (opt !== 'select' && opt !== 'custom') handleSectionChange(nIdx, idx, 'startTime', '');
+                                      }}
+                                      options={[
+                                        { value: 'select', label: '⏱️ Set Time' },
+                                        { value: 'custom', label: '✏️ Custom Text' },
+                                        { value: 'tbd', label: '⏳ Not Decided' },
+                                        { value: 'none', label: '❌ No Time' },
+                                      ]}
+                                      size="sm"
+                                    />
                                   </div>
                                   {sec.timeOption === 'custom' ? (
                                     <div className="w-full md:w-[36%]">
@@ -296,13 +310,16 @@ const AnnouncementForm: React.FC = () => {
                                   )}
                                   <div className="w-full md:w-[20%]">
                                     <div className="h-5 flex items-end mb-1"><label className="block text-[10px] font-semibold text-ink-mute leading-none">Mode</label></div>
-                                    <div className="custom-select-wrapper">
-                                      <select value={sec.mode} disabled={notice.makeupStatus === 'online'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleSectionChange(nIdx, idx, 'mode', e.target.value)}
-                                        className="custom-select block w-full pl-3 pr-7 h-9 py-1.5 border border-hairline bg-canvas rounded-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-ink disabled:opacity-60 disabled:cursor-not-allowed hover:border-hairline-strong transition-all duration-150">
-                                        <option value="Offline">🏫 Offline Room</option><option value="Online">🏫 Room - Online</option>
-                                      </select>
-                                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-ink-mute"><ChevronDown className="h-3.5 w-3.5" /></div>
-                                    </div>
+                                    <CustomSelect
+                                      value={sec.mode}
+                                      disabled={notice.makeupStatus === 'online'}
+                                      onChange={(val) => handleSectionChange(nIdx, idx, 'mode', val)}
+                                      options={[
+                                        { value: 'Offline', label: '🏫 Offline Room' },
+                                        { value: 'Online', label: '🏫 Room - Online' },
+                                      ]}
+                                      size="sm"
+                                    />
                                   </div>
                                   {sec.mode === 'Offline' && (
                                     <div className="w-full md:w-[18%]">
@@ -320,17 +337,26 @@ const AnnouncementForm: React.FC = () => {
                         {notice.category === 'class_cancel' && (
                           <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3">
                             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Make-up / Rescheduling Option</label>
-                            <div className="custom-select-wrapper">
-                              <select value={notice.makeupStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { const statusVal = e.target.value; handleNoticeFieldChange(nIdx, 'makeupStatus', statusVal); if (statusVal === 'online') setNotices((prev: any[]) => { const u = [...prev]; u[nIdx].sections = u[nIdx].sections.map((s: any) => ({ ...s, mode: 'Online', room: '' })); return u; }); }}
-                                className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150">
-                                <option value="later">⏰ Make-up time will be shared later</option>
-                                <option value="rescheduled">📅 Rescheduled to new time/room slot</option>
-                                <option value="online">📍 Held Online instead (at same/new time)</option>
-                                <option value="none">❌ Just Cancelled (No make-up)</option>
-                                <option value="custom">✏️ Custom Rescheduling Details...</option>
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute"><ChevronDown className="w-4 h-4" /></div>
-                            </div>
+                            <CustomSelect
+                              value={notice.makeupStatus}
+                              onChange={(statusVal) => {
+                                handleNoticeFieldChange(nIdx, 'makeupStatus', statusVal);
+                                if (statusVal === 'online') {
+                                  setNotices((prev: any[]) => {
+                                    const u = [...prev];
+                                    u[nIdx].sections = u[nIdx].sections.map((s: any) => ({ ...s, mode: 'Online', room: '' }));
+                                    return u;
+                                  });
+                                }
+                              }}
+                              options={[
+                                { value: 'later', label: '⏰ Make-up time will be shared later' },
+                                { value: 'rescheduled', label: '📅 Rescheduled to new time/room slot' },
+                                { value: 'online', label: '📍 Held Online instead (at same/new time)' },
+                                { value: 'none', label: '❌ Just Cancelled (No make-up)' },
+                                { value: 'custom', label: '✏️ Custom Rescheduling Details...' },
+                              ]}
+                            />
                             {notice.makeupStatus === 'custom' && (
                               <div className="mt-2.5">
                                 <label className="block text-[11px] font-semibold text-ink-mute mb-1">Custom Make-up / Rescheduling Text *</label>
@@ -440,10 +466,17 @@ const AnnouncementForm: React.FC = () => {
                         <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><StickyNote className="w-4 h-4 mr-1.5 text-primary" /> Instructions & Notes</h4>
                           <div className="flex gap-2 items-start">
-                            <select value={notice.noteType || 'note'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleNoticeFieldChange(nIdx, 'noteType', e.target.value)}
-                              className="px-2 py-2 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150 flex-shrink-0 mt-0.5">
-                              <option value="note">Note</option><option value="instruction">Instruction</option><option value="important">Important</option>
-                            </select>
+                            <CustomSelect
+                              value={notice.noteType || 'note'}
+                              onChange={(val) => handleNoticeFieldChange(nIdx, 'noteType', val)}
+                              options={[
+                                { value: 'note', label: '📝 Note' },
+                                { value: 'instruction', label: '📋 Instruction' },
+                                { value: 'important', label: '⚠️ Important' },
+                              ]}
+                              size="sm"
+                              triggerClassName="w-32"
+                            />
                             <textarea
                               value={notice.currentNote || ''}
                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNoticeFieldChange(nIdx, 'currentNote', e.target.value)}

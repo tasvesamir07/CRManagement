@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FolderPlus, X } from 'lucide-react';
 import { filesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/custom-select';
 
 interface Course {
   id: string;
@@ -61,12 +62,15 @@ export default function CreateFolderModal({ show, onClose, courses, onCreated }:
             </div>
             <div>
               <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1 font-sans">Associate with Course (Optional)</label>
-              <select value={newFolderCourseId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewFolderCourseId(e.target.value)} className="w-full px-3 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary transition-colors">
-                <option value="">Personal / General (No Course)</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>{course.course_id} - {course.course_name}</option>
-                ))}
-              </select>
+              <CustomSelect
+                value={newFolderCourseId}
+                onChange={(val) => setNewFolderCourseId(val)}
+                placeholder="Personal / General (No Course)"
+                options={[
+                  { value: '', label: 'Personal / General (No Course)' },
+                  ...courses.map((course) => ({ value: String(course.id), label: `${course.course_id} - ${course.course_name}` })),
+                ]}
+              />
             </div>
           </div>
 

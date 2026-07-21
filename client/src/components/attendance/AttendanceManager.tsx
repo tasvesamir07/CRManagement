@@ -3,6 +3,7 @@ import { attendanceAPI, coursesAPI } from '../../services/api';
 import { Download, X, AlertCircle, Save, Check, Trash2, Edit } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/custom-select';
 
 interface Course {
   id: number;
@@ -253,11 +254,15 @@ const AttendanceManager = () => {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="w-full sm:w-64">
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Course *</label>
-                <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value ? parseInt(e.target.value) : '')}
-                  className="custom-select block w-full pl-3 pr-10 h-9 py-1.5 border border-hairline rounded-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink">
-                  <option value="">Select a course...</option>
-                  {courses.map(c => (<option key={c.id} value={c.id}>{c.course_id} - {c.course_name}</option>))}
-                </select>
+                <CustomSelect
+                  value={selectedCourseId}
+                  onChange={(val) => setSelectedCourseId(val ? parseInt(val) : '')}
+                  placeholder="Select a course..."
+                  options={[
+                    { value: '', label: 'Select a course...' },
+                    ...courses.map((c) => ({ value: String(c.id), label: `${c.course_id} - ${c.course_name}` })),
+                  ]}
+                />
               </div>
               <div className="w-full sm:w-48">
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Date *</label>

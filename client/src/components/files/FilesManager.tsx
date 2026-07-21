@@ -18,6 +18,7 @@ import ExpiryModal from './ExpiryModal';
 import CompressModal from './CompressModal';
 import ExtractZipModal from './ExtractZipModal';
 import { confirm } from '../ui/ConfirmDialog';
+import CustomSelect from '../ui/custom-select';
 
 interface FileItem {
   id: string;
@@ -809,18 +810,19 @@ const FilesManager = () => {
         
         <div className="flex items-center gap-2">
           <span className="text-xs text-ink-mute font-medium">Sort by:</span>
-          <select
+          <CustomSelect
             value={sortBy}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-hairline rounded-sm bg-canvas text-ink focus:outline-none focus:border-primary transition-colors cursor-pointer"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="size-large">Size: Large to Small</option>
-            <option value="size-small">Size: Small to Large</option>
-            <option value="name-asc">Name: A to Z</option>
-            <option value="name-desc">Name: Z to A</option>
-          </select>
+            onChange={(val) => setSortBy(val)}
+            size="sm"
+            options={[
+              { value: 'newest', label: 'Newest First' },
+              { value: 'oldest', label: 'Oldest First' },
+              { value: 'size-large', label: 'Size: Large to Small' },
+              { value: 'size-small', label: 'Size: Small to Large' },
+              { value: 'name-asc', label: 'Name: A to Z' },
+              { value: 'name-desc', label: 'Name: Z to A' },
+            ]}
+          />
         </div>
       </div>
 

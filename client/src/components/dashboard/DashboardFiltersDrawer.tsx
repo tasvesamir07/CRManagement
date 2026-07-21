@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { Filter, X } from 'lucide-react';
+import CustomSelect from '../ui/custom-select';
 
 interface CourseItem {
   id: number;
@@ -43,24 +44,32 @@ export default function DashboardFiltersDrawer({
         <div className="space-y-4 overflow-y-auto pb-6">
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Status</label>
-            <select value={statusFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none">
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="sending">Sending</option>
-              <option value="sent">Delivered</option>
-              <option value="partial">Partial</option>
-              <option value="failed">Failed</option>
-            </select>
+            <CustomSelect
+              value={statusFilter}
+              onChange={(val) => { setStatusFilter(val); setPage(1); }}
+              placeholder="All Status"
+              options={[
+                { value: '', label: 'All Status' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'sending', label: 'Sending' },
+                { value: 'sent', label: 'Delivered' },
+                { value: 'partial', label: 'Partial' },
+                { value: 'failed', label: 'Failed' },
+              ]}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Course</label>
-            <select value={courseFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setCourseFilter(e.target.value); setPage(1); }}
-              className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none">
-              <option value="">All Courses</option>
-              {courses.map((c: CourseItem) => (<option key={c.id} value={c.id}>{c.course_id}</option>))}
-            </select>
+            <CustomSelect
+              value={courseFilter}
+              onChange={(val) => { setCourseFilter(val); setPage(1); }}
+              placeholder="All Courses"
+              options={[
+                { value: '', label: 'All Courses' },
+                ...courses.map((c: CourseItem) => ({ value: String(c.id), label: c.course_id })),
+              ]}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Date Range</label>
