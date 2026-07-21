@@ -238,6 +238,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [sharing, setSharing] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [routineNotes, setRoutineNotes] = useState<string>('');
+  const [showInstructions, setShowInstructions] = useState<boolean>(false);
 
   // Text Styling States
   const [semesterTitleBold, setSemesterTitleBold] = useState(true);
@@ -852,14 +853,27 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
               {/* Routine Notes & Instructions (TipTap Rich Text Editor) */}
               <div className="space-y-2 pt-2 border-t border-hairline">
-                <label className="block text-xs font-bold text-ink uppercase tracking-wide flex items-center justify-between">
-                  <span>Routine Instructions / Notes</span>
-                  <span className="text-[10px] text-primary font-semibold font-mono">TipTap Powered</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-ink uppercase tracking-wide">Instructions & Notes</label>
+                  <label className="flex items-center gap-1.5 text-xs text-primary font-semibold cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={showInstructions} 
+                      onChange={(e) => setShowInstructions(e.target.checked)}
+                      className="rounded accent-primary w-3.5 h-3.5 cursor-pointer" 
+                    />
+                    Show Box on Poster
+                  </label>
+                </div>
                 <p className="text-[11px] text-gray-500">Format instructions or class notes with custom fonts, bold, and lists!</p>
                 <TipTapEditor 
                   value={routineNotes} 
-                  onChange={setRoutineNotes} 
+                  onChange={(val) => {
+                    setRoutineNotes(val);
+                    if (val && val.trim() && val !== '<p></p>') {
+                      setShowInstructions(true);
+                    }
+                  }} 
                   placeholder="e.g. 1. Classes start sharp on time. 2. Lab classes held in 6th floor lab room..." 
                 />
               </div>
@@ -1342,35 +1356,43 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </table>
               </div>
 
-              {/* Routine Notes & Instructions Box (Rendered from TipTap Editor) */}
-              <div 
-                onClick={() => { if (!isLocked) setActiveTab('titles'); }}
-                style={{ 
-                  backgroundColor: cellBg,
-                  color: cellTextColor,
-                  borderColor: borderColor
-                }}
-                className={`p-4 border text-left transition-all duration-300 rounded-lg space-y-2 mt-4 cursor-pointer hover:ring-2 hover:ring-primary/40 relative group`}
-                title={isLocked ? undefined : 'Click to edit Instructions & Notes with TipTap'}
-              >
-                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-primary" />
-                    <span>Instructions & Notes</span>
+              {/* Optional Routine Notes & Instructions Box */}
+              {showInstructions && routineNotes && routineNotes !== '<p></p>' && (
+                <div 
+                  onClick={() => { if (!isLocked) setActiveTab('titles'); }}
+                  style={{ 
+                    backgroundColor: cellBg,
+                    color: cellTextColor,
+                    borderColor: borderColor
+                  }}
+                  className={`p-4 border text-left transition-all duration-300 rounded-lg space-y-2 mt-4 cursor-pointer hover:ring-2 hover:ring-primary/40 relative group`}
+                  title={isLocked ? undefined : 'Click to edit Instructions & Notes with TipTap'}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-primary" />
+                      <span>Instructions & Notes</span>
+                    </div>
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowInstructions(false);
+                        }}
+                        className="p-0.5 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent"
+                        title="Remove Instructions Box from poster"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">TipTap Powered</span>
-                </div>
-                {routineNotes ? (
                   <div 
                     className="prose prose-xs max-w-none text-xs leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: routineNotes }}
                   />
-                ) : (
-                  <p className="text-xs text-gray-400 italic py-1">
-                    Click here to add routine instructions or notes using the TipTap Rich Text Editor...
-                  </p>
-                )}
-              </div>
+                </div>
+              )}
 
             </div>
 
