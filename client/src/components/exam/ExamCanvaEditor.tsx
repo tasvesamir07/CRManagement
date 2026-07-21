@@ -41,6 +41,16 @@ interface CanvasItem {
   examTime: string;
   rooms: string;
   accentColor: string;
+  courseCodeBold?: boolean;
+  courseCodeItalic?: boolean;
+  examDateBold?: boolean;
+  examDateItalic?: boolean;
+  courseNameBold?: boolean;
+  courseNameItalic?: boolean;
+  examTimeBold?: boolean;
+  examTimeItalic?: boolean;
+  roomsBold?: boolean;
+  roomsItalic?: boolean;
 }
 
 interface ExamCanvaEditorProps {
@@ -1093,7 +1103,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {/* Code & Date */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Course Code</label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[9px] uppercase font-bold text-gray-500">Course Code</label>
+                          <div className="flex gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'courseCodeBold', selectedItem.courseCodeBold === false ? true : false)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseCodeBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Bold"
+                            >
+                              <Bold className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'courseCodeItalic', !selectedItem.courseCodeItalic)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseCodeItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Italic"
+                            >
+                              <Italic className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                         <input 
                           type="text" 
                           value={selectedItem.courseCode} 
@@ -1102,7 +1132,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Exam Date</label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[9px] uppercase font-bold text-gray-500">Exam Date</label>
+                          <div className="flex gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'examDateBold', selectedItem.examDateBold === false ? true : false)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examDateBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Bold"
+                            >
+                              <Bold className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'examDateItalic', !selectedItem.examDateItalic)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examDateItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Italic"
+                            >
+                              <Italic className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                         <input 
                           type="text" 
                           value={selectedItem.examDate} 
@@ -1114,7 +1164,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Course Name */}
                     <div>
-                      <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Course Name</label>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Course Name</label>
+                        <div className="flex gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => updateItemField(selectedItem.id, 'courseNameBold', selectedItem.courseNameBold === false ? true : false)}
+                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseNameBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                            title="Toggle Bold"
+                          >
+                            <Bold className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateItemField(selectedItem.id, 'courseNameItalic', !selectedItem.courseNameItalic)}
+                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseNameItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                            title="Toggle Italic"
+                          >
+                            <Italic className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
                       <input 
                         type="text" 
                         value={selectedItem.courseName} 
@@ -1126,7 +1196,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {/* Time & Accent Custom Color */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Time</label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[9px] uppercase font-bold text-gray-500">Time</label>
+                          <div className="flex gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'examTimeBold', selectedItem.examTimeBold === false ? true : false)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examTimeBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Bold"
+                            >
+                              <Bold className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateItemField(selectedItem.id, 'examTimeItalic', !selectedItem.examTimeItalic)}
+                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examTimeItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                              title="Toggle Italic"
+                            >
+                              <Italic className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                         <input 
                           type="text" 
                           value={selectedItem.examTime} 
@@ -1135,7 +1225,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Accent Bar Color</label>
+                        <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Accent Bar Color</label>
                         <div className="flex items-center gap-1.5 h-8 bg-canvas px-1.5 rounded border border-hairline">
                           <input 
                             type="color" 
@@ -1150,7 +1240,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Rooms List */}
                     <div>
-                      <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Rooms & Seating Counts (one per line)</label>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Rooms & Seating Counts (one per line)</label>
+                        <div className="flex gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => updateItemField(selectedItem.id, 'roomsBold', selectedItem.roomsBold === false ? true : false)}
+                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.roomsBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                            title="Toggle Bold"
+                          >
+                            <Bold className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateItemField(selectedItem.id, 'roomsItalic', !selectedItem.roomsItalic)}
+                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.roomsItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
+                            title="Toggle Italic"
+                          >
+                            <Italic className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
                       <textarea 
                         value={selectedItem.rooms} 
                         onChange={e => updateItemField(selectedItem.id, 'rooms', e.target.value)}
@@ -1462,14 +1572,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     >
                       {/* Left Column: Date & Time + Accent color pill (aligned perfectly) */}
                       <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60">
-                        <div className="font-bold text-sm leading-tight">
+                        <div 
+                          style={{
+                            fontWeight: item.examDateBold !== false ? 'bold' : 'normal',
+                            fontStyle: item.examDateItalic ? 'italic' : 'normal'
+                          }}
+                          className="text-sm leading-tight"
+                        >
                           <InlineInput 
                             value={item.examDate} 
                             onChange={val => updateItemField(item.id, 'examDate', val)} 
                             disabled={isLocked} 
                           />
                         </div>
-                        <div className="font-semibold text-xs text-ink-mute mt-1.5 flex items-center gap-1.5">
+                        <div 
+                          style={{
+                            fontWeight: item.examTimeBold !== false ? '600' : 'normal',
+                            fontStyle: item.examTimeItalic ? 'italic' : 'normal'
+                          }}
+                          className="text-xs text-ink-mute mt-1.5 flex items-center gap-1.5"
+                        >
                           <InlineInput 
                             value={item.examTime} 
                             onChange={val => updateItemField(item.id, 'examTime', val)} 
@@ -1485,14 +1607,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                       {/* Middle Column: Course Code & Subject Name */}
                       <div className="flex-1 px-4 flex flex-col justify-center select-text">
-                        <div className="font-extrabold text-sm leading-tight text-ink">
+                        <div 
+                          style={{
+                            fontWeight: item.courseCodeBold !== false ? '800' : 'normal',
+                            fontStyle: item.courseCodeItalic ? 'italic' : 'normal'
+                          }}
+                          className="text-sm leading-tight text-ink"
+                        >
                           <InlineInput 
                             value={item.courseCode} 
                             onChange={val => updateItemField(item.id, 'courseCode', val)} 
                             disabled={isLocked} 
                           />
                         </div>
-                        <div className="text-[10px] leading-snug font-bold tracking-wide mt-1 uppercase opacity-80">
+                        <div 
+                          style={{
+                            fontWeight: item.courseNameBold !== false ? 'bold' : 'normal',
+                            fontStyle: item.courseNameItalic ? 'italic' : 'normal'
+                          }}
+                          className="text-[10px] leading-snug tracking-wide mt-1 uppercase opacity-80"
+                        >
                           <InlineInput 
                             value={item.courseName} 
                             onChange={val => updateItemField(item.id, 'courseName', val)} 
@@ -1507,7 +1641,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       )}
 
                       {/* Right Column: Rooms & Capacities */}
-                      <div className="w-[115px] pl-3 flex flex-col justify-center text-xs font-mono font-bold leading-normal select-text whitespace-pre-line opacity-95">
+                      <div 
+                        style={{
+                          fontWeight: item.roomsBold !== false ? 'bold' : 'normal',
+                          fontStyle: item.roomsItalic ? 'italic' : 'normal'
+                        }}
+                        className="w-[115px] pl-3 flex flex-col justify-center text-xs font-mono leading-normal select-text whitespace-pre-line opacity-95"
+                      >
                         <InlineInput 
                           value={item.rooms} 
                           onChange={val => updateItemField(item.id, 'rooms', val)} 
