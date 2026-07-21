@@ -1252,6 +1252,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 </div>
               </div>
 
+              {/* Instructions & Notes (TipTap Rich Text Editor) */}
+              <div className="space-y-2 pt-3 border-t border-hairline">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-ink uppercase tracking-wide">Instructions & Notes</label>
+                  <span className="text-[10px] text-primary font-semibold font-mono">TipTap Powered</span>
+                </div>
+                <p className="text-[11px] text-gray-500">Format instructions or rules with custom fonts, bold, italic, and lists!</p>
+                <TipTapEditor 
+                  value={routineNotes} 
+                  onChange={setRoutineNotes} 
+                  placeholder="e.g. 1. Bring student ID card. 2. Mobile phones strictly prohibited..." 
+                />
+              </div>
+
             </div>
           )}
         </div>
@@ -1591,26 +1605,35 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 </div>
               </div>
 
-              {/* Optional Routine Notes Box (Rendered from TipTap Editor) */}
-              {routineNotes && (
-                <div 
-                  style={{ 
-                    backgroundColor: cardBg,
-                    borderRadius: cardRoundedness,
-                    color: cardTextColor
-                  }}
-                  className={`p-4 border border-hairline text-left transition-all duration-300 ${cardShadow} space-y-2`}
-                >
-                  <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center gap-1.5">
+              {/* Routine Notes & Instructions Box (Rendered from TipTap Editor) */}
+              <div 
+                onClick={() => { if (!isLocked) setActiveTab('headers'); }}
+                style={{ 
+                  backgroundColor: cardBg,
+                  borderRadius: cardRoundedness,
+                  color: cardTextColor
+                }}
+                className={`p-4 border border-hairline text-left transition-all duration-300 ${cardShadow} space-y-2 cursor-pointer hover:ring-2 hover:ring-primary/40 relative group`}
+                title={isLocked ? undefined : 'Click to edit Instructions & Notes with TipTap'}
+              >
+                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-primary" />
                     <span>Instructions & Notes</span>
                   </div>
+                  <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">TipTap Powered</span>
+                </div>
+                {routineNotes ? (
                   <div 
                     className="prose prose-xs max-w-none text-xs leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: routineNotes }}
                   />
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-gray-400 italic py-1">
+                    Click here to add exam instructions or notes using the TipTap Rich Text Editor...
+                  </p>
+                )}
+              </div>
 
             </div>
 

@@ -1342,26 +1342,35 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </table>
               </div>
 
-              {/* Optional Routine Notes / Instructions Box (Rendered from TipTap Editor) */}
-              {routineNotes && (
-                <div 
-                  style={{ 
-                    backgroundColor: cellBg,
-                    color: cellTextColor,
-                    borderColor: borderColor
-                  }}
-                  className={`p-4 border text-left transition-all duration-300 rounded-lg space-y-2 mt-4`}
-                >
-                  <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center gap-1.5">
+              {/* Routine Notes & Instructions Box (Rendered from TipTap Editor) */}
+              <div 
+                onClick={() => { if (!isLocked) setActiveTab('titles'); }}
+                style={{ 
+                  backgroundColor: cellBg,
+                  color: cellTextColor,
+                  borderColor: borderColor
+                }}
+                className={`p-4 border text-left transition-all duration-300 rounded-lg space-y-2 mt-4 cursor-pointer hover:ring-2 hover:ring-primary/40 relative group`}
+                title={isLocked ? undefined : 'Click to edit Instructions & Notes with TipTap'}
+              >
+                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80 border-b border-hairline/60 pb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-primary" />
                     <span>Instructions & Notes</span>
                   </div>
+                  <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono">TipTap Powered</span>
+                </div>
+                {routineNotes ? (
                   <div 
                     className="prose prose-xs max-w-none text-xs leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: routineNotes }}
                   />
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-gray-400 italic py-1">
+                    Click here to add routine instructions or notes using the TipTap Rich Text Editor...
+                  </p>
+                )}
+              </div>
 
             </div>
 
