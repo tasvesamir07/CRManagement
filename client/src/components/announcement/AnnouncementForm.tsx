@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { confirm } from '../ui/ConfirmDialog';
-import { BookOpen, Clock, Send, X, Plus, ListPlus, StickyNote, Save,
+import { BookOpen, Clock, Send, X, Plus, ListPlus, StickyNote, Save, Pencil, Check,
   AlertTriangle, ArrowLeft, ChevronDown, GripVertical, Sparkles, Trash2, WifiOff } from 'lucide-react';
 import { DatePicker } from '../ui/date-picker';
 import { TimePicker } from '../ui/time-picker';
@@ -19,6 +20,11 @@ import LibraryModal from './LibraryModal';
 import useAnnouncementForm, { createNewNoticeObj } from '../../hooks/useAnnouncementForm';
 
 const AnnouncementForm: React.FC = () => {
+  const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState<string>('');
+  const [editingTopicKey, setEditingTopicKey] = useState<string | null>(null);
+  const [editingTopicText, setEditingTopicText] = useState<string>('');
+
   const {
     courses, platforms, loadingData, templates, selectedTemplate,
     broadcastMode, setBroadcastMode, fileCaption, setFileCaption, customText, setCustomText,
@@ -34,7 +40,7 @@ const AnnouncementForm: React.FC = () => {
     handleCourseChange, handleDateChange,
     addSectionField, removeSectionField, handleSectionChange,
     addTopic, removeTopic, handleTopicDragStart, handleTopicDrop,
-    addNote, removeNote, handleNoteTypeChange, handleNoteDragStart, handleNoteDrop,
+    addNote, removeNote, handleNoteTypeChange, handleNoteTextChange, handleTopicTextChange, handleNoteDragStart, handleNoteDrop,
     getShowTopics,
     handlePreview, handleOpenLibrary, handleAttachFromLibrary,
     handlePlatformToggle, removeAttachment,
@@ -344,14 +350,79 @@ const AnnouncementForm: React.FC = () => {
                               <button type="button" onClick={() => addTopic(nIdx)} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer">Add</button>
                             </div>
                             {notice.topics.length > 0 && (
-                              <div className="space-y-1.5 max-h-[200px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
-                                {notice.topics.map((t: string, i: number) => (
-                                  <div key={i} draggable onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleTopicDragStart(e, nIdx, i)} onDragOver={(e: React.DragEvent<HTMLDivElement>) => e.preventDefault()} onDrop={(e: React.DragEvent<HTMLDivElement>) => handleTopicDrop(e, nIdx, i)}
-                                    className="flex items-center justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move select-none">
-                                    <span className="truncate flex items-center gap-1.5"><GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0" /><span className="truncate">• {t}</span></span>
-                                    <button type="button" onClick={() => removeTopic(nIdx, i)} className="text-ink-mute hover:text-accent-tomato cursor-pointer border-none bg-transparent"><X className="w-3.5 h-3.5" /></button>
-                                  </div>
-                                ))}
+                              <div className="space-y-1.5 max-h-[220px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
+                                {notice.topics.map((t: string, i: number) => {
+                                  const topicKey = `${nIdx}-${i}`;
+                                  const isEditing = editingTopicKey === topicKey;
+                                  if (isEditing) {
+                                    return (
+                                      <div key={i} className="flex items-center gap-1.5 py-1 px-1.5 bg-canvas border border-primary/40 rounded-sm shadow-xs">
+                                        <span className="text-ink-mute font-bold text-xs flex-shrink-0">•</span>
+                                        <input
+                                          type="text"
+                                          value={editingTopicText}
+                                          onChange={(e) => setEditingTopicText(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault();
+                                              if (editingTopicText.trim()) handleTopicTextChange(nIdx, i, editingTopicText.trim());
+                                              setEditingTopicKey(null);
+                                            } else if (e.key === 'Escape') {
+                                              setEditingTopicKey(null);
+                                            }
+                                          }}
+                                          autoFocus
+                                          className="flex-1 px-2 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (editingTopicText.trim()) handleTopicTextChange(nIdx, i, editingTopicText.trim());
+                                            setEditingTopicKey(null);
+                                          }}
+                                          title="Save"
+                                          className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer flex-shrink-0"
+                                        >
+                                          <Check className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingTopicKey(null)}
+                                          title="Cancel"
+                                          className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer flex-shrink-0"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div key={i} draggable={!editingTopicKey} onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleTopicDragStart(e, nIdx, i)} onDragOver={(e: React.DragEvent<HTMLDivElement>) => e.preventDefault()} onDrop={(e: React.DragEvent<HTMLDivElement>) => handleTopicDrop(e, nIdx, i)}
+                                      className="flex items-start justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move group">
+                                      <div className="flex items-start gap-1.5 min-w-0 flex-1 pr-2">
+                                        <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5" />
+                                        <span
+                                          onDoubleClick={() => { setEditingTopicKey(topicKey); setEditingTopicText(t); }}
+                                          title="Double click to edit"
+                                          className="text-ink break-words leading-relaxed flex-1 select-text cursor-text">
+                                          • {t}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                                        <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} onClick={() => { setEditingTopicKey(topicKey); setEditingTopicText(t); }}
+                                          title="Edit Topic"
+                                          className="text-ink-mute hover:text-primary cursor-pointer border-none bg-transparent p-0.5 transition-colors">
+                                          <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} onClick={() => removeTopic(nIdx, i)}
+                                          title="Delete Topic"
+                                          className="text-ink-mute hover:text-accent-tomato cursor-pointer border-none bg-transparent p-0.5 transition-colors">
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -369,7 +440,7 @@ const AnnouncementForm: React.FC = () => {
                             <button type="button" onClick={() => addNote(nIdx)} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer">Add</button>
                           </div>
                           {notice.notes.length > 0 && (
-                            <div className="space-y-1.5 max-h-[200px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
+                            <div className="space-y-1.5 max-h-[260px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
                               {notice.notes.map((n: any, i: number) => {
                                 const isObj = typeof n === 'object' && n !== null;
                                 const text = isObj ? n.text : n;
@@ -377,15 +448,15 @@ const AnnouncementForm: React.FC = () => {
                                 const typeLabel = type === 'instruction' ? 'Instruction' : type === 'important' ? 'Important' : 'Note';
                                 const badgeColor = type === 'instruction' ? 'bg-primary/10 text-primary' : type === 'important' ? 'bg-accent-tomato/10 text-accent-tomato' : 'bg-accent-violet/10 text-accent-violet';
                                 const BadgeIcon = type === 'instruction' ? BookOpen : type === 'important' ? AlertTriangle : StickyNote;
-                                return (
-                                  <div key={i} draggable onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleNoteDragStart(e, nIdx, i)} onDragOver={(e: React.DragEvent<HTMLDivElement>) => e.preventDefault()} onDrop={(e: React.DragEvent<HTMLDivElement>) => handleNoteDrop(e, nIdx, i)}
-                                    className="flex items-center justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move select-none">
-                                    <span className="truncate flex items-center gap-1.5">
-                                      <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0" />
+                                const noteKey = `${nIdx}-${i}`;
+                                const isEditing = editingNoteKey === noteKey;
+
+                                if (isEditing) {
+                                  return (
+                                    <div key={i} className="flex items-center gap-1.5 py-1 px-1.5 bg-canvas border border-primary/40 rounded-sm shadow-xs">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                                            className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none`}>
+                                          <button type="button" className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none flex-shrink-0`}>
                                             <BadgeIcon className="w-2.5 h-2.5" /> {typeLabel}
                                           </button>
                                         </DropdownMenuTrigger>
@@ -395,10 +466,82 @@ const AnnouncementForm: React.FC = () => {
                                           <DropdownMenuItem onSelect={() => handleNoteTypeChange(nIdx, i, 'important')} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"><AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important</DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
-                                      <span className="truncate">{text}</span>
-                                    </span>
-                                    <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} onClick={() => removeNote(nIdx, i)}
-                                      className="text-ink-mute hover:text-accent-tomato cursor-pointer border-none bg-transparent"><X className="w-3.5 h-3.5" /></button>
+                                      <input
+                                        type="text"
+                                        value={editingNoteText}
+                                        onChange={(e) => setEditingNoteText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            if (editingNoteText.trim()) handleNoteTextChange(nIdx, i, editingNoteText.trim());
+                                            setEditingNoteKey(null);
+                                          } else if (e.key === 'Escape') {
+                                            setEditingNoteKey(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        className="flex-1 px-2 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (editingNoteText.trim()) handleNoteTextChange(nIdx, i, editingNoteText.trim());
+                                          setEditingNoteKey(null);
+                                        }}
+                                        title="Save"
+                                        className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer flex-shrink-0"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingNoteKey(null)}
+                                        title="Cancel"
+                                        className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer flex-shrink-0"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div key={i} draggable={!editingNoteKey} onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleNoteDragStart(e, nIdx, i)} onDragOver={(e: React.DragEvent<HTMLDivElement>) => e.preventDefault()} onDrop={(e: React.DragEvent<HTMLDivElement>) => handleNoteDrop(e, nIdx, i)}
+                                    className="flex items-start justify-between text-xs text-ink-secondary py-1.5 px-2 hover:bg-canvas-soft rounded-sm border border-transparent hover:border-hairline transition-all duration-150 cursor-move group">
+                                    <div className="flex items-start gap-1.5 min-w-0 flex-1 pr-2">
+                                      <GripVertical className="w-3.5 h-3.5 text-ink-mute cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5" />
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+                                            className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none flex-shrink-0 mt-0.5`}>
+                                            <BadgeIcon className="w-2.5 h-2.5" /> {typeLabel}
+                                          </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="w-28 bg-canvas border border-hairline shadow-lg p-1 text-xs">
+                                          <DropdownMenuItem onSelect={() => handleNoteTypeChange(nIdx, i, 'note')} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"><StickyNote className="w-3.5 h-3.5 text-accent-violet" /> Note</DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => handleNoteTypeChange(nIdx, i, 'instruction')} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"><BookOpen className="w-3.5 h-3.5 text-primary" /> Instruction</DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => handleNoteTypeChange(nIdx, i, 'important')} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"><AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                      <span
+                                        onDoubleClick={() => { setEditingNoteKey(noteKey); setEditingNoteText(text); }}
+                                        title="Double click to edit"
+                                        className="text-ink break-words leading-relaxed flex-1 select-text cursor-text">
+                                        {text}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                                      <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} onClick={() => { setEditingNoteKey(noteKey); setEditingNoteText(text); }}
+                                        title="Edit Instruction / Note"
+                                        className="text-ink-mute hover:text-primary cursor-pointer border-none bg-transparent p-0.5 transition-colors">
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button type="button" draggable={false} onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} onClick={() => removeNote(nIdx, i)}
+                                        title="Delete Instruction / Note"
+                                        className="text-ink-mute hover:text-accent-tomato cursor-pointer border-none bg-transparent p-0.5 transition-colors">
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}

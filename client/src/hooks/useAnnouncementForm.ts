@@ -289,6 +289,32 @@ getInitialValue('uploadedFiles', []));
     setNotices(prev => { const u = [...prev]; u[noticeIndex].notes = u[noticeIndex].notes.map((note: any, idx: number) => { if (idx === noteIndex) { const isObj = typeof note === 'object' && note !== null; const text = isObj ? note.text : note; return { text, type }; } return note; }); return u; });
   };
 
+  const handleNoteTextChange = (noticeIndex: number, noteIndex: number, text: string) => {
+    setNotices(prev => {
+      const u = [...prev];
+      u[noticeIndex].notes = u[noticeIndex].notes.map((note: any, idx: number) => {
+        if (idx === noteIndex) {
+          const isObj = typeof note === 'object' && note !== null;
+          const type = isObj ? note.type : 'note';
+          return { text, type };
+        }
+        return note;
+      });
+      return u;
+    });
+  };
+
+  const handleTopicTextChange = (noticeIndex: number, topicIndex: number, text: string) => {
+    setNotices(prev => {
+      const u = [...prev];
+      u[noticeIndex].topics = u[noticeIndex].topics.map((topic: string, idx: number) => {
+        if (idx === topicIndex) return text;
+        return topic;
+      });
+      return u;
+    });
+  };
+
   const handleNoteDragStart = (e: any, noticeIndex: number, noteIndex: number) => { setDraggedNoteIdx({ noticeIndex, noteIndex }); e.dataTransfer.effectAllowed = 'move'; };
 
   const handleNoteDrop = (e: any, noticeIndex: number, targetNoteIndex: number) => {
@@ -661,7 +687,7 @@ getInitialValue('uploadedFiles', []));
     handleCourseChange, handleDateChange,
     addSectionField, removeSectionField, handleSectionChange,
     addTopic, removeTopic, handleTopicDragStart, handleTopicDrop,
-    addNote, removeNote, handleNoteTypeChange, handleNoteDragStart, handleNoteDrop,
+    addNote, removeNote, handleNoteTypeChange, handleNoteTextChange, handleTopicTextChange, handleNoteDragStart, handleNoteDrop,
     getShowTopics,
     handlePreview, handleOpenLibrary, handleAttachFromLibrary,
     handlePlatformToggle, processUploads, removeAttachment,
