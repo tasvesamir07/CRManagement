@@ -334,8 +334,9 @@ const AnnouncementForm: React.FC = () => {
                             {notice.makeupStatus === 'custom' && (
                               <div className="mt-2.5">
                                 <label className="block text-[11px] font-semibold text-ink-mute mb-1">Custom Make-up / Rescheduling Text *</label>
-                                <input type="text" required value={notice.customMakeupText} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNoticeFieldChange(nIdx, 'customMakeupText', e.target.value)} placeholder="e.g. Makeup class on Friday at 3:00 PM in Room 602."
-                                  className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150" />
+                                <textarea required value={notice.customMakeupText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNoticeFieldChange(nIdx, 'customMakeupText', e.target.value)} placeholder="e.g. Makeup class on Friday at 3:00 PM in Room 602."
+                                  rows={Math.min(4, Math.max(2, Math.ceil((notice.customMakeupText || '').length / 50)))}
+                                  className="appearance-none block w-full px-3 py-1.5 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink hover:border-hairline-strong transition-all duration-150 font-sans resize-y min-h-[42px] leading-relaxed" />
                               </div>
                             )}
                           </div>
@@ -344,10 +345,16 @@ const AnnouncementForm: React.FC = () => {
                         {showTopics && (
                           <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                             <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><ListPlus className="w-4 h-4 mr-1.5 text-primary" /> {notice.category === 'syllabus' ? 'Syllabus Details' : notice.category === 'suggestion' ? 'Suggestions' : 'Topics / Syllabus'}</h4>
-                            <div className="flex gap-2">
-                              <input type="text" value={notice.currentTopic || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNoticeFieldChange(nIdx, 'currentTopic', e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); addTopic(nIdx); } }} placeholder={notice.category === 'syllabus' ? 'Type syllabus detail...' : notice.category === 'suggestion' ? 'Type suggestion...' : 'Type topic and press Enter...'}
-                                className="w-full px-3 py-1.5 border border-hairline rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                              <button type="button" onClick={() => addTopic(nIdx)} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer">Add</button>
+                            <div className="flex gap-2 items-start">
+                              <textarea
+                                value={notice.currentTopic || ''}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNoticeFieldChange(nIdx, 'currentTopic', e.target.value)}
+                                onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTopic(nIdx); } }}
+                                placeholder={notice.category === 'syllabus' ? 'Type syllabus detail...' : notice.category === 'suggestion' ? 'Type suggestion...' : 'Type topic and press Enter...'}
+                                rows={Math.min(3, Math.max(1, Math.ceil((notice.currentTopic || '').length / 40)))}
+                                className="flex-1 px-3 py-1.5 border border-hairline rounded-sm text-xs focus:outline-none focus:ring-1 focus:ring-primary resize-y min-h-[36px] leading-relaxed text-ink bg-canvas font-sans"
+                              />
+                              <button type="button" onClick={() => addTopic(nIdx)} className="px-3 py-2 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer flex-shrink-0 mt-0.5">Add</button>
                             </div>
                             {notice.topics.length > 0 && (
                               <div className="space-y-1.5 max-h-[220px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
@@ -356,14 +363,13 @@ const AnnouncementForm: React.FC = () => {
                                   const isEditing = editingTopicKey === topicKey;
                                   if (isEditing) {
                                     return (
-                                      <div key={i} className="flex items-center gap-1.5 py-1 px-1.5 bg-canvas border border-primary/40 rounded-sm shadow-xs">
-                                        <span className="text-ink-mute font-bold text-xs flex-shrink-0">•</span>
-                                        <input
-                                          type="text"
+                                      <div key={i} className="flex items-start gap-1.5 py-1 px-1.5 bg-canvas border border-primary/40 rounded-sm shadow-xs">
+                                        <span className="text-ink-mute font-bold text-xs flex-shrink-0 mt-1">•</span>
+                                        <textarea
                                           value={editingTopicText}
                                           onChange={(e) => setEditingTopicText(e.target.value)}
                                           onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
                                               e.preventDefault();
                                               if (editingTopicText.trim()) handleTopicTextChange(nIdx, i, editingTopicText.trim());
                                               setEditingTopicKey(null);
@@ -372,27 +378,30 @@ const AnnouncementForm: React.FC = () => {
                                             }
                                           }}
                                           autoFocus
-                                          className="flex-1 px-2 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas"
+                                          rows={Math.min(4, Math.max(1, Math.ceil(editingTopicText.length / 40)))}
+                                          className="flex-1 px-2 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas font-sans resize-y min-h-[32px] leading-relaxed"
                                         />
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (editingTopicText.trim()) handleTopicTextChange(nIdx, i, editingTopicText.trim());
-                                            setEditingTopicKey(null);
-                                          }}
-                                          title="Save"
-                                          className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer flex-shrink-0"
-                                        >
-                                          <Check className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditingTopicKey(null)}
-                                          title="Cancel"
-                                          className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer flex-shrink-0"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </button>
+                                        <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (editingTopicText.trim()) handleTopicTextChange(nIdx, i, editingTopicText.trim());
+                                              setEditingTopicKey(null);
+                                            }}
+                                            title="Save"
+                                            className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer"
+                                          >
+                                            <Check className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditingTopicKey(null)}
+                                            title="Cancel"
+                                            className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
                                       </div>
                                     );
                                   }
@@ -430,14 +439,20 @@ const AnnouncementForm: React.FC = () => {
 
                         <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><StickyNote className="w-4 h-4 mr-1.5 text-primary" /> Instructions & Notes</h4>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-start">
                             <select value={notice.noteType || 'note'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleNoticeFieldChange(nIdx, 'noteType', e.target.value)}
-                              className="px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150">
+                              className="px-2 py-2 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150 flex-shrink-0 mt-0.5">
                               <option value="note">Note</option><option value="instruction">Instruction</option><option value="important">Important</option>
                             </select>
-                            <input type="text" value={notice.currentNote || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNoticeFieldChange(nIdx, 'currentNote', e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); addNote(nIdx); } }} placeholder="Add cover page / submit slides link..."
-                              className="flex-1 px-3 py-1.5 border border-hairline rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                            <button type="button" onClick={() => addNote(nIdx)} className="px-3 py-1.5 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer">Add</button>
+                            <textarea
+                              value={notice.currentNote || ''}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNoticeFieldChange(nIdx, 'currentNote', e.target.value)}
+                              onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(nIdx); } }}
+                              placeholder="Add cover page / submit slides link..."
+                              rows={Math.min(4, Math.max(1, Math.ceil((notice.currentNote || '').length / 40)))}
+                              className="flex-1 px-3 py-1.5 border border-hairline rounded-sm text-xs focus:outline-none focus:ring-1 focus:ring-primary resize-y min-h-[36px] leading-relaxed text-ink bg-canvas font-sans"
+                            />
+                            <button type="button" onClick={() => addNote(nIdx)} className="px-3 py-2 border border-hairline hover:border-hairline-strong rounded-sm text-xs font-medium text-ink bg-canvas transition-colors cursor-pointer flex-shrink-0 mt-0.5">Add</button>
                           </div>
                           {notice.notes.length > 0 && (
                             <div className="space-y-1.5 max-h-[260px] overflow-y-auto p-1.5 border border-hairline rounded-sm bg-canvas">
@@ -453,10 +468,10 @@ const AnnouncementForm: React.FC = () => {
 
                                 if (isEditing) {
                                   return (
-                                    <div key={i} className="flex items-center gap-1.5 py-1 px-1.5 bg-canvas border border-primary/40 rounded-sm shadow-xs">
+                                    <div key={i} className="flex items-start gap-1.5 py-1.5 px-2 bg-canvas border border-primary/40 rounded-sm shadow-xs">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <button type="button" className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none flex-shrink-0`}>
+                                          <button type="button" className={`px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold uppercase ${badgeColor} flex items-center gap-1 hover:brightness-95 cursor-pointer transition-all border-none focus:outline-none flex-shrink-0 mt-0.5`}>
                                             <BadgeIcon className="w-2.5 h-2.5" /> {typeLabel}
                                           </button>
                                         </DropdownMenuTrigger>
@@ -466,12 +481,11 @@ const AnnouncementForm: React.FC = () => {
                                           <DropdownMenuItem onSelect={() => handleNoteTypeChange(nIdx, i, 'important')} className="flex items-center gap-1.5 px-2 py-1 hover:bg-canvas-soft rounded cursor-pointer text-ink font-semibold"><AlertTriangle className="w-3.5 h-3.5 text-accent-tomato" /> Important</DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
-                                      <input
-                                        type="text"
+                                      <textarea
                                         value={editingNoteText}
                                         onChange={(e) => setEditingNoteText(e.target.value)}
                                         onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
                                             if (editingNoteText.trim()) handleNoteTextChange(nIdx, i, editingNoteText.trim());
                                             setEditingNoteKey(null);
@@ -480,27 +494,30 @@ const AnnouncementForm: React.FC = () => {
                                           }
                                         }}
                                         autoFocus
-                                        className="flex-1 px-2 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas"
+                                        rows={Math.min(6, Math.max(2, Math.ceil(editingNoteText.length / 40)))}
+                                        className="flex-1 px-2.5 py-1 text-xs border border-hairline rounded focus:outline-none focus:ring-1 focus:ring-primary text-ink bg-canvas font-sans resize-y min-h-[42px] leading-relaxed"
                                       />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (editingNoteText.trim()) handleNoteTextChange(nIdx, i, editingNoteText.trim());
-                                          setEditingNoteKey(null);
-                                        }}
-                                        title="Save"
-                                        className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer flex-shrink-0"
-                                      >
-                                        <Check className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingNoteKey(null)}
-                                        title="Cancel"
-                                        className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer flex-shrink-0"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </button>
+                                      <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (editingNoteText.trim()) handleNoteTextChange(nIdx, i, editingNoteText.trim());
+                                            setEditingNoteKey(null);
+                                          }}
+                                          title="Save (Enter)"
+                                          className="p-1 text-emerald-600 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer"
+                                        >
+                                          <Check className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingNoteKey(null)}
+                                          title="Cancel (Esc)"
+                                          className="p-1 text-ink-mute hover:text-accent-tomato rounded hover:bg-canvas-soft transition-colors cursor-pointer"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      </div>
                                     </div>
                                   );
                                 }
