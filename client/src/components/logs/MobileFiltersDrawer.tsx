@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { Filter, X } from 'lucide-react';
+import CustomSelect from '../ui/custom-select';
 
 interface MobileFiltersDrawerProps {
   open: boolean;
@@ -39,35 +40,35 @@ export default function MobileFiltersDrawer({
         <div className="space-y-4 overflow-y-auto pb-6">
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Event Type</label>
-            <select
+            <CustomSelect
               value={actionFilter}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { onActionFilterChange(e.target.value); }}
-              className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
-            >
-              <option value="">All Event Types</option>
-              <option value="announcement.delivery_failed">Delivery Failures</option>
-              <option value="announcement.delivery_sent">Delivery Successes</option>
-              <option value="announcement.broadcast_completed">Completed Broadcasts</option>
-              {isAdmin && (
-                <>
-                  <option value="admin.create_user">User Creation</option>
-                  <option value="admin.update_user">User Updates</option>
-                  <option value="admin.delete_user">User Removals</option>
-                </>
-              )}
-            </select>
+              onChange={(val) => onActionFilterChange(val)}
+              placeholder="All Event Types"
+              options={[
+                { value: '', label: 'All Event Types' },
+                { value: 'announcement.delivery_failed', label: 'Delivery Failures' },
+                { value: 'announcement.delivery_sent', label: 'Delivery Successes' },
+                { value: 'announcement.broadcast_completed', label: 'Completed Broadcasts' },
+                ...(isAdmin ? [
+                  { value: 'admin.create_user', label: 'User Creation' },
+                  { value: 'admin.update_user', label: 'User Updates' },
+                  { value: 'admin.delete_user', label: 'User Removals' },
+                ] : [])
+              ]}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-ink-mute tracking-wider">Entity Type</label>
-            <select
+            <CustomSelect
               value={entityTypeFilter}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { onEntityTypeFilterChange(e.target.value); }}
-              className="block w-full px-3 py-2 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none"
-            >
-              <option value="">All Entities</option>
-              <option value="announcement">Announcements</option>
-              {isAdmin && <option value="user">Users</option>}
-            </select>
+              onChange={(val) => onEntityTypeFilterChange(val)}
+              placeholder="All Entities"
+              options={[
+                { value: '', label: 'All Entities' },
+                { value: 'announcement', label: 'Announcements' },
+                ...(isAdmin ? [{ value: 'user', label: 'Users' }] : [])
+              ]}
+            />
           </div>
           {isAdmin && (
             <div className="space-y-1">

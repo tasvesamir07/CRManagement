@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { platformsAPI } from '../../services/api';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/custom-select';
 
 import { COUNTRY_CODES, sanitizePhoneNumber } from './platformUtils';
 
@@ -223,16 +224,16 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
               <p className="text-xs text-ink-mute">Select your country code and enter your phone number to receive a pairing code.</p>
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <div className="custom-select-wrapper min-w-[110px]">
-                    <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
-                      className="custom-select block w-full pl-2 pr-7 py-2 border border-hairline rounded-sm text-xs bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-[38px] cursor-pointer hover:border-hairline-strong transition-all duration-150">
-                      {COUNTRY_CODES.map((cc) => (
-                        <option key={cc.code} value={cc.code}>{cc.flag} {cc.label}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-ink-mute">
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </div>
+                  <div className="min-w-[130px]">
+                    <CustomSelect
+                      value={countryCode}
+                      onChange={(val) => setCountryCode(val)}
+                      size="sm"
+                      options={COUNTRY_CODES.map((cc) => ({
+                        value: cc.code,
+                        label: `${cc.flag} ${cc.label}`,
+                      }))}
+                    />
                   </div>
                   {countryCode === 'custom' && (
                     <input type="text" value={customCountryCode} onChange={(e) => setCustomCountryCode(e.target.value.replace(/\D/g, ''))}

@@ -7,6 +7,7 @@ import MobileFiltersDrawer from './MobileFiltersDrawer';
 import LogDetailModal from './LogDetailModal';
 import { parseDetails, getActionLabel, troubleshootError } from './logsHelpers';
 import useLogsManager from '../../hooks/useLogsManager';
+import CustomSelect from '../ui/custom-select';
 
 interface LogEntry {
   id: number;
@@ -81,36 +82,38 @@ const LogsManager = () => {
 
           {/* Action Type Filter */}
           <div className="w-48">
-            <select
+            <CustomSelect
               value={actionFilter}
-              onChange={(e) => handleActionFilterChange(e.target.value)}
-              className="block w-full px-2 py-1.5 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-            >
-              <option value="">All Event Types</option>
-              <option value="announcement.delivery_failed">Delivery Failures</option>
-              <option value="announcement.delivery_sent">Delivery Successes</option>
-              <option value="announcement.broadcast_completed">Completed Broadcasts</option>
-              {isAdmin && (
-                <>
-                  <option value="admin.create_user">User Creation</option>
-                  <option value="admin.update_user">User Updates</option>
-                  <option value="admin.delete_user">User Removals</option>
-                </>
-              )}
-            </select>
+              onChange={(val) => handleActionFilterChange(val)}
+              placeholder="All Event Types"
+              size="sm"
+              options={[
+                { value: '', label: 'All Event Types' },
+                { value: 'announcement.delivery_failed', label: 'Delivery Failures' },
+                { value: 'announcement.delivery_sent', label: 'Delivery Successes' },
+                { value: 'announcement.broadcast_completed', label: 'Completed Broadcasts' },
+                ...(isAdmin ? [
+                  { value: 'admin.create_user', label: 'User Creation' },
+                  { value: 'admin.update_user', label: 'User Updates' },
+                  { value: 'admin.delete_user', label: 'User Removals' },
+                ] : [])
+              ]}
+            />
           </div>
 
           {/* Entity Type Filter */}
           <div className="w-40">
-            <select
+            <CustomSelect
               value={entityTypeFilter}
-              onChange={(e) => handleEntityTypeFilterChange(e.target.value)}
-              className="block w-full px-2 py-1.5 border border-hairline rounded-sm text-xs text-ink bg-canvas focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-            >
-              <option value="">All Entities</option>
-              <option value="announcement">Announcements</option>
-              {isAdmin && <option value="user">Users</option>}
-            </select>
+              onChange={(val) => handleEntityTypeFilterChange(val)}
+              placeholder="All Entities"
+              size="sm"
+              options={[
+                { value: '', label: 'All Entities' },
+                { value: 'announcement', label: 'Announcements' },
+                ...(isAdmin ? [{ value: 'user', label: 'Users' }] : [])
+              ]}
+            />
           </div>
 
           {/* Admin-only User ID filter */}

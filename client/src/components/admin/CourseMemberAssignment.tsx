@@ -1,4 +1,5 @@
-import { BookOpen, Users, ChevronDown, Trash2 } from 'lucide-react';
+import { BookOpen, Users, Trash2 } from 'lucide-react';
+import CustomSelect from '../ui/custom-select';
 
 interface User {
   id: string;
@@ -55,23 +56,15 @@ export default function CourseMemberAssignment({
             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
               Select Course
             </label>
-            <div className="custom-select-wrapper">
-              <select
-                value={selectedCourseId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onCourseChange(e.target.value)}
-                className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-[38px] cursor-pointer hover:border-hairline-strong transition-all duration-150"
-              >
-                <option value="">Choose a course...</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.course_id} - {c.course_name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
+            <CustomSelect
+              value={selectedCourseId}
+              onChange={(val) => onCourseChange(val)}
+              placeholder="Choose a course..."
+              options={[
+                { value: '', label: 'Choose a course...' },
+                ...courses.map((c) => ({ value: String(c.id), label: `${c.course_id} - ${c.course_name}` })),
+              ]}
+            />
           </div>
 
           {selectedCourseId && (
@@ -82,46 +75,31 @@ export default function CourseMemberAssignment({
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
                   Select CR User
                 </label>
-                <div className="custom-select-wrapper">
-                  <select
-                    value={selectedUserId}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onUserIdChange(e.target.value)}
-                    className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-[38px] cursor-pointer hover:border-hairline-strong transition-all duration-150"
-                    required
-                  >
-                    <option value="">Choose user...</option>
-                    {users
+                <CustomSelect
+                  value={selectedUserId}
+                  onChange={(val) => onUserIdChange(val)}
+                  placeholder="Choose user..."
+                  options={[
+                    { value: '', label: 'Choose user...' },
+                    ...users
                       .filter(u => u.is_active && u.role === 'cr' && !courseMembers.some(cm => cm.id === u.id))
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.display_name || u.username} (@{u.username})
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-                    <ChevronDown className="h-4 w-4" />
-                  </div>
-                </div>
+                      .map((u) => ({ value: String(u.id), label: `${u.display_name || u.username} (@${u.username})` }))
+                  ]}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
                   Membership Role
                 </label>
-                <div className="custom-select-wrapper">
-                  <select
-                    value={selectedRole}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onRoleChange(e.target.value)}
-                    className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-[38px] cursor-pointer hover:border-hairline-strong transition-all duration-150"
-                  >
-                    <option value="cr">Course Rep (CR)</option>
-                    <option value="lead">Lead CR</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-                    <ChevronDown className="h-4 w-4" />
-                  </div>
-                </div>
+                <CustomSelect
+                  value={selectedRole}
+                  onChange={(val) => onRoleChange(val)}
+                  options={[
+                    { value: 'cr', label: 'Course Rep (CR)' },
+                    { value: 'lead', label: 'Lead CR' },
+                  ]}
+                />
               </div>
 
               <button

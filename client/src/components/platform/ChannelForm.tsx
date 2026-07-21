@@ -1,4 +1,5 @@
-import { X, ChevronDown } from 'lucide-react';
+import { X } from 'lucide-react';
+import CustomSelect from '../ui/custom-select';
 
 interface Course {
   id: string;
@@ -46,33 +47,28 @@ const ChannelForm = ({ editId, pName, setPName, pType, setPType, pChatId, setPCh
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-[11px] font-semibold uppercase text-ink-mute mb-1">Platform Type</label>
-          <div className="custom-select-wrapper">
-            <select value={pType} onChange={(e) => setPType(e.target.value)}
-              className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm bg-canvas text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer">
-              <option value="telegram">Telegram Bot Channel</option>
-              <option value="whatsapp">WhatsApp Group JID</option>
-              <option value="messenger">Facebook Messenger Group</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-              <ChevronDown className="h-4 w-4" />
-            </div>
-          </div>
+          <CustomSelect
+            value={pType}
+            onChange={(val) => setPType(val)}
+            options={[
+              { value: 'telegram', label: 'Telegram Bot Channel' },
+              { value: 'whatsapp', label: 'WhatsApp Group JID' },
+              { value: 'messenger', label: 'Facebook Messenger Group' },
+            ]}
+          />
         </div>
 
         <div>
           <label className="block text-[11px] font-semibold uppercase text-ink-mute mb-1">Course (Optional)</label>
-          <div className="custom-select-wrapper">
-            <select value={pCourseId || ''} onChange={(e) => setPCourseId(e.target.value || null)}
-              className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm bg-canvas text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer">
-              <option value="">No Course Association</option>
-              {courses.map(course => (
-                <option key={course.id} value={course.id}>{course.course_id} - {course.course_name}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-              <ChevronDown className="h-4 w-4" />
-            </div>
-          </div>
+          <CustomSelect
+            value={pCourseId || ''}
+            onChange={(val) => setPCourseId(val || null)}
+            placeholder="No Course Association"
+            options={[
+              { value: '', label: 'No Course Association' },
+              ...courses.map(course => ({ value: String(course.id), label: `${course.course_id} - ${course.course_name}` })),
+            ]}
+          />
           <p className="text-[9px] text-ink-mute mt-1">Associate this platform with a course for default platform selection.</p>
         </div>
 

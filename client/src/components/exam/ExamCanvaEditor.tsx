@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/custom-select';
 
 interface Course {
   id: number;
@@ -732,26 +733,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               {/* Font Family Selection */}
               <div className="space-y-1.5 pt-2 border-t border-hairline">
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
-                <div className="relative">
-                  <select
-                    value={selectedFont}
-                    onChange={e => setSelectedFont(e.target.value)}
-                    className="w-full h-9 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                  >
-                    {FONTS.map(f => (
-                      <option 
-                        key={f.family} 
-                        value={f.family}
-                        style={{ fontFamily: f.family }}
-                      >
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                    <ChevronDown className="w-4 h-4" />
-                  </div>
-                </div>
+                <CustomSelect
+                  value={selectedFont}
+                  onChange={(val) => setSelectedFont(val)}
+                  options={FONTS.map(f => ({ value: f.family, label: f.name }))}
+                />
               </div>
 
               {/* Text Alignment Customizer */}
@@ -868,60 +854,48 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Corner Rounded</label>
-                    <div className="relative">
-                      <select 
-                        value={cardRoundedness} 
-                        onChange={e => setCardRoundedness(e.target.value)}
-                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                      >
-                        <option value="0px">Sharp (0px)</option>
-                        <option value="4px">Small (4px)</option>
-                        <option value="8px">Medium (8px)</option>
-                        <option value="12px">Large (12px)</option>
-                        <option value="20px">Extra (20px)</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
-                    </div>
+                    <CustomSelect
+                      value={cardRoundedness}
+                      onChange={(val) => setCardRoundedness(val)}
+                      size="sm"
+                      options={[
+                        { value: '0px', label: 'Sharp (0px)' },
+                        { value: '4px', label: 'Small (4px)' },
+                        { value: '8px', label: 'Medium (8px)' },
+                        { value: '12px', label: 'Large (12px)' },
+                        { value: '20px', label: 'Extra (20px)' },
+                      ]}
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Shadow</label>
-                    <div className="relative">
-                      <select 
-                        value={cardShadow} 
-                        onChange={e => setCardShadow(e.target.value)}
-                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                      >
-                        <option value="shadow-none">None</option>
-                        <option value="shadow-sm">Soft / Subtle</option>
-                        <option value="shadow-md">Medium</option>
-                        <option value="shadow-lg">Large</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
-                    </div>
+                    <CustomSelect
+                      value={cardShadow}
+                      onChange={(val) => setCardShadow(val)}
+                      size="sm"
+                      options={[
+                        { value: 'shadow-none', label: 'None' },
+                        { value: 'shadow-sm', label: 'Soft / Subtle' },
+                        { value: 'shadow-md', label: 'Medium' },
+                        { value: 'shadow-lg', label: 'Large' },
+                      ]}
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Border</label>
-                    <div className="relative">
-                      <select 
-                        value={cardBorderType} 
-                        onChange={e => setCardBorderType(e.target.value as any)}
-                        className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                      >
-                        <option value="none">No Border</option>
-                        <option value="hairline">Light Border</option>
-                        <option value="accent">Match Accent Bar</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
-                    </div>
+                    <CustomSelect
+                      value={cardBorderType}
+                      onChange={(val) => setCardBorderType(val as any)}
+                      size="sm"
+                      options={[
+                        { value: 'none', label: 'No Border' },
+                        { value: 'hairline', label: 'Light Border' },
+                        { value: 'accent', label: 'Match Accent Bar' },
+                      ]}
+                    />
                   </div>
                   <div className="flex items-center gap-2 pt-5 select-none">
                     <input 
@@ -1096,31 +1070,23 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     {courses.length > 0 && (
                       <div>
                         <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">Autofill from Registered Courses</label>
-                        <div className="relative">
-                          <select
-                            onChange={e => {
-                              const val = e.target.value;
-                              if (!val) return;
-                              const selected = courses.find(c => c.course_id === val);
-                              if (selected) {
-                                updateItemField(selectedItem.id, 'courseCode', selected.course_id);
-                                updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
-                              }
-                              e.target.value = ''; 
-                            }}
-                            className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                          >
-                            <option value="">-- Select a registered course --</option>
-                            {courses.map(c => (
-                              <option key={c.id} value={c.course_id}>
-                                {c.course_id} - {c.course_name}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                            <ChevronDown className="w-4 h-4" />
-                          </div>
-                        </div>
+                        <CustomSelect
+                          value=""
+                          onChange={(val) => {
+                            if (!val) return;
+                            const selected = courses.find(c => c.course_id === val);
+                            if (selected) {
+                              updateItemField(selectedItem.id, 'courseCode', selected.course_id);
+                              updateItemField(selectedItem.id, 'courseName', selected.course_name.toUpperCase());
+                            }
+                          }}
+                          placeholder="-- Select a registered course --"
+                          options={[
+                            { value: '', label: '-- Select a registered course --' },
+                            ...courses.map(c => ({ value: c.course_id, label: `${c.course_id} - ${c.course_name}` })),
+                          ]}
+                          size="sm"
+                        />
                       </div>
                     )}
 

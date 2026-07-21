@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { confirm } from '../ui/ConfirmDialog';
 import { Plus, Loader2, Trash2, X, ChevronDown } from 'lucide-react';
 import PasswordInput from '../ui/PasswordInput';
+import CustomSelect from '../ui/custom-select';
 import CourseMemberAssignment from './CourseMemberAssignment';
 
 interface User {
@@ -268,19 +269,14 @@ const AdminUsers = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">Role</label>
-                  <div className="custom-select-wrapper">
-                    <select
-                      value={form.role}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, role: e.target.value })}
-                      className="custom-select block w-full pl-3 pr-10 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer"
-                    >
-                      <option value="cr">Course Rep (CR)</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-ink-mute">
-                      <ChevronDown className="h-4 w-4" />
-                    </div>
-                  </div>
+                  <CustomSelect
+                    value={form.role}
+                    onChange={(val) => setForm({ ...form, role: val })}
+                    options={[
+                      { value: 'cr', label: 'Course Rep (CR)' },
+                      { value: 'admin', label: 'Admin' },
+                    ]}
+                  />
                 </div>
                 <div className="flex items-end">
                   <button

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/custom-select';
 
 interface Course {
   id: number;
@@ -624,30 +625,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Font Family Selection */}
-              <div className="space-y-1.5 pt-2 border-t border-hairline">
-                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
-                <div className="relative">
-                  <select
+                {/* Font Family Selection */}
+                <div className="space-y-1.5 pt-2 border-t border-hairline">
+                  <label className="block text-xs font-bold text-ink uppercase tracking-wide">Font Family</label>
+                  <CustomSelect
                     value={selectedFont}
-                    onChange={e => setSelectedFont(e.target.value)}
-                    className="w-full h-9 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                  >
-                    {FONTS.map(f => (
-                      <option 
-                        key={f.family} 
-                        value={f.family}
-                        style={{ fontFamily: f.family }}
-                      >
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                    <ChevronDown className="w-4 h-4" />
-                  </div>
+                    onChange={(val) => setSelectedFont(val)}
+                    options={FONTS.map(f => ({ value: f.family, label: f.name }))}
+                  />
                 </div>
               </div>
 
@@ -1006,23 +991,16 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     {/* Course selector */}
                     <div>
                       <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Teacher & Course</label>
-                      <div className="relative">
-                        <select
-                          value={formCourseId}
-                          onChange={e => setFormCourseId(e.target.value)}
-                          className="w-full h-8 pl-3 pr-8 border border-hairline bg-canvas text-xs rounded text-ink focus:border-primary focus:outline-none transition-all cursor-pointer appearance-none shadow-sm hover:border-primary/50"
-                        >
-                          <option value="">-- Choose registered course --</option>
-                          {courses.map(c => (
-                            <option key={c.id} value={c.id}>
-                              {c.course_id} ({c.teacher_initials}) - {c.course_name}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-400">
-                          <ChevronDown className="w-4 h-4" />
-                        </div>
-                      </div>
+                      <CustomSelect
+                        value={formCourseId}
+                        onChange={(val) => setFormCourseId(val)}
+                        placeholder="-- Choose registered course --"
+                        options={[
+                          { value: '', label: '-- Choose registered course --' },
+                          ...courses.map(c => ({ value: String(c.id), label: `${c.course_id} (${c.teacher_initials}) - ${c.course_name}` })),
+                        ]}
+                        size="sm"
+                      />
                     </div>
 
                     {/* Section */}

@@ -11,6 +11,7 @@ import {
   Code, List, ListOrdered, Trash2, ChevronDown,
   AlignLeft, AlignCenter, AlignRight, AlignJustify
 } from 'lucide-react';
+import CustomSelect from '../ui/custom-select';
 
 interface TipTapEditorProps {
   value: string;
@@ -91,22 +92,16 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write you
       <div className="flex flex-wrap items-center gap-1 p-1.5 border-b border-hairline bg-canvas-soft select-none">
         
         {/* Font Selection Dropdown */}
-        <div className="relative flex items-center mr-1">
-          <select
+        <div className="mr-1 min-w-[140px]">
+          <CustomSelect
             value={activeFont}
-            onChange={(e) => handleFontChange(e.target.value)}
-            className="h-8 pl-2 pr-7 py-1 text-xs border border-hairline rounded bg-canvas text-ink font-semibold focus:outline-none focus:border-primary cursor-pointer appearance-none min-w-[130px]"
-          >
-            <option value="default">Default Font</option>
-            {FONTS_LIST.map((font) => (
-              <option key={font.family} value={font.family} style={{ fontFamily: font.family }}>
-                {font.name}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-ink-mute">
-            <ChevronDown className="w-3.5 h-3.5" />
-          </div>
+            onChange={(val) => handleFontChange(val)}
+            size="sm"
+            options={[
+              { value: 'default', label: 'Default Font' },
+              ...FONTS_LIST.map((font) => ({ value: font.family, label: font.name })),
+            ]}
+          />
         </div>
 
         <div className="h-6 w-px bg-hairline mx-1" />
