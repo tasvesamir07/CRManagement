@@ -245,7 +245,12 @@ const StudentManager = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-md tracking-tight font-sans text-ink">Students</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-display-md tracking-tight font-sans text-ink">Students</h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-xs">
+              {students.length} {students.length === 1 ? 'Student' : 'Students'}
+            </span>
+          </div>
           <p className="text-sm text-ink-mute mt-1.5">Manage student records and course enrollment.</p>
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
@@ -378,35 +383,33 @@ const StudentManager = () => {
               </label>
               {!enrollAll && (
                 <div>
-                  <label className="block text-xs font-semibold text-ink-mute mb-1">Select courses:</label>
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                    {courses.map(c => (
-                      <label key={c.id} className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={selectedCourseIds.includes(c.id)}
-                          onChange={e => {
-                            if (e.target.checked) setSelectedCourseIds([...selectedCourseIds, c.id]);
-                            else setSelectedCourseIds(selectedCourseIds.filter(id => id !== c.id));
+                  <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Select Specific Courses to Enroll</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-hairline rounded p-2">
+                    {courses.map(c => {
+                      const isSelected = selectedCourseIds.includes(c.id);
+                      return (
+                        <button key={c.id} type="button"
+                          onClick={() => {
+                            if (isSelected) setSelectedCourseIds(selectedCourseIds.filter(id => id !== c.id));
+                            else setSelectedCourseIds([...selectedCourseIds, c.id]);
                           }}
-                          className="rounded border-hairline text-primary focus:ring-primary" />
-                        <span className="text-ink truncate">{c.course_id}</span>
-                      </label>
-                    ))}
+                          className={`text-xs p-1.5 rounded border text-left font-medium ${isSelected ? 'border-primary bg-primary/5 text-primary' : 'border-hairline text-ink'}`}>
+                          {c.course_id}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
             {bulkImporting ? (
-              <div className="space-y-3 pt-3 border-t border-hairline-cool">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-ink-mute flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Importing students...
-                  </span>
-                  <span className="text-ink font-medium">{bulkProgress.current} / {bulkProgress.total}</span>
+              <div className="space-y-2 pt-2 border-t border-hairline-cool">
+                <div className="flex justify-between text-xs text-ink-mute font-medium">
+                  <span>Importing student records...</span>
+                  <span>{bulkProgress.current} / {bulkProgress.total}</span>
                 </div>
                 <div className="w-full bg-canvas-soft rounded-full h-2 overflow-hidden">
-                  <div className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min((bulkProgress.current / bulkProgress.total) * 100, 100)}%` }} />
+                  <div className="bg-primary h-full transition-all duration-200" style={{ width: `${bulkProgress.total ? (bulkProgress.current / bulkProgress.total) * 100 : 0}%` }} />
                 </div>
               </div>
             ) : (
@@ -422,10 +425,15 @@ const StudentManager = () => {
         </div>
       )}
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ID or name..."
-          className="pl-9 pr-3 py-2 w-full border border-hairline rounded-sm text-sm bg-canvas text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative max-w-xs w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ID or name..."
+            className="pl-9 pr-3 py-2 w-full border border-hairline rounded-sm text-sm bg-canvas text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+        </div>
+        <div className="text-xs text-ink-mute font-medium">
+          Showing <span className="font-bold text-ink">{students.length}</span> {students.length === 1 ? 'student' : 'students'}
+        </div>
       </div>
 
       {loading ? (
@@ -438,32 +446,38 @@ const StudentManager = () => {
           <p className="text-ink-mute text-sm">No students found. Add one or import via CSV.</p>
         </div>
       ) : (
-        <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-x-auto">
-          <table className="min-w-full divide-y divide-hairline">
-            <thead className="bg-canvas-soft">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hairline">
-              {students.map((s) => (
-                <tr key={s.id} className="hover:bg-canvas-soft transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-ink">{s.student_id}</td>
-                  <td className="px-4 py-3 text-sm text-ink">{s.name}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleEdit(s)} className="text-ink-mute hover:text-primary mr-2 cursor-pointer" title="Edit">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button onClick={() => handleDelete(s.id)} className="text-ink-mute hover:text-accent-tomato cursor-pointer" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+        <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-hairline">
+              <thead className="bg-canvas-soft">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {students.map((s) => (
+                  <tr key={s.id} className="hover:bg-canvas-soft transition-colors">
+                    <td className="px-4 py-3 text-sm font-mono text-ink font-semibold">{s.student_id}</td>
+                    <td className="px-4 py-3 text-sm text-ink font-medium">{s.name}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => handleEdit(s)} className="text-ink-mute hover:text-primary mr-2 cursor-pointer p-1 rounded hover:bg-primary/10" title="Edit">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                      <button onClick={() => handleDelete(s.id)} className="text-ink-mute hover:text-accent-tomato cursor-pointer p-1 rounded hover:bg-accent-tomato/10" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-3 bg-canvas-soft border-t border-hairline flex items-center justify-between text-xs text-ink-mute font-medium">
+            <span>Total Enrolled: <strong className="text-ink">{students.length}</strong> {students.length === 1 ? 'Student' : 'Students'}</span>
+            <span>Sorted by Student ID</span>
+          </div>
         </div>
       )}
     </div>
