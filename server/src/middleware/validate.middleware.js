@@ -117,8 +117,8 @@ const schemas = {
             day_of_week: z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']),
             start_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
             end_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-            room_number: z.string().max(50).optional(),
-            section: z.string().max(50).optional(),
+            room_number: z.string().max(50).optional().nullable(),
+            section: z.string().max(50).optional().nullable(),
             is_active: z.boolean().optional()
         }),
         update: z.object({
@@ -126,8 +126,8 @@ const schemas = {
             day_of_week: z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).optional(),
             start_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
             end_time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
-            room_number: z.string().max(50).optional(),
-            section: z.string().max(50).optional(),
+            room_number: z.string().max(50).optional().nullable(),
+            section: z.string().max(50).optional().nullable(),
             is_active: z.boolean().optional()
         }).partial()
     },

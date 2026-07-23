@@ -590,7 +590,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         start_time: selectedCell.slot.start,
         end_time: selectedCell.slot.end,
         room_number: formRoomNumber.trim(),
-        section: cleanSection || null
+        section: cleanSection || ''
       };
 
       if (cellClasses.length > 0) {
