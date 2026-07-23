@@ -566,7 +566,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   };
 
   // Edit item details
-  const updateItemField = (id: string, field: keyof CanvasItem, value: string) => {
+  const updateItemField = (id: string, field: keyof CanvasItem, value: string | boolean | any) => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
