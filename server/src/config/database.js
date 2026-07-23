@@ -10,18 +10,30 @@ let useJsonDb = false;
 let dbInitError = null;
 const isVercel = !!process.env.VERCEL;
 
+function getSslConfig(url) {
+    if (!url) return false;
+    if (process.env.DB_SSL === 'false') return false;
+    if (url.includes('localhost') || url.includes('127.0.0.1') || url.includes('sslmode=disable')) {
+        return false;
+    }
+    return { rejectUnauthorized: false };
+}
+
 // Check database URL config
 async function initDatabase() {
     if (process.env.DATABASE_URL) {
         logger.info('PostgreSQL database URL detected. Initializing database pool...');
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
-            ssl: process.env.DATABASE_URL.includes('supabase') || process.env.DATABASE_URL.includes('render')
-                ? { rejectUnauthorized: false }
-                : false,
+            ssl: getSslConfig(process.env.DATABASE_URL),
             connectionTimeoutMillis: 15000,
             idleTimeoutMillis: 30000,
-            max: 10
+            max: 15,
+            keepAlive: true
+        });
+
+        pool.on('error', (err) => {
+            logger.error({ err }, 'Unexpected error on idle PostgreSQL client');
         });
 
         const maxRetries = 5;
@@ -45,14 +57,13 @@ async function initDatabase() {
                 client.release();
                 useJsonDb = false;
                 dbInitError = null;
-                dbInitDone = true;
                 return;
             } catch (err) {
                 lastError = err;
-                logger.warn({ err, attempt }, `Database initialization attempt ${attempt}/${maxRetries} failed`);
+                logger.warn({ err: err.message, attempt }, `Database initialization attempt ${attempt}/${maxRetries} failed`);
                 
                 if (attempt < maxRetries) {
-                    const delay = 1000 + Math.random() * 2000;
+                    const delay = 1000 + Math.random() * 1500;
                     logger.info(`Waiting ${Math.round(delay)}ms before next attempt...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }

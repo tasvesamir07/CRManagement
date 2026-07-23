@@ -1,12 +1,23 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
+function getSslConfig(url) {
+    if (!url) return false;
+    if (process.env.DB_SSL === 'false') return false;
+    if (url.includes('localhost') || url.includes('127.0.0.1') || url.includes('sslmode=disable')) {
+        return false;
+    }
+    return { rejectUnauthorized: false };
+}
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('supabase') || process.env.DATABASE_URL?.includes('render')
-        ? { rejectUnauthorized: false }
-        : false,
+    ssl: getSslConfig(process.env.DATABASE_URL),
     connectionTimeoutMillis: 15000,
+});
+
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle migration pool client:', err);
 });
 
 async function migrate() {
@@ -242,6 +253,12 @@ async function migrate() {
             ALTER TABLE platforms ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
             ALTER TABLE courses ADD COLUMN IF NOT EXISTS default_platform_ids INTEGER[] DEFAULT '{}';
             CREATE INDEX IF NOT EXISTS idx_platforms_course_id ON platforms(course_id);
+            CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_announcements_course_id ON announcements(course_id);
+            CREATE INDEX IF NOT EXISTS idx_announcements_status ON announcements(status);
+            CREATE INDEX IF NOT EXISTS idx_announcement_platforms_announcement_id ON announcement_platforms(announcement_id);
+            CREATE INDEX IF NOT EXISTS idx_routines_course_id ON routines(course_id);
+            CREATE INDEX IF NOT EXISTS idx_exam_routines_exam_date ON exam_routines(exam_date);
             ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
             ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS dataset JSONB DEFAULT '[]';
             ALTER TABLE canva_templates ALTER COLUMN template_type DROP NOT NULL;
