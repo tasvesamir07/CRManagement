@@ -68,6 +68,14 @@ interface CanvasItem {
 
   cardHeightPx?: number;
   cardPadding?: string;
+
+  leftColWidth?: number;
+  rightColWidth?: number;
+  showLeftDivider?: boolean;
+  showRightDivider?: boolean;
+  vLineColor?: string;
+  vLineStyle?: 'solid' | 'dashed' | 'dotted';
+  vLineOpacity?: number;
 }
 
 interface ExamCanvaEditorProps {
@@ -510,6 +518,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             accentColor: item.accentColor,
             cardHeightPx: item.cardHeightPx,
             cardPadding: item.cardPadding,
+            leftColWidth: item.leftColWidth,
+            rightColWidth: item.rightColWidth,
+            showLeftDivider: item.showLeftDivider,
+            showRightDivider: item.showRightDivider,
+            vLineColor: item.vLineColor,
+            vLineStyle: item.vLineStyle,
+            vLineOpacity: item.vLineOpacity,
           };
           itemStylesMap[key] = styleData;
           if (item.courseCode.trim()) {
@@ -526,7 +541,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           footerRightBold, footerRightItalic, footerRightAlign, footerRightFontSize,
           bgColor, bgGradient, cardBg, cardTextColor, cardBorderColor, cardBorderType,
           cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign,
-          cardHeightPx, cardPadding
+          cardHeightPx, cardPadding,
+          leftColWidth, rightColWidth, showLeftDivider, showRightDivider,
+          vLineColor, vLineStyle, vLineOpacity, vLineHeight
         };
         localStorage.setItem('exam_canva_global_styles', JSON.stringify(globalStyles));
       } catch (e) {}
@@ -582,6 +599,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [cardShadow, setCardShadow] = useState('shadow-sm');
   const [cardHeightPx, setCardHeightPx] = useState<number>(0); // 0 = Auto fit content
   const [cardPadding, setCardPadding] = useState<string>('p-5');
+
+  // Column Widths & Vertical Divider customizer states
+  const [leftColWidth, setLeftColWidth] = useState<number>(145);
+  const [rightColWidth, setRightColWidth] = useState<number>(115);
+  const [showLeftDivider, setShowLeftDivider] = useState<boolean>(true);
+  const [showRightDivider, setShowRightDivider] = useState<boolean>(true);
+  const [vLineColor, setVLineColor] = useState<string>('#dfdfdf');
+  const [vLineStyle, setVLineStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
+  const [vLineOpacity, setVLineOpacity] = useState<number>(0.6);
+  const [vLineHeight, setVLineHeight] = useState<'full' | 'padded' | 'short'>('full');
   
   const [showVerticalLines, setShowVerticalLines] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
@@ -717,6 +744,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
         cardHeightPx: savedStyle.cardHeightPx || 0,
         cardPadding: savedStyle.cardPadding || '',
+        leftColWidth: savedStyle.leftColWidth || 145,
+        rightColWidth: savedStyle.rightColWidth || 115,
+        showLeftDivider: savedStyle.showLeftDivider !== undefined ? savedStyle.showLeftDivider : true,
+        showRightDivider: savedStyle.showRightDivider !== undefined ? savedStyle.showRightDivider : true,
+        vLineColor: savedStyle.vLineColor || '#dfdfdf',
+        vLineStyle: savedStyle.vLineStyle || 'solid',
+        vLineOpacity: savedStyle.vLineOpacity !== undefined ? savedStyle.vLineOpacity : 0.6,
       };
     });
 
@@ -763,6 +797,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         if (parsed.cardShadow) setCardShadow(parsed.cardShadow);
         if (parsed.cardHeightPx !== undefined) setCardHeightPx(parsed.cardHeightPx);
         if (parsed.cardPadding) setCardPadding(parsed.cardPadding);
+        if (parsed.leftColWidth !== undefined) setLeftColWidth(parsed.leftColWidth);
+        if (parsed.rightColWidth !== undefined) setRightColWidth(parsed.rightColWidth);
+        if (parsed.showLeftDivider !== undefined) setShowLeftDivider(parsed.showLeftDivider);
+        if (parsed.showRightDivider !== undefined) setShowRightDivider(parsed.showRightDivider);
+        if (parsed.vLineColor) setVLineColor(parsed.vLineColor);
+        if (parsed.vLineStyle) setVLineStyle(parsed.vLineStyle);
+        if (parsed.vLineOpacity !== undefined) setVLineOpacity(parsed.vLineOpacity);
+        if (parsed.vLineHeight) setVLineHeight(parsed.vLineHeight);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
         if (parsed.headerAlign) setHeaderAlign(parsed.headerAlign);
         if (parsed.cardAlign) setCardAlign(parsed.cardAlign);
@@ -860,7 +902,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             roomsItalic: item.roomsItalic,
             roomsAlign: item.roomsAlign,
             roomsFontSize: item.roomsFontSize,
-            accentColor: item.accentColor
+            accentColor: item.accentColor,
+            cardHeightPx: item.cardHeightPx,
+            cardPadding: item.cardPadding,
+            leftColWidth: item.leftColWidth,
+            rightColWidth: item.rightColWidth,
+            showLeftDivider: item.showLeftDivider,
+            showRightDivider: item.showRightDivider,
+            vLineColor: item.vLineColor,
+            vLineStyle: item.vLineStyle,
+            vLineOpacity: item.vLineOpacity
           };
           itemStylesMap[key] = styleData;
           if (item.courseCode.trim()) {
@@ -1261,11 +1312,136 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     <input 
                       type="checkbox" 
                       id="v-lines"
-                      checked={showVerticalLines}
-                      onChange={e => setShowVerticalLines(e.target.checked)}
+                      checked={showRightDivider || showLeftDivider}
+                      onChange={e => {
+                        setShowLeftDivider(e.target.checked);
+                        setShowRightDivider(e.target.checked);
+                      }}
                       className="rounded border-hairline text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                     />
                     <label htmlFor="v-lines" className="text-xs text-ink-secondary cursor-pointer font-semibold">Vertical Dividers</label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column Widths & Vertical Lines customization */}
+              <div className="space-y-3 pt-2 border-t border-hairline">
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Column Layout & Vertical Lines</label>
+                
+                {/* Column Widths Sliders/Inputs */}
+                <div className="space-y-2 bg-canvas p-2.5 rounded border border-hairline">
+                  <div>
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold mb-1">
+                      <span>Left Column Width (Date & Time)</span>
+                      <span className="font-mono text-primary font-bold">{leftColWidth}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={90} 
+                      max={250} 
+                      value={leftColWidth} 
+                      onChange={e => setLeftColWidth(parseInt(e.target.value, 10))}
+                      className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold mb-1">
+                      <span>Right Column Width (Rooms)</span>
+                      <span className="font-mono text-primary font-bold">{rightColWidth}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={70} 
+                      max={220} 
+                      value={rightColWidth} 
+                      onChange={e => setRightColWidth(parseInt(e.target.value, 10))}
+                      className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Vertical Lines Formatting */}
+                <div className="space-y-2.5 bg-canvas p-2.5 rounded border border-hairline">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Vertical Line Controls</label>
+                  
+                  <div className="flex gap-4 items-center text-xs text-ink-secondary">
+                    <label className="flex items-center gap-1.5 cursor-pointer font-semibold select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={showLeftDivider}
+                        onChange={e => setShowLeftDivider(e.target.checked)}
+                        className="rounded border-hairline text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
+                      />
+                      Left Line
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer font-semibold select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={showRightDivider}
+                        onChange={e => setShowRightDivider(e.target.checked)}
+                        className="rounded border-hairline text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
+                      />
+                      Right Line
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] text-gray-500 mb-0.5 font-semibold">Line Style</label>
+                      <CustomSelect
+                        value={vLineStyle}
+                        onChange={(val) => setVLineStyle(val as any)}
+                        size="sm"
+                        options={[
+                          { value: 'solid', label: 'Solid Line' },
+                          { value: 'dashed', label: 'Dashed Line' },
+                          { value: 'dotted', label: 'Dotted Line' },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-gray-500 mb-0.5 font-semibold">Line Height</label>
+                      <CustomSelect
+                        value={vLineHeight}
+                        onChange={(val) => setVLineHeight(val as any)}
+                        size="sm"
+                        options={[
+                          { value: 'full', label: 'Full Height (100%)' },
+                          { value: 'padded', label: 'Inset Padded (80%)' },
+                          { value: 'short', label: 'Short Center (60%)' },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[9px] text-gray-500 mb-0.5 font-semibold">Line Color</label>
+                      <div className="flex gap-1.5 items-center bg-canvas p-1 rounded border border-hairline h-8">
+                        <input 
+                          type="color" 
+                          value={vLineColor} 
+                          onChange={e => setVLineColor(e.target.value)} 
+                          className="w-5 h-5 rounded border border-hairline cursor-pointer p-0 shrink-0"
+                        />
+                        <span className="text-[9px] font-mono font-semibold text-ink">{vLineColor}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center text-[9px] text-gray-500 font-semibold mb-0.5">
+                        <span>Opacity</span>
+                        <span className="font-mono">{Math.round(vLineOpacity * 100)}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min={0.1} 
+                        max={1} 
+                        step={0.05}
+                        value={vLineOpacity} 
+                        onChange={e => setVLineOpacity(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1892,6 +2068,17 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       : null;
 
                   const effectivePadding = item.cardPadding || cardPadding || 'p-5';
+                  const effectiveLeftWidth = item.leftColWidth || leftColWidth || 145;
+                  const effectiveRightWidth = item.rightColWidth || rightColWidth || 115;
+                  const effectiveShowLeftDiv = item.showLeftDivider !== undefined ? item.showLeftDivider : showLeftDivider;
+                  const effectiveShowRightDiv = item.showRightDivider !== undefined ? item.showRightDivider : showRightDivider;
+                  const effectiveVLineColor = item.vLineColor || vLineColor || '#dfdfdf';
+                  const effectiveVLineStyle = item.vLineStyle || vLineStyle || 'solid';
+                  const effectiveVLineOpacity = item.vLineOpacity !== undefined ? item.vLineOpacity : vLineOpacity;
+
+                  let lineHeightPercent = '100%';
+                  if (vLineHeight === 'padded') lineHeightPercent = '80%';
+                  else if (vLineHeight === 'short') lineHeightPercent = '60%';
 
                   return (
                     <div 
@@ -1916,7 +2103,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       }`}
                     >
                       {/* Left Column: Date & Time + Accent color pill */}
-                      <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60 overflow-hidden">
+                      <div 
+                        style={{ width: `${effectiveLeftWidth}px` }} 
+                        className="pr-3 flex flex-col justify-center select-text overflow-hidden shrink-0"
+                      >
                         <div 
                           style={{
                             fontWeight: item.examDateBold !== false ? 'bold' : 'normal',
@@ -1956,8 +2146,21 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                       </div>
 
+                      {/* Left Vertical Divider Line */}
+                      {effectiveShowLeftDiv && (
+                        <div 
+                          style={{ 
+                            borderColor: effectiveVLineColor,
+                            borderRightStyle: effectiveVLineStyle,
+                            opacity: effectiveVLineOpacity,
+                            height: lineHeightPercent
+                          }} 
+                          className="w-px shrink-0 border-r my-auto"
+                        />
+                      )}
+
                       {/* Middle Column: Course Code & Subject Name */}
-                      <div className="flex-1 px-4 flex flex-col justify-center select-text overflow-hidden">
+                      <div className="flex-1 px-3 flex flex-col justify-center select-text overflow-hidden">
                         <div 
                           style={{
                             fontWeight: item.courseCodeBold !== false ? '800' : 'normal',
@@ -1990,20 +2193,29 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                       </div>
 
-                      {/* Vertical Divider (Before Rooms list) */}
-                      {showVerticalLines && (
-                        <div className="w-px shrink-0 self-stretch my-1 border-r border-[#dfdfdf]/60" />
+                      {/* Right Vertical Divider Line */}
+                      {effectiveShowRightDiv && (
+                        <div 
+                          style={{ 
+                            borderColor: effectiveVLineColor,
+                            borderRightStyle: effectiveVLineStyle,
+                            opacity: effectiveVLineOpacity,
+                            height: lineHeightPercent
+                          }} 
+                          className="w-px shrink-0 border-r my-auto"
+                        />
                       )}
 
                       {/* Right Column: Rooms & Capacities */}
                       <div 
                         style={{
+                          width: `${effectiveRightWidth}px`,
                           fontWeight: item.roomsBold !== false ? 'bold' : 'normal',
                           fontStyle: item.roomsItalic ? 'italic' : 'normal',
                           textAlign: item.roomsAlign || 'left',
                           fontSize: `${item.roomsFontSize || 12}px`
                         }}
-                        className="w-[115px] pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden"
+                        className="pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden shrink-0"
                       >
                         <InlineInput 
                           value={item.rooms} 
