@@ -348,7 +348,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         autoFocus
-        className="w-full bg-white border border-primary text-black focus:outline-none p-1 rounded font-sans text-xs resize-none text-center shadow-inner"
+        className="w-full bg-white border border-primary text-black focus:outline-none p-1 rounded font-sans text-xs resize-none text-inherit shadow-inner"
         rows={3}
       />
     ) : (
@@ -359,7 +359,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="w-full bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit text-center"
+        className="w-full bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit"
       />
     );
   }
@@ -678,6 +678,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [draggingTarget, zoom]);
+
+  // Helper handlers to globally update Header and Card alignment across all fields
+  const handleHeaderAlignChange = (align: 'left' | 'center' | 'right') => {
+    setHeaderAlign(align);
+    setHeaderTitleAlign(align);
+    setHeaderSubtitleAlign(align);
+  };
+
+  const handleCardAlignChange = (align: 'left' | 'center' | 'right') => {
+    setCardAlign(align);
+    setItems(prevItems =>
+      prevItems.map(item => ({
+        ...item,
+        courseCodeAlign: align,
+        examDateAlign: align,
+        courseNameAlign: align,
+        examTimeAlign: align,
+        roomsAlign: align,
+      }))
+    );
+  };
 
   // Dynamic Font Loader
   useEffect(() => {
@@ -1183,19 +1204,19 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Header text</label>
                     <div className="flex bg-canvas p-0.5 rounded border border-hairline">
                       <button 
-                        onClick={() => setHeaderAlign('left')} 
+                        onClick={() => handleHeaderAlignChange('left')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignLeft className="w-3.5 h-3.5" />
                       </button>
                       <button 
-                        onClick={() => setHeaderAlign('center')} 
+                        onClick={() => handleHeaderAlignChange('center')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignCenter className="w-3.5 h-3.5" />
                       </button>
                       <button 
-                        onClick={() => setHeaderAlign('right')} 
+                        onClick={() => handleHeaderAlignChange('right')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${headerAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignRight className="w-3.5 h-3.5" />
@@ -1207,19 +1228,19 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Content</label>
                     <div className="flex bg-canvas p-0.5 rounded border border-hairline">
                       <button 
-                        onClick={() => setCardAlign('left')} 
+                        onClick={() => handleCardAlignChange('left')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'left' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignLeft className="w-3.5 h-3.5" />
                       </button>
                       <button 
-                        onClick={() => setCardAlign('center')} 
+                        onClick={() => handleCardAlignChange('center')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'center' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignCenter className="w-3.5 h-3.5" />
                       </button>
                       <button 
-                        onClick={() => setCardAlign('right')} 
+                        onClick={() => handleCardAlignChange('right')} 
                         className={`flex-1 py-1 flex justify-center rounded cursor-pointer ${cardAlign === 'right' ? 'bg-primary/10 text-primary' : 'text-gray-400'}`}
                       >
                         <AlignRight className="w-3.5 h-3.5" />
@@ -2169,10 +2190,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           style={{
                             fontWeight: item.examDateBold !== false ? 'bold' : 'normal',
                             fontStyle: item.examDateItalic ? 'italic' : 'normal',
-                            textAlign: item.examDateAlign || 'left',
+                            textAlign: item.examDateAlign || cardAlign || 'left',
                             fontSize: `${item.examDateFontSize || 14}px`
                           }}
-                          className="leading-tight"
+                          className="leading-tight w-full"
                         >
                           <InlineInput 
                             value={item.examDate} 
@@ -2184,11 +2205,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           style={{
                             fontWeight: item.examTimeBold !== false ? '600' : 'normal',
                             fontStyle: item.examTimeItalic ? 'italic' : 'normal',
-                            textAlign: item.examTimeAlign || 'left',
+                            textAlign: item.examTimeAlign || cardAlign || 'left',
                             fontSize: `${item.examTimeFontSize || 12}px`
                           }}
-                          className={`text-ink-mute mt-1.5 flex items-center gap-1.5 ${
-                            item.examTimeAlign === 'center' ? 'justify-center' : item.examTimeAlign === 'right' ? 'justify-end' : 'justify-start'
+                          className={`text-ink-mute mt-1.5 flex items-center gap-1.5 w-full ${
+                            (item.examTimeAlign || cardAlign) === 'center' ? 'justify-center' : (item.examTimeAlign || cardAlign) === 'right' ? 'justify-end' : 'justify-start'
                           }`}
                         >
                           <InlineInput 
@@ -2234,10 +2255,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           style={{
                             fontWeight: item.courseCodeBold !== false ? '800' : 'normal',
                             fontStyle: item.courseCodeItalic ? 'italic' : 'normal',
-                            textAlign: item.courseCodeAlign || 'left',
+                            textAlign: item.courseCodeAlign || cardAlign || 'left',
                             fontSize: `${item.courseCodeFontSize || 14}px`
                           }}
-                          className="leading-tight text-ink"
+                          className="leading-tight text-ink w-full"
                         >
                           <InlineInput 
                             value={item.courseCode} 
@@ -2249,10 +2270,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           style={{
                             fontWeight: item.courseNameBold !== false ? 'bold' : 'normal',
                             fontStyle: item.courseNameItalic ? 'italic' : 'normal',
-                            textAlign: item.courseNameAlign || 'left',
+                            textAlign: item.courseNameAlign || cardAlign || 'left',
                             fontSize: `${item.courseNameFontSize || 10}px`
                           }}
-                          className="leading-snug tracking-wide mt-1 uppercase opacity-80"
+                          className="leading-snug tracking-wide mt-1 uppercase opacity-80 w-full"
                         >
                           <InlineInput 
                             value={item.courseName} 
@@ -2292,10 +2313,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           width: `${effectiveRightWidth}px`,
                           fontWeight: item.roomsBold !== false ? 'bold' : 'normal',
                           fontStyle: item.roomsItalic ? 'italic' : 'normal',
-                          textAlign: item.roomsAlign || 'left',
+                          textAlign: item.roomsAlign || cardAlign || 'left',
                           fontSize: `${item.roomsFontSize || 12}px`
                         }}
-                        className="pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden shrink-0"
+                        className="pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden shrink-0 w-full"
                       >
                         <InlineInput 
                           value={item.rooms} 
