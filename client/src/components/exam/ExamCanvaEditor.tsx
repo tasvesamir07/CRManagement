@@ -2364,7 +2364,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           textAlign: item.roomsAlign || cardAlign || 'left',
                           fontSize: `${item.roomsFontSize || 12}px`
                         }}
-                        className="pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden shrink-0 w-full"
+                        className="pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden shrink-0"
                       >
                         <InlineInput 
                           value={item.rooms} 
@@ -2378,16 +2378,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       {!isLocked && (
                         <div 
                           onMouseDown={(e) => handleStartDrag(e, item.id, 'card-height', effectiveCardHeight || 85)}
-                          className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-14 h-4 cursor-row-resize z-30 flex items-center justify-center bg-white/90 hover:bg-primary border border-primary/40 rounded-full shadow-md transition-all opacity-0 group-hover:opacity-100 no-export group/h-handle"
+                          className="absolute left-1/2 bottom-0 -translate-x-1/2 w-12 h-2.5 cursor-row-resize z-20 flex items-center justify-center bg-primary/20 hover:bg-primary border-t border-x border-primary/40 rounded-t-sm shadow-sm transition-all opacity-0 group-hover:opacity-100 no-export group/h-handle"
                           title="Drag up/down to adjust Card Height"
                         >
-                          <div className="w-5 h-1 bg-primary group-hover/h-handle:bg-white rounded-full transition-colors" />
+                          <div className="w-4 h-0.5 bg-primary group-hover/h-handle:bg-white rounded-full transition-colors" />
                         </div>
                       )}
 
                       {/* Hover controls (Reorder / Duplicate / Delete overlay) */}
                       {!isLocked && (
-                        <div className="absolute -top-3.5 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-canvas border border-hairline rounded shadow px-1.5 py-1 flex items-center gap-1.5 z-10 no-export">
+                        <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-all bg-white/95 backdrop-blur border border-hairline rounded-md shadow-md px-1.5 py-0.5 flex items-center gap-1 z-30 no-export">
                           
                           {/* Move Up */}
                           <button 
@@ -2409,7 +2409,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                             <MoveDown className="w-3 h-3" />
                           </button>
 
-                          <div className="w-px h-3 bg-hairline" />
+                          <div className="w-px h-3 bg-hairline my-auto" />
 
                           {/* Duplicate */}
                           <button 
@@ -2417,16 +2417,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                             className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-ink hover:text-primary transition-colors"
                             title="Duplicate Card"
                           >
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-3 h-3" />
                           </button>
 
                           {/* Delete */}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                            className="p-1 hover:bg-canvas-soft rounded cursor-pointer text-accent-tomato hover:bg-accent-tomato/10 transition-colors"
+                            className="p-1 hover:bg-accent-tomato/10 rounded cursor-pointer text-accent-tomato transition-colors"
                             title="Delete Card"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
 
                         </div>
