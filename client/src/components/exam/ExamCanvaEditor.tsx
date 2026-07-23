@@ -322,8 +322,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       
       // 2. Add or Update routines
       for (const item of items) {
-        const cleanCode = item.courseCode.trim().split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        const matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode) || courses[0];
+        const rawCode = (item.courseCode || '').trim();
+        const cleanCode = rawCode.split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        
+        const matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode)
+                           || courses.find(c => rawCode.toLowerCase().includes(c.course_id.toLowerCase()))
+                           || courses.find(c => c.course_name.toLowerCase().includes(item.courseName.toLowerCase()))
+                           || courses[0];
         
         let examType = 'mid';
         if (headerTitle.toLowerCase().includes('final')) examType = 'final';
@@ -469,17 +474,24 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
   // Initialize Canvas items from prop routines
   useEffect(() => {
-    const formattedItems = routines.map((r, index) => {
+    const formattedItems = routines.map((r: any, index: number) => {
       const rooms = r.room_number 
-        ? r.room_number.split(',').map(s => s.trim()).join('\n') 
+        ? r.room_number.split(',').map((s: string) => s.trim()).join('\n') 
         : '';
       
       const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length].value;
 
+      const matchedCourse = courses.find((c: any) => c.id === r.course_id);
+      const code = r.c_id 
+        || r.course_code 
+        || (typeof r.course_id === 'string' ? r.course_id : '') 
+        || matchedCourse?.course_id 
+        || '';
+
       return {
         id: `routine-${r.id || Math.random().toString(36).substr(2, 9)}`,
-        courseCode: r.c_id || '',
-        courseName: r.course_name || '',
+        courseCode: code,
+        courseName: r.course_name || matchedCourse?.course_name || '',
         examDate: formatDateToShort(r.exam_date),
         examTime: formatTimeTo12Hour(r.start_time),
         rooms: rooms,

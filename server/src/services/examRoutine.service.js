@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 async function getExamRoutines(courseId = null, examType = null, dateFrom = null, dateTo = null, userId = null) {
-    let queryText = 'SELECT er.*, c.course_id, c.course_name FROM exam_routines er JOIN courses c ON er.course_id = c.id WHERE er.is_active = true';
+    let queryText = 'SELECT er.*, c.course_id as c_id, c.course_id as course_code, c.course_name FROM exam_routines er JOIN courses c ON er.course_id = c.id WHERE er.is_active = true';
     const params = [];
     let paramIndex = 1;
 
@@ -38,7 +38,7 @@ async function getExamRoutines(courseId = null, examType = null, dateFrom = null
 
 async function getExamRoutineById(id) {
     const result = await db.query(
-        'SELECT er.*, c.course_id, c.course_name FROM exam_routines er JOIN courses c ON er.course_id = c.id WHERE er.id = $1 AND er.is_active = true',
+        'SELECT er.*, c.course_id as c_id, c.course_id as course_code, c.course_name FROM exam_routines er JOIN courses c ON er.course_id = c.id WHERE er.id = $1 AND er.is_active = true',
         [id]
     );
     return result.rows[0];
