@@ -1,30 +1,14 @@
 require('dotenv').config();
 
 // === Environment Validation ===
-const REQUIRED_ENV_VARS = ['JWT_SECRET'];
-const OPTIONAL_BUT_WARN = ['DATABASE_URL', 'TELEGRAM_BOT_TOKEN', 'SMTP_HOST', 'SUPABASE_URL'];
+const env = require('./src/config/env');
 let envError = null;
-for (const key of REQUIRED_ENV_VARS) {
-    if (!process.env[key]) {
-        const msg = `FATAL: Required environment variable ${key} is not set.`;
-        console.error(msg);
-        if (process.env.VERCEL) {
-            envError = new Error(msg);
-        } else {
-            process.exit(1);
-        }
+if (!env.validate()) {
+    if (process.env.VERCEL) {
+        envError = new Error('FATAL: Environment validation failed');
+    } else {
+        process.exit(1);
     }
-}
-for (const key of OPTIONAL_BUT_WARN) {
-    if (!process.env[key]) {
-        console.warn(`WARN: ${key} is not set. Related features will be disabled or use fallback.`);
-    }
-}
-// Validate JWT_SECRET is not a placeholder
-if (process.env.JWT_SECRET && (process.env.JWT_SECRET === 'change-me' || process.env.JWT_SECRET.length < 32)) {
-    const msg = 'FATAL: JWT_SECRET is too weak. Generate a strong secret with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"';
-    console.error(msg);
-    if (process.env.VERCEL) { envError = new Error(msg); } else { process.exit(1); }
 }
 
 const express = require('express');

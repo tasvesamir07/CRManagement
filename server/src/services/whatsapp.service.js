@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
 const appLogger = require('../config/logger');
+const { getMimeType } = require('../config/mimeTypes');
 
 const isVercel = !!process.env.VERCEL;
 const RELAY_URL = process.env.WHATSAPP_RELAY_URL;
@@ -13,7 +14,7 @@ let latestQr = '';
 let wsBroadcaster = null;
 let isMockMode = isVercel;
 let hasEverBeenConnected = false;
-const relayPollTimer = null;
+let relayPollTimer = null;
 
 function setWsBroadcaster(broadcaster) {
     wsBroadcaster = broadcaster;
@@ -62,7 +63,7 @@ if (isRelayMode) {
         isMockMode = false;
         connectionStatus = 'CONNECTING';
         broadcastStatus();
-        pollRelayTimer = setInterval(pollRelayStatus, 3000);
+        relayPollTimer = setInterval(pollRelayStatus, 3000);
         setTimeout(pollRelayStatus, 1000);
     };
 
@@ -87,13 +88,7 @@ if (isRelayMode) {
             const fp = typeof f === 'string' ? f : f.path;
             if (fs.existsSync(fp)) {
                 const data = await fs.promises.readFile(fp, { encoding: 'base64' });
-                const ext = path.extname(fp).toLowerCase();
-                const mimetype = ext === '.png' ? 'image/png'
-                    : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-                    : ext === '.gif' ? 'image/gif'
-                    : ext === '.pdf' ? 'application/pdf'
-                    : ext === '.mp4' ? 'video/mp4'
-                    : 'application/octet-stream';
+                const mimetype = getMimeType(fp);
                 return { data, mimetype, name: path.basename(fp) };
             }
             return null;
@@ -506,14 +501,7 @@ if (isRelayMode) {
             let sentMsg;
             if (files.length > 0 && fs.existsSync(files[0].path)) {
                 const data = fs.readFileSync(files[0].path);
-                const ext = path.extname(files[0].path).toLowerCase();
-                const mimeType = ext === '.png' ? 'image/png'
-                    : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-                    : ext === '.gif' ? 'image/gif'
-                    : ext === '.pdf' ? 'application/pdf'
-                    : ext === '.doc' || ext === '.docx' ? 'application/msword'
-                    : ext === '.mp4' ? 'video/mp4'
-                    : 'application/octet-stream';
+                const mimeType = getMimeType(files[0].path);
 
                 if (mimeType.startsWith('image/')) {
                     sentMsg = await sock.sendMessage(targetId, {
@@ -538,14 +526,7 @@ if (isRelayMode) {
                 const remainderSends = files.slice(1).map(async (fi) => {
                     if (!fs.existsSync(fi.path)) return;
                     const extraData = fs.readFileSync(fi.path);
-                    const extraExt = path.extname(fi.path).toLowerCase();
-                    const extraMime = extraExt === '.png' ? 'image/png'
-                        : extraExt === '.jpg' || extraExt === '.jpeg' ? 'image/jpeg'
-                        : extraExt === '.gif' ? 'image/gif'
-                        : extraExt === '.pdf' ? 'application/pdf'
-                        : extraExt === '.doc' || extraExt === '.docx' ? 'application/msword'
-                        : extraExt === '.mp4' ? 'video/mp4'
-                        : 'application/octet-stream';
+                    const extraMime = getMimeType(fi.path);
                     try {
                         if (extraMime.startsWith('image/')) {
                             await sock.sendMessage(targetId, { image: extraData });

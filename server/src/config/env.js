@@ -11,15 +11,14 @@ function validate() {
         }
     }
 
-    if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-        console.error('FATAL: JWT_SECRET is too weak. Generate a 64-char hex string with:');
-        console.error('  node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    if (process.env.JWT_SECRET && (process.env.JWT_SECRET === 'change-me' || process.env.JWT_SECRET.length < 32)) {
+        console.error('FATAL: JWT_SECRET is too weak. Generate a strong secret with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
         hasError = true;
     }
 
     for (const key of OPTIONAL_WARN) {
         if (!process.env[key]) {
-            console.warn(`WARN: ${key} is not set. Related features will be disabled.`);
+            console.warn(`WARN: ${key} is not set. Related features will be disabled or use fallback.`);
         }
     }
 
@@ -27,3 +26,4 @@ function validate() {
 }
 
 module.exports = { validate, REQUIRED, OPTIONAL_WARN };
+

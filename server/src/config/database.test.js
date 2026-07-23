@@ -1,20 +1,23 @@
-const db = require("./database");
+const db = require('./database');
 
-describe("Database Query Simulation - system_settings", () => {
+describe('Database Configuration & Query Tests', () => {
     beforeAll(async () => {
         await db.waitForInit();
     });
 
-    it("should successfully insert and retrieve settings in mock JSON DB mode", async () => {
+    it('should correctly report whether JSON DB mode is active', () => {
+        const isJson = db.useJsonDb();
+        expect(typeof isJson).toBe('boolean');
+    });
+
+    it('should successfully insert, select, and update records in JSON DB mode', async () => {
         if (db.useJsonDb()) {
-            // Test Insert / Upsert
             const insertRes = await db.query(
                 "INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
                 ["test_key", "test_value"]
             );
             expect(insertRes.rowCount).toBe(1);
 
-            // Test Select
             const selectRes = await db.query(
                 "SELECT value FROM system_settings WHERE key = $1",
                 ["test_key"]
@@ -23,7 +26,6 @@ describe("Database Query Simulation - system_settings", () => {
             expect(selectRes.rows.length).toBe(1);
             expect(selectRes.rows[0].value).toBe("test_value");
 
-            // Test Upsert Update
             const updateRes = await db.query(
                 "INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
                 ["test_key", "new_test_value"]
@@ -35,8 +37,16 @@ describe("Database Query Simulation - system_settings", () => {
                 ["test_key"]
             );
             expect(selectUpdatedRes.rows[0].value).toBe("new_test_value");
+        }
+    });
+
+    it('should handle getClient call properly based on active mode', async () => {
+        const client = await db.getClient();
+        if (db.useJsonDb()) {
+            expect(client).toBeNull();
         } else {
-            console.log("PostgreSQL active, skipping JSON DB simulation tests.");
+            expect(client).toBeDefined();
+            client.release();
         }
     });
 });

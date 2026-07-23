@@ -238,6 +238,10 @@ async function migrate() {
             );
 
             -- Alter tables for compatibility if they already exist
+            ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_file_id_fkey, ADD CONSTRAINT announcements_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE SET NULL;
+            ALTER TABLE platforms ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
+            ALTER TABLE courses ADD COLUMN IF NOT EXISTS default_platform_ids INTEGER[] DEFAULT '{}';
+            CREATE INDEX IF NOT EXISTS idx_platforms_course_id ON platforms(course_id);
             ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
             ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS dataset JSONB DEFAULT '[]';
             ALTER TABLE canva_templates ALTER COLUMN template_type DROP NOT NULL;

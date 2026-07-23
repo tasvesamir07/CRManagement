@@ -6,6 +6,7 @@ node_modules/
 .agents/
 
 .wwebjs_auth/
+.wwebjs_cache/
 .baileys_auth/
 db.json
 db.lock

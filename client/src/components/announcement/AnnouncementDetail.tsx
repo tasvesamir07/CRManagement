@@ -4,8 +4,9 @@ import { announcementsAPI, filesAPI } from '../../services/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import { loadFontsFromHtml } from '../../lib/fontLoader';
+import { htmlToWhatsappMarkdown, cleanHtmlForTelegram, stripHtml } from '../../lib/htmlParser';
 import {
-  ArrowLeft, Edit3, Trash2, CheckCircle, AlertTriangle, Clock, Paperclip, Clipboard, HelpCircle, Download
+  ArrowLeft, Edit3, Trash2, CheckCircle, AlertTriangle, Clock, Paperclip, Clipboard, HelpCircle, Download, Check
 } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
@@ -13,12 +14,15 @@ import { confirm } from '../ui/ConfirmDialog';
 import TroubleshootModal from '../ui/TroubleshootModal';
 import type { Announcement, UploadedFile, DeliveryItem } from './types';
 
+type PlatformTab = 'whatsapp' | 'telegram' | 'messenger' | 'original';
+
 const AnnouncementDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
   const [troubleshootingError, setTroubleshootingError] = useState<string | null>(null);
+  const [activePlatformTab, setActivePlatformTab] = useState<PlatformTab>('whatsapp');
 
   const fetchAnnouncement = useCallback(async () => {
     if (!id) { navigate('/dashboard'); return; }
@@ -117,6 +121,51 @@ const AnnouncementDetail: React.FC = () => {
 
   if (!announcement) return null;
 
+  const getFormattedMessageForPlatform = (platform: PlatformTab) => {
+    if (!announcement || !announcement.content) return '';
+    const rawText = announcement.content;
+    const isHtml = rawText.startsWith('<') || /<[a-z][\s\S]*>/i.test(rawText);
+
+    if (platform === 'whatsapp') {
+      if (isHtml) {
+        return htmlToWhatsappMarkdown(rawText);
+      }
+      return rawText;
+    } else if (platform === 'telegram') {
+      if (isHtml) {
+        return cleanHtmlForTelegram(rawText);
+      }
+      return rawText
+        .replace(/\*(.*?)\*/g, '<b>$1</b>')
+        .replace(/_(.*?)_/g, '<i>$1</i>')
+        .replace(/~(.*?)~/g, '<s>$1</s>')
+        .replace(/`(.*?)`/g, '<code>$1</code>');
+    } else if (platform === 'messenger') {
+      if (isHtml) {
+        return stripHtml(rawText);
+      }
+      return rawText
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/__(.*?)__/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/_(.*?)_/g, '$1')
+        .replace(/~(.*?)~/g, '$1')
+        .replace(/`(.*?)`/g, '$1');
+    }
+    return rawText;
+  };
+
+  const handleCopyPlatform = (platform: PlatformTab) => {
+    const formatted = getFormattedMessageForPlatform(platform);
+    if (!formatted) {
+      toast.error('No content to copy!');
+      return;
+    }
+    navigator.clipboard.writeText(formatted);
+    const platformLabel = platform === 'whatsapp' ? 'WhatsApp' : platform === 'telegram' ? 'Telegram' : platform === 'messenger' ? 'Messenger' : 'Original';
+    toast.success(`Copied formatted text for ${platformLabel}!`);
+  };
+
   const canEdit = announcement.status === 'draft' || announcement.status === 'scheduled';
 
   return (
@@ -185,18 +234,96 @@ const AnnouncementDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute">Message Content</h3>
-          <button type="button" onClick={() => { navigator.clipboard.writeText(announcement.content); toast.success('Message copied!'); }} className="flex items-center gap-1.5 px-2.5 py-1 border border-hairline rounded-sm text-xs font-medium text-ink-mute hover:text-ink hover:bg-canvas-soft transition-colors cursor-pointer"><Clipboard className="w-3.5 h-3.5" />Copy</button>
+      {/* Content & Platform Formats */}
+      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-hairline">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-mute">Message Content</h3>
+            <p className="text-xs text-ink-mute mt-0.5">View & copy pre-formatted message text for any delivery channel</p>
+          </div>
+
+          {/* Quick Copy Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleCopyPlatform('whatsapp')}
+              className="flex items-center gap-1.5 px-2.5 py-1 border border-[#25D366]/40 bg-[#25D366]/10 rounded-sm text-xs font-medium text-[#25D366] hover:bg-[#25D366]/20 transition-colors cursor-pointer"
+              title="Copy formatted text for WhatsApp"
+            >
+              <FaWhatsapp className="w-3.5 h-3.5" />
+              Copy WhatsApp
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCopyPlatform('telegram')}
+              className="flex items-center gap-1.5 px-2.5 py-1 border border-[#0088CC]/40 bg-[#0088CC]/10 rounded-sm text-xs font-medium text-[#0088CC] hover:bg-[#0088CC]/20 transition-colors cursor-pointer"
+              title="Copy formatted text for Telegram"
+            >
+              <FaTelegram className="w-3.5 h-3.5" />
+              Copy Telegram
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCopyPlatform('messenger')}
+              className="flex items-center gap-1.5 px-2.5 py-1 border border-[#00B2FF]/40 bg-[#00B2FF]/10 rounded-sm text-xs font-medium text-[#00B2FF] hover:bg-[#00B2FF]/20 transition-colors cursor-pointer"
+              title="Copy plain text for Messenger"
+            >
+              <FaFacebookMessenger className="w-3.5 h-3.5" />
+              Copy Messenger
+            </button>
+          </div>
         </div>
-        <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed">
-          {announcement.content.startsWith('<') || /<[a-z][\s\S]*>/i.test(announcement.content) ? (
-            <div className="font-sans text-sm leading-relaxed rich-text-content" dangerouslySetInnerHTML={{ __html: announcement.content }} />
-          ) : (
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{announcement.content}</pre>
-          )}
+
+        {/* Platform View Tabs */}
+        <div className="flex items-center gap-2 border-b border-hairline pb-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActivePlatformTab('whatsapp')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-colors cursor-pointer ${
+              activePlatformTab === 'whatsapp'
+                ? 'bg-[#25D366]/15 text-[#25D366] font-semibold border border-[#25D366]/30'
+                : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
+            }`}
+          >
+            <FaWhatsapp className="w-3.5 h-3.5" /> WhatsApp View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePlatformTab('telegram')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-colors cursor-pointer ${
+              activePlatformTab === 'telegram'
+                ? 'bg-[#0088CC]/15 text-[#0088CC] font-semibold border border-[#0088CC]/30'
+                : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
+            }`}
+          >
+            <FaTelegram className="w-3.5 h-3.5" /> Telegram View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePlatformTab('messenger')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-colors cursor-pointer ${
+              activePlatformTab === 'messenger'
+                ? 'bg-[#00B2FF]/15 text-[#00B2FF] font-semibold border border-[#00B2FF]/30'
+                : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
+            }`}
+          >
+            <FaFacebookMessenger className="w-3.5 h-3.5" /> Messenger View
+          </button>
+        </div>
+
+        {/* Preview Box */}
+        <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed relative group">
+          <button
+            type="button"
+            onClick={() => handleCopyPlatform(activePlatformTab)}
+            className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-sm text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Clipboard className="w-3.5 h-3.5" />
+            Copy {activePlatformTab.charAt(0).toUpperCase() + activePlatformTab.slice(1)} Format
+          </button>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed pt-6 sm:pt-0 pr-24">
+            {getFormattedMessageForPlatform(activePlatformTab)}
+          </pre>
         </div>
       </div>
 

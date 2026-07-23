@@ -218,8 +218,11 @@ const AnnouncementForm: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3.5 sm:space-y-5">
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><BookOpen className="w-4 h-4 mr-1.5 text-primary" /> Course & Date Context</h4>
+                        {/* Course & Date Context */}
+                        <div className="pt-2 border-t border-hairline/70 space-y-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center gap-1.5 pb-1 border-b border-hairline/40">
+                            <BookOpen className="w-4 h-4 text-primary" /> Course & Date Context
+                          </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className={(notice.category === 'syllabus' || notice.category === 'suggestion') ? "md:col-span-2" : ""}>
                               <label className="block text-[11px] font-medium text-ink-mute mb-1">Target Course</label>
@@ -243,14 +246,18 @@ const AnnouncementForm: React.FC = () => {
                         </div>
 
                         {(notice.category !== 'class_cancel' && notice.category !== 'syllabus' && notice.category !== 'suggestion' || (notice.category === 'class_cancel' && (notice.makeupStatus === 'rescheduled' || notice.makeupStatus === 'online'))) && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
-                            <div className="flex items-center justify-between border-b border-hairline-cool pb-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><Clock className="w-4 h-4 mr-1.5 text-primary" /> Timings & Class Rooms (Sections)</h4>
-                              <button type="button" onClick={() => addSectionField(nIdx)} className="flex items-center text-xs font-semibold text-primary hover:text-primary-deep cursor-pointer border-none bg-transparent"><Plus className="w-3.5 h-3.5 mr-1" /> Add Section</button>
+                          <div className="pt-3 border-t border-hairline/70 space-y-3">
+                            <div className="flex items-center justify-between pb-1 border-b border-hairline/40">
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-primary" /> Timings & Class Rooms (Sections)
+                              </h4>
+                              <button type="button" onClick={() => addSectionField(nIdx)} className="flex items-center text-xs font-semibold text-primary hover:text-primary-deep cursor-pointer border-none bg-transparent">
+                                <Plus className="w-3.5 h-3.5 mr-1" /> Add Section
+                              </button>
                             </div>
-                            <div className="space-y-3 sm:space-y-4">
+                            <div className="space-y-3">
                               {notice.sections.map((sec: any, idx: number) => (
-                                <div key={idx} className="p-3 bg-canvas border border-hairline rounded-sm relative space-y-3">
+                                <div key={idx} className="p-3 bg-canvas-soft/40 border border-hairline/60 rounded-md relative space-y-3">
                                   {notice.sections.length > 1 && (
                                     <button type="button" onClick={() => removeSectionField(nIdx, idx)} className="absolute top-2 right-2 p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent" title="Remove section">
                                       <X className="w-3.5 h-3.5" />
@@ -349,7 +356,7 @@ const AnnouncementForm: React.FC = () => {
                         )}
 
                         {notice.category === 'class_cancel' && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3">
+                          <div className="pt-3 border-t border-hairline/70 space-y-2">
                             <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1">Make-up / Rescheduling Option</label>
                             <CustomSelect
                               value={notice.makeupStatus}
@@ -383,8 +390,10 @@ const AnnouncementForm: React.FC = () => {
                         )}
 
                         {showTopics && (
-                          <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
-                            <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><ListPlus className="w-4 h-4 mr-1.5 text-primary" /> {notice.category === 'syllabus' ? 'Syllabus Details' : notice.category === 'suggestion' ? 'Suggestions' : 'Topics / Syllabus'}</h4>
+                          <div className="pt-3 border-t border-hairline/70 space-y-3">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center gap-1.5 pb-1 border-b border-hairline/40">
+                              <ListPlus className="w-4 h-4 text-primary" /> {notice.category === 'syllabus' ? 'Syllabus Details' : notice.category === 'suggestion' ? 'Suggestions' : 'Topics / Syllabus'}
+                            </h4>
                             <div className="flex gap-2 items-start">
                               <textarea
                                 value={notice.currentTopic || ''}
@@ -477,8 +486,10 @@ const AnnouncementForm: React.FC = () => {
                           </div>
                         )}
 
-                        <div className="bg-canvas-soft border border-hairline rounded-sm p-2.5 sm:p-4 space-y-3 sm:space-y-4">
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center"><StickyNote className="w-4 h-4 mr-1.5 text-primary" /> Instructions & Notes</h4>
+                        <div className="pt-3 border-t border-hairline/70 space-y-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary flex items-center gap-1.5 pb-1 border-b border-hairline/40">
+                            <StickyNote className="w-4 h-4 text-primary" /> Instructions & Notes
+                          </h4>
                           <div className="flex gap-2 items-start">
                             <CustomSelect
                               value={notice.noteType || 'note'}
