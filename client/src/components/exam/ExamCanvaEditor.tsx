@@ -361,6 +361,41 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           await examRoutinesAPI.create(payload);
         }
       }
+
+      // Save item formatting styles and global canvas styles to localStorage
+      try {
+        const itemStylesMap: Record<string, any> = {};
+        items.forEach((item, idx) => {
+          const key = item.id.startsWith('routine-') ? item.id : (item.courseCode.trim() || `index-${idx}`);
+          const styleData = {
+            courseCodeBold: item.courseCodeBold,
+            courseCodeItalic: item.courseCodeItalic,
+            examDateBold: item.examDateBold,
+            examDateItalic: item.examDateItalic,
+            courseNameBold: item.courseNameBold,
+            courseNameItalic: item.courseNameItalic,
+            examTimeBold: item.examTimeBold,
+            examTimeItalic: item.examTimeItalic,
+            roomsBold: item.roomsBold,
+            roomsItalic: item.roomsItalic,
+            accentColor: item.accentColor
+          };
+          itemStylesMap[key] = styleData;
+          if (item.courseCode.trim()) {
+            itemStylesMap[item.courseCode.trim()] = styleData;
+          }
+        });
+        localStorage.setItem('exam_canva_item_styles', JSON.stringify(itemStylesMap));
+
+        const globalStyles = {
+          headerTitle, headerSubtitle, footerLeft, footerRight, routineNotes, showInstructions,
+          headerTitleBold, headerTitleItalic, headerSubtitleBold, headerSubtitleItalic,
+          footerLeftBold, footerLeftItalic, footerRightBold, footerRightItalic,
+          bgColor, bgGradient, cardBg, cardTextColor, cardBorderColor, cardBorderType,
+          cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign
+        };
+        localStorage.setItem('exam_canva_global_styles', JSON.stringify(globalStyles));
+      } catch (e) {}
       
       toast.success('Successfully saved all routine data to the database!');
       if (onRefresh) {
@@ -472,8 +507,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     return timeStr;
   };
 
-  // Initialize Canvas items from prop routines
+  // Initialize Canvas items from prop routines and saved item formatting
   useEffect(() => {
+    let savedItemStyles: Record<string, any> = {};
+    try {
+      const savedStr = localStorage.getItem('exam_canva_item_styles');
+      if (savedStr) {
+        savedItemStyles = JSON.parse(savedStr);
+      }
+    } catch {}
+
     const formattedItems = routines.map((r: any, index: number) => {
       const rooms = r.room_number 
         ? r.room_number.split(',').map((s: string) => s.trim()).join('\n') 
@@ -488,20 +531,63 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         || matchedCourse?.course_id 
         || '';
 
+      const rIdKey = `routine-${r.id}`;
+      const savedStyle = savedItemStyles[rIdKey] || savedItemStyles[code] || savedItemStyles[`index-${index}`] || {};
+
       return {
-        id: `routine-${r.id || Math.random().toString(36).substr(2, 9)}`,
+        id: rIdKey,
         courseCode: code,
         courseName: r.course_name || matchedCourse?.course_name || '',
         examDate: formatDateToShort(r.exam_date),
         examTime: formatTimeTo12Hour(r.start_time),
         rooms: rooms,
-        accentColor: accentColor
+        accentColor: savedStyle.accentColor || accentColor,
+        courseCodeBold: savedStyle.courseCodeBold !== undefined ? savedStyle.courseCodeBold : true,
+        courseCodeItalic: !!savedStyle.courseCodeItalic,
+        examDateBold: savedStyle.examDateBold !== undefined ? savedStyle.examDateBold : true,
+        examDateItalic: !!savedStyle.examDateItalic,
+        courseNameBold: savedStyle.courseNameBold !== undefined ? savedStyle.courseNameBold : true,
+        courseNameItalic: !!savedStyle.courseNameItalic,
+        examTimeBold: savedStyle.examTimeBold !== undefined ? savedStyle.examTimeBold : true,
+        examTimeItalic: !!savedStyle.examTimeItalic,
+        roomsBold: savedStyle.roomsBold !== undefined ? savedStyle.roomsBold : true,
+        roomsItalic: !!savedStyle.roomsItalic,
       };
     });
 
     setItems(formattedItems);
 
-    if (routines.length > 0) {
+    const savedGlobal = localStorage.getItem('exam_canva_global_styles');
+    if (savedGlobal) {
+      try {
+        const parsed = JSON.parse(savedGlobal);
+        if (parsed.headerTitle) setHeaderTitle(parsed.headerTitle);
+        if (parsed.headerSubtitle) setHeaderSubtitle(parsed.headerSubtitle);
+        if (parsed.footerLeft) setFooterLeft(parsed.footerLeft);
+        if (parsed.footerRight) setFooterRight(parsed.footerRight);
+        if (parsed.routineNotes) setRoutineNotes(parsed.routineNotes);
+        if (parsed.showInstructions !== undefined) setShowInstructions(parsed.showInstructions);
+        if (parsed.headerTitleBold !== undefined) setHeaderTitleBold(parsed.headerTitleBold);
+        if (parsed.headerTitleItalic !== undefined) setHeaderTitleItalic(parsed.headerTitleItalic);
+        if (parsed.headerSubtitleBold !== undefined) setHeaderSubtitleBold(parsed.headerSubtitleBold);
+        if (parsed.headerSubtitleItalic !== undefined) setHeaderSubtitleItalic(parsed.headerSubtitleItalic);
+        if (parsed.footerLeftBold !== undefined) setFooterLeftBold(parsed.footerLeftBold);
+        if (parsed.footerLeftItalic !== undefined) setFooterLeftItalic(parsed.footerLeftItalic);
+        if (parsed.footerRightBold !== undefined) setFooterRightBold(parsed.footerRightBold);
+        if (parsed.footerRightItalic !== undefined) setFooterRightItalic(parsed.footerRightItalic);
+        if (parsed.bgColor) setBgColor(parsed.bgColor);
+        if (parsed.bgGradient !== undefined) setBgGradient(parsed.bgGradient);
+        if (parsed.cardBg) setCardBg(parsed.cardBg);
+        if (parsed.cardTextColor) setCardTextColor(parsed.cardTextColor);
+        if (parsed.cardBorderColor) setCardBorderColor(parsed.cardBorderColor);
+        if (parsed.cardBorderType) setCardBorderType(parsed.cardBorderType);
+        if (parsed.cardRoundedness) setCardRoundedness(parsed.cardRoundedness);
+        if (parsed.cardShadow) setCardShadow(parsed.cardShadow);
+        if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
+        if (parsed.headerAlign) setHeaderAlign(parsed.headerAlign);
+        if (parsed.cardAlign) setCardAlign(parsed.cardAlign);
+      } catch (e) {}
+    } else if (routines.length > 0) {
       const type = routines[0].exam_type || 'MID';
       setHeaderTitle(`${type.toUpperCase()} - EXAM`);
       
@@ -510,7 +596,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         setFooterLeft(`SECTION - ${sections.join(' & ')}`);
       }
     }
-  }, [routines]);
+  }, [routines, courses]);
 
   // Handle re-ordering items
   const moveItem = (index: number, direction: 'up' | 'down') => {
@@ -565,9 +651,36 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     toast.success('Card removed from canvas');
   };
 
-  // Edit item details
+  // Edit item details & sync styles to localStorage
   const updateItemField = (id: string, field: keyof CanvasItem, value: string | boolean | any) => {
-    setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setItems(prevItems => {
+      const updated = prevItems.map(item => item.id === id ? { ...item, [field]: value } : item);
+      try {
+        const itemStylesMap: Record<string, any> = {};
+        updated.forEach((item, idx) => {
+          const key = item.id.startsWith('routine-') ? item.id : (item.courseCode.trim() || `index-${idx}`);
+          const styleData = {
+            courseCodeBold: item.courseCodeBold,
+            courseCodeItalic: item.courseCodeItalic,
+            examDateBold: item.examDateBold,
+            examDateItalic: item.examDateItalic,
+            courseNameBold: item.courseNameBold,
+            courseNameItalic: item.courseNameItalic,
+            examTimeBold: item.examTimeBold,
+            examTimeItalic: item.examTimeItalic,
+            roomsBold: item.roomsBold,
+            roomsItalic: item.roomsItalic,
+            accentColor: item.accentColor
+          };
+          itemStylesMap[key] = styleData;
+          if (item.courseCode.trim()) {
+            itemStylesMap[item.courseCode.trim()] = styleData;
+          }
+        });
+        localStorage.setItem('exam_canva_item_styles', JSON.stringify(itemStylesMap));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   // Set predefined theme palette
