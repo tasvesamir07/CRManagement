@@ -621,6 +621,64 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [headerAlign, setHeaderAlign] = useState<'left' | 'center' | 'right'>('center');
   const [cardAlign, setCardAlign] = useState<'left' | 'center' | 'right'>('left');
 
+  // Interactive Drag-to-Resize State
+  const [draggingTarget, setDraggingTarget] = useState<{
+    itemId: string;
+    type: 'col-left' | 'col-right' | 'card-height';
+    initialMouseX: number;
+    initialMouseY: number;
+    initialVal: number;
+  } | null>(null);
+
+  const handleStartDrag = (
+    e: React.MouseEvent,
+    itemId: string,
+    type: 'col-left' | 'col-right' | 'card-height',
+    initialVal: number
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDraggingTarget({
+      itemId,
+      type,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
+      initialVal,
+    });
+  };
+
+  useEffect(() => {
+    if (!draggingTarget) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const scale = zoom / 100;
+      const deltaX = (e.clientX - draggingTarget.initialMouseX) / scale;
+      const deltaY = (e.clientY - draggingTarget.initialMouseY) / scale;
+
+      if (draggingTarget.type === 'col-left') {
+        const newVal = Math.min(260, Math.max(80, Math.round(draggingTarget.initialVal + deltaX)));
+        updateItemField(draggingTarget.itemId, 'leftColWidth', newVal);
+      } else if (draggingTarget.type === 'col-right') {
+        const newVal = Math.min(220, Math.max(60, Math.round(draggingTarget.initialVal - deltaX)));
+        updateItemField(draggingTarget.itemId, 'rightColWidth', newVal);
+      } else if (draggingTarget.type === 'card-height') {
+        const newVal = Math.min(300, Math.max(50, Math.round(draggingTarget.initialVal + deltaY)));
+        updateItemField(draggingTarget.itemId, 'cardHeightPx', newVal);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setDraggingTarget(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingTarget, zoom]);
+
   // Dynamic Font Loader
   useEffect(() => {
     const fontObj = FONTS.find(f => f.family === selectedFont);
@@ -2146,18 +2204,29 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                       </div>
 
-                      {/* Left Vertical Divider Line */}
-                      {effectiveShowLeftDiv && (
-                        <div 
-                          style={{ 
-                            borderColor: effectiveVLineColor,
-                            borderRightStyle: effectiveVLineStyle,
-                            opacity: effectiveVLineOpacity,
-                            height: lineHeightPercent
-                          }} 
-                          className="w-px shrink-0 border-r my-auto"
-                        />
-                      )}
+                      {/* Left Vertical Divider Line & Drag Handle */}
+                      <div className="relative group/div-left flex items-center shrink-0">
+                        {effectiveShowLeftDiv && (
+                          <div 
+                            style={{ 
+                              borderColor: effectiveVLineColor,
+                              borderRightStyle: effectiveVLineStyle,
+                              opacity: effectiveVLineOpacity,
+                              height: lineHeightPercent
+                            }} 
+                            className="w-px border-r my-auto"
+                          />
+                        )}
+                        {!isLocked && (
+                          <div 
+                            onMouseDown={(e) => handleStartDrag(e, item.id, 'col-left', effectiveLeftWidth)}
+                            className="absolute -left-2.5 top-0 bottom-0 w-5 cursor-col-resize z-20 flex items-center justify-center hover:bg-primary/20 rounded transition-colors no-export group/handle"
+                            title="Drag left/right to adjust Left Column width"
+                          >
+                            <div className="w-1 h-5 bg-primary/40 rounded-full group-hover/handle:bg-primary group-hover/handle:scale-125 transition-all" />
+                          </div>
+                        )}
+                      </div>
 
                       {/* Middle Column: Course Code & Subject Name */}
                       <div className="flex-1 px-3 flex flex-col justify-center select-text overflow-hidden">
@@ -2193,18 +2262,29 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                       </div>
 
-                      {/* Right Vertical Divider Line */}
-                      {effectiveShowRightDiv && (
-                        <div 
-                          style={{ 
-                            borderColor: effectiveVLineColor,
-                            borderRightStyle: effectiveVLineStyle,
-                            opacity: effectiveVLineOpacity,
-                            height: lineHeightPercent
-                          }} 
-                          className="w-px shrink-0 border-r my-auto"
-                        />
-                      )}
+                      {/* Right Vertical Divider Line & Drag Handle */}
+                      <div className="relative group/div-right flex items-center shrink-0">
+                        {effectiveShowRightDiv && (
+                          <div 
+                            style={{ 
+                              borderColor: effectiveVLineColor,
+                              borderRightStyle: effectiveVLineStyle,
+                              opacity: effectiveVLineOpacity,
+                              height: lineHeightPercent
+                            }} 
+                            className="w-px border-r my-auto"
+                          />
+                        )}
+                        {!isLocked && (
+                          <div 
+                            onMouseDown={(e) => handleStartDrag(e, item.id, 'col-right', effectiveRightWidth)}
+                            className="absolute -left-2.5 top-0 bottom-0 w-5 cursor-col-resize z-20 flex items-center justify-center hover:bg-primary/20 rounded transition-colors no-export group/handle"
+                            title="Drag left/right to adjust Right Column width"
+                          >
+                            <div className="w-1 h-5 bg-primary/40 rounded-full group-hover/handle:bg-primary group-hover/handle:scale-125 transition-all" />
+                          </div>
+                        )}
+                      </div>
 
                       {/* Right Column: Rooms & Capacities */}
                       <div 
@@ -2224,6 +2304,17 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           disabled={isLocked} 
                         />
                       </div>
+
+                      {/* Bottom Drag Handle for Card Height */}
+                      {!isLocked && (
+                        <div 
+                          onMouseDown={(e) => handleStartDrag(e, item.id, 'card-height', effectiveCardHeight || 85)}
+                          className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-14 h-4 cursor-row-resize z-30 flex items-center justify-center bg-white/90 hover:bg-primary border border-primary/40 rounded-full shadow-md transition-all opacity-0 group-hover:opacity-100 no-export group/h-handle"
+                          title="Drag up/down to adjust Card Height"
+                        >
+                          <div className="w-5 h-1 bg-primary group-hover/h-handle:bg-white rounded-full transition-colors" />
+                        </div>
+                      )}
 
                       {/* Hover controls (Reorder / Duplicate / Delete overlay) */}
                       {!isLocked && (
