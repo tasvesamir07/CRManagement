@@ -574,22 +574,23 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   // Save/Update class entry
   const handleSaveCellEntry = async () => {
     if (!selectedCell) return;
-    if (!formCourseId || !formRoomNumber || !formSection) {
-      toast.error('Please specify a Course, Section, and Room Number');
+    if (!formCourseId || !formRoomNumber) {
+      toast.error('Please select a Course and specify a Room Number');
       return;
     }
 
     setSavingCell(true);
     try {
       const cellClasses = getCellRoutines(selectedCell.day, selectedCell.slot);
+      const cleanSection = formSection.trim() === '.' ? '' : formSection.trim();
       
       const payload = {
         course_id: parseInt(formCourseId),
         day_of_week: selectedCell.day.toLowerCase(),
         start_time: selectedCell.slot.start,
         end_time: selectedCell.slot.end,
-        room_number: formRoomNumber,
-        section: formSection
+        room_number: formRoomNumber.trim(),
+        section: cleanSection || null
       };
 
       if (cellClasses.length > 0) {
@@ -1283,14 +1284,17 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       />
                     </div>
 
-                    {/* Section */}
+                    {/* Section (Optional) */}
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Section</label>
+                      <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1 flex items-center justify-between">
+                        <span>Section</span>
+                        <span className="text-[9px] font-normal text-gray-400 lowercase">(optional)</span>
+                      </label>
                       <input 
                         type="text" 
                         value={formSection}
                         onChange={e => setFormSection(e.target.value)}
-                        placeholder="e.g. H"
+                        placeholder="e.g. H (Leave empty if in course name)"
                         className="w-full h-8 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
                       />
                     </div>
@@ -1675,6 +1679,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                                   {cellClasses.map((r: Routine) => {
                                     const matchedCourse = courses.find(c => c.course_id === r.c_id);
                                     const initials = matchedCourse ? matchedCourse.teacher_initials : '';
+                                    const cleanSec = r.section && r.section.trim() !== '.' ? r.section.trim() : '';
+                                    const displayCode = cleanSec ? `${r.c_id} ${cleanSec}` : r.c_id;
                                     return (
                                       <div key={r.id} className="font-sans" style={{ textAlign: cellAlign }}>
                                         <div 
@@ -1684,7 +1690,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                                           }}
                                           className="leading-tight"
                                         >
-                                          {r.c_id}{r.section ? ` ${r.section}` : ''}
+                                          {displayCode}
                                         </div>
                                         {initials && (
                                           <div 
