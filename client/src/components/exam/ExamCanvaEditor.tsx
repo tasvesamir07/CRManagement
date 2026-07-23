@@ -700,6 +700,56 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     );
   };
 
+  // Helper handlers to globally update Card Dimensions, Column Layout & Vertical Lines across all cards
+  const handleCardHeightPxChange = (val: number) => {
+    setCardHeightPx(val);
+    setItems(prev => prev.map(item => ({ ...item, cardHeightPx: val })));
+  };
+
+  const handleCardPaddingChange = (val: string) => {
+    setCardPadding(val);
+    setItems(prev => prev.map(item => ({ ...item, cardPadding: val })));
+  };
+
+  const handleLeftColWidthChange = (val: number) => {
+    setLeftColWidth(val);
+    setItems(prev => prev.map(item => ({ ...item, leftColWidth: val })));
+  };
+
+  const handleRightColWidthChange = (val: number) => {
+    setRightColWidth(val);
+    setItems(prev => prev.map(item => ({ ...item, rightColWidth: val })));
+  };
+
+  const handleLeftDividerToggle = (checked: boolean) => {
+    setShowLeftDivider(checked);
+    setItems(prev => prev.map(item => ({ ...item, showLeftDivider: checked })));
+  };
+
+  const handleRightDividerToggle = (checked: boolean) => {
+    setShowRightDivider(checked);
+    setItems(prev => prev.map(item => ({ ...item, showRightDivider: checked })));
+  };
+
+  const handleVLineStyleChange = (style: 'solid' | 'dashed' | 'dotted') => {
+    setVLineStyle(style);
+    setItems(prev => prev.map(item => ({ ...item, vLineStyle: style })));
+  };
+
+  const handleVLineHeightChange = (height: 'full' | 'padded' | 'short') => {
+    setVLineHeight(height);
+  };
+
+  const handleVLineColorChange = (color: string) => {
+    setVLineColor(color);
+    setItems(prev => prev.map(item => ({ ...item, vLineColor: color })));
+  };
+
+  const handleVLineOpacityChange = (opacity: number) => {
+    setVLineOpacity(opacity);
+    setItems(prev => prev.map(item => ({ ...item, vLineOpacity: opacity })));
+  };
+
   // Dynamic Font Loader
   useEffect(() => {
     const fontObj = FONTS.find(f => f.family === selectedFont);
@@ -1313,7 +1363,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Fixed Card Height (px)</label>
                     <CustomSelect
                       value={cardHeightPx.toString()}
-                      onChange={(val) => setCardHeightPx(parseInt(val, 10) || 0)}
+                      onChange={(val) => handleCardHeightPxChange(parseInt(val, 10) || 0)}
                       size="sm"
                       options={[
                         { value: '0', label: 'Auto (Fit Content)' },
@@ -1329,7 +1379,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Padding</label>
                     <CustomSelect
                       value={cardPadding}
-                      onChange={(val) => setCardPadding(val)}
+                      onChange={(val) => handleCardPaddingChange(val)}
                       size="sm"
                       options={[
                         { value: 'p-2.5', label: 'Tight (10px)' },
@@ -1393,8 +1443,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       id="v-lines"
                       checked={showRightDivider || showLeftDivider}
                       onChange={e => {
-                        setShowLeftDivider(e.target.checked);
-                        setShowRightDivider(e.target.checked);
+                        handleLeftDividerToggle(e.target.checked);
+                        handleRightDividerToggle(e.target.checked);
                       }}
                       className="rounded border-hairline text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                     />
@@ -1419,7 +1469,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       min={90} 
                       max={250} 
                       value={leftColWidth} 
-                      onChange={e => setLeftColWidth(parseInt(e.target.value, 10))}
+                      onChange={e => handleLeftColWidthChange(parseInt(e.target.value, 10))}
                       className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                   </div>
@@ -1433,7 +1483,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       min={70} 
                       max={220} 
                       value={rightColWidth} 
-                      onChange={e => setRightColWidth(parseInt(e.target.value, 10))}
+                      onChange={e => handleRightColWidthChange(parseInt(e.target.value, 10))}
                       className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                   </div>
@@ -1448,7 +1498,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <input 
                         type="checkbox" 
                         checked={showLeftDivider}
-                        onChange={e => setShowLeftDivider(e.target.checked)}
+                        onChange={e => handleLeftDividerToggle(e.target.checked)}
                         className="rounded border-hairline text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
                       />
                       Left Line
@@ -1457,7 +1507,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <input 
                         type="checkbox" 
                         checked={showRightDivider}
-                        onChange={e => setShowRightDivider(e.target.checked)}
+                        onChange={e => handleRightDividerToggle(e.target.checked)}
                         className="rounded border-hairline text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
                       />
                       Right Line
@@ -1469,7 +1519,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <label className="block text-[9px] text-gray-500 mb-0.5 font-semibold">Line Style</label>
                       <CustomSelect
                         value={vLineStyle}
-                        onChange={(val) => setVLineStyle(val as any)}
+                        onChange={(val) => handleVLineStyleChange(val as any)}
                         size="sm"
                         options={[
                           { value: 'solid', label: 'Solid Line' },
@@ -1482,7 +1532,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <label className="block text-[9px] text-gray-500 mb-0.5 font-semibold">Line Height</label>
                       <CustomSelect
                         value={vLineHeight}
-                        onChange={(val) => setVLineHeight(val as any)}
+                        onChange={(val) => handleVLineHeightChange(val as any)}
                         size="sm"
                         options={[
                           { value: 'full', label: 'Full Height (100%)' },
@@ -1500,7 +1550,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         <input 
                           type="color" 
                           value={vLineColor} 
-                          onChange={e => setVLineColor(e.target.value)} 
+                          onChange={e => handleVLineColorChange(e.target.value)} 
                           className="w-5 h-5 rounded border border-hairline cursor-pointer p-0 shrink-0"
                         />
                         <span className="text-[9px] font-mono font-semibold text-ink">{vLineColor}</span>
@@ -1517,7 +1567,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         max={1} 
                         step={0.05}
                         value={vLineOpacity} 
-                        onChange={e => setVLineOpacity(parseFloat(e.target.value))}
+                        onChange={e => handleVLineOpacityChange(parseFloat(e.target.value))}
                         className="w-full h-1.5 bg-canvas-soft rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                     </div>
@@ -2230,12 +2280,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         {effectiveShowLeftDiv && (
                           <div 
                             style={{ 
-                              borderColor: effectiveVLineColor,
-                              borderRightStyle: effectiveVLineStyle,
+                              borderRight: `${effectiveVLineStyle === 'dashed' ? '1.5px' : effectiveVLineStyle === 'dotted' ? '2px' : '1px'} ${effectiveVLineStyle} ${effectiveVLineColor}`,
                               opacity: effectiveVLineOpacity,
                               height: lineHeightPercent
                             }} 
-                            className="w-px border-r my-auto"
+                            className="w-0 shrink-0 my-auto"
                           />
                         )}
                         {!isLocked && (
@@ -2288,12 +2337,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         {effectiveShowRightDiv && (
                           <div 
                             style={{ 
-                              borderColor: effectiveVLineColor,
-                              borderRightStyle: effectiveVLineStyle,
+                              borderRight: `${effectiveVLineStyle === 'dashed' ? '1.5px' : effectiveVLineStyle === 'dotted' ? '2px' : '1px'} ${effectiveVLineStyle} ${effectiveVLineColor}`,
                               opacity: effectiveVLineOpacity,
                               height: lineHeightPercent
                             }} 
-                            className="w-px border-r my-auto"
+                            className="w-0 shrink-0 my-auto"
                           />
                         )}
                         {!isLocked && (
