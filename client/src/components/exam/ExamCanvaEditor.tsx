@@ -43,14 +43,28 @@ interface CanvasItem {
   accentColor: string;
   courseCodeBold?: boolean;
   courseCodeItalic?: boolean;
+  courseCodeAlign?: 'left' | 'center' | 'right';
+  courseCodeFontSize?: number;
+
   examDateBold?: boolean;
   examDateItalic?: boolean;
+  examDateAlign?: 'left' | 'center' | 'right';
+  examDateFontSize?: number;
+
   courseNameBold?: boolean;
   courseNameItalic?: boolean;
+  courseNameAlign?: 'left' | 'center' | 'right';
+  courseNameFontSize?: number;
+
   examTimeBold?: boolean;
   examTimeItalic?: boolean;
+  examTimeAlign?: 'left' | 'center' | 'right';
+  examTimeFontSize?: number;
+
   roomsBold?: boolean;
   roomsItalic?: boolean;
+  roomsAlign?: 'left' | 'center' | 'right';
+  roomsFontSize?: number;
 }
 
 interface ExamCanvaEditorProps {
@@ -181,6 +195,108 @@ const FONTS = [
   { name: 'Space Mono (Retro Tech)', family: "'Space Mono', monospace", link: 'https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap' },
   { name: 'IBM Plex Mono', family: "'IBM Plex Mono', monospace", link: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700;1,400&display=swap' }
 ];
+
+// Field formatting toolbar component (Bold, Italic, Align, Font Size)
+interface FieldFormattingToolbarProps {
+  label: string;
+  bold: boolean;
+  italic: boolean;
+  align?: 'left' | 'center' | 'right';
+  fontSize?: number;
+  defaultFontSize: number;
+  onToggleBold: () => void;
+  onToggleItalic: () => void;
+  onChangeAlign: (align: 'left' | 'center' | 'right') => void;
+  onChangeFontSize: (size: number) => void;
+}
+
+const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
+  label,
+  bold,
+  italic,
+  align = 'left',
+  fontSize,
+  defaultFontSize,
+  onToggleBold,
+  onToggleItalic,
+  onChangeAlign,
+  onChangeFontSize,
+}) => {
+  return (
+    <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
+      <label className="block text-[9px] uppercase font-bold text-gray-500">{label}</label>
+      <div className="flex items-center gap-0.5 bg-canvas-soft/80 p-0.5 rounded border border-hairline/60">
+        <button
+          type="button"
+          onClick={onToggleBold}
+          className={`p-0.5 rounded cursor-pointer transition-colors ${
+            bold ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+          }`}
+          title="Toggle Bold"
+        >
+          <Bold className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleItalic}
+          className={`p-0.5 rounded cursor-pointer transition-colors ${
+            italic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+          }`}
+          title="Toggle Italic"
+        >
+          <Italic className="w-3 h-3" />
+        </button>
+
+        <div className="w-px h-3 bg-gray-300 mx-0.5" />
+
+        <button
+          type="button"
+          onClick={() => onChangeAlign('left')}
+          className={`p-0.5 rounded cursor-pointer transition-colors ${
+            align === 'left' ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+          }`}
+          title="Align Left"
+        >
+          <AlignLeft className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onChangeAlign('center')}
+          className={`p-0.5 rounded cursor-pointer transition-colors ${
+            align === 'center' ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+          }`}
+          title="Align Center"
+        >
+          <AlignCenter className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onChangeAlign('right')}
+          className={`p-0.5 rounded cursor-pointer transition-colors ${
+            align === 'right' ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+          }`}
+          title="Align Right"
+        >
+          <AlignRight className="w-3 h-3" />
+        </button>
+
+        <div className="w-px h-3 bg-gray-300 mx-0.5" />
+
+        <div className="flex items-center gap-0.5" title="Font Size (px)">
+          <span className="text-[8px] font-bold text-gray-400 pl-0.5">SIZE</span>
+          <input
+            type="number"
+            min={8}
+            max={48}
+            value={fontSize || defaultFontSize}
+            onChange={(e) => onChangeFontSize(parseInt(e.target.value, 10) || defaultFontSize)}
+            className="w-9 h-4 text-[9px] font-mono text-center bg-white border border-hairline rounded text-ink focus:outline-none focus:border-primary p-0"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Custom Inline Input Component (Light text editor style)
 interface InlineInputProps {
@@ -370,14 +486,24 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           const styleData = {
             courseCodeBold: item.courseCodeBold,
             courseCodeItalic: item.courseCodeItalic,
+            courseCodeAlign: item.courseCodeAlign,
+            courseCodeFontSize: item.courseCodeFontSize,
             examDateBold: item.examDateBold,
             examDateItalic: item.examDateItalic,
+            examDateAlign: item.examDateAlign,
+            examDateFontSize: item.examDateFontSize,
             courseNameBold: item.courseNameBold,
             courseNameItalic: item.courseNameItalic,
+            courseNameAlign: item.courseNameAlign,
+            courseNameFontSize: item.courseNameFontSize,
             examTimeBold: item.examTimeBold,
             examTimeItalic: item.examTimeItalic,
+            examTimeAlign: item.examTimeAlign,
+            examTimeFontSize: item.examTimeFontSize,
             roomsBold: item.roomsBold,
             roomsItalic: item.roomsItalic,
+            roomsAlign: item.roomsAlign,
+            roomsFontSize: item.roomsFontSize,
             accentColor: item.accentColor
           };
           itemStylesMap[key] = styleData;
@@ -389,8 +515,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
         const globalStyles = {
           headerTitle, headerSubtitle, footerLeft, footerRight, routineNotes, showInstructions,
-          headerTitleBold, headerTitleItalic, headerSubtitleBold, headerSubtitleItalic,
-          footerLeftBold, footerLeftItalic, footerRightBold, footerRightItalic,
+          headerTitleBold, headerTitleItalic, headerTitleAlign, headerTitleFontSize,
+          headerSubtitleBold, headerSubtitleItalic, headerSubtitleAlign, headerSubtitleFontSize,
+          footerLeftBold, footerLeftItalic, footerLeftAlign, footerLeftFontSize,
+          footerRightBold, footerRightItalic, footerRightAlign, footerRightFontSize,
           bgColor, bgGradient, cardBg, cardTextColor, cardBorderColor, cardBorderType,
           cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign
         };
@@ -419,12 +547,23 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   // Text Styling States
   const [headerTitleBold, setHeaderTitleBold] = useState(true);
   const [headerTitleItalic, setHeaderTitleItalic] = useState(false);
+  const [headerTitleAlign, setHeaderTitleAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [headerTitleFontSize, setHeaderTitleFontSize] = useState<number>(24);
+
   const [headerSubtitleBold, setHeaderSubtitleBold] = useState(true);
   const [headerSubtitleItalic, setHeaderSubtitleItalic] = useState(false);
+  const [headerSubtitleAlign, setHeaderSubtitleAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [headerSubtitleFontSize, setHeaderSubtitleFontSize] = useState<number>(16);
+
   const [footerLeftBold, setFooterLeftBold] = useState(true);
   const [footerLeftItalic, setFooterLeftItalic] = useState(false);
+  const [footerLeftAlign, setFooterLeftAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [footerLeftFontSize, setFooterLeftFontSize] = useState<number>(13);
+
   const [footerRightBold, setFooterRightBold] = useState(true);
   const [footerRightItalic, setFooterRightItalic] = useState(false);
+  const [footerRightAlign, setFooterRightAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [footerRightFontSize, setFooterRightFontSize] = useState<number>(12);
   
   const [bgColor, setBgColor] = useState('#E4ECF0');
   const [bgGradient, setBgGradient] = useState('');
@@ -542,16 +681,31 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         examTime: formatTimeTo12Hour(r.start_time),
         rooms: rooms,
         accentColor: savedStyle.accentColor || accentColor,
+
         courseCodeBold: savedStyle.courseCodeBold !== undefined ? savedStyle.courseCodeBold : true,
         courseCodeItalic: !!savedStyle.courseCodeItalic,
+        courseCodeAlign: savedStyle.courseCodeAlign || 'left',
+        courseCodeFontSize: savedStyle.courseCodeFontSize || 14,
+
         examDateBold: savedStyle.examDateBold !== undefined ? savedStyle.examDateBold : true,
         examDateItalic: !!savedStyle.examDateItalic,
+        examDateAlign: savedStyle.examDateAlign || 'left',
+        examDateFontSize: savedStyle.examDateFontSize || 14,
+
         courseNameBold: savedStyle.courseNameBold !== undefined ? savedStyle.courseNameBold : true,
         courseNameItalic: !!savedStyle.courseNameItalic,
+        courseNameAlign: savedStyle.courseNameAlign || 'left',
+        courseNameFontSize: savedStyle.courseNameFontSize || 10,
+
         examTimeBold: savedStyle.examTimeBold !== undefined ? savedStyle.examTimeBold : true,
         examTimeItalic: !!savedStyle.examTimeItalic,
+        examTimeAlign: savedStyle.examTimeAlign || 'left',
+        examTimeFontSize: savedStyle.examTimeFontSize || 12,
+
         roomsBold: savedStyle.roomsBold !== undefined ? savedStyle.roomsBold : true,
         roomsItalic: !!savedStyle.roomsItalic,
+        roomsAlign: savedStyle.roomsAlign || 'left',
+        roomsFontSize: savedStyle.roomsFontSize || 12,
       };
     });
 
@@ -567,14 +721,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         if (parsed.footerRight) setFooterRight(parsed.footerRight);
         if (parsed.routineNotes) setRoutineNotes(parsed.routineNotes);
         if (parsed.showInstructions !== undefined) setShowInstructions(parsed.showInstructions);
+
         if (parsed.headerTitleBold !== undefined) setHeaderTitleBold(parsed.headerTitleBold);
         if (parsed.headerTitleItalic !== undefined) setHeaderTitleItalic(parsed.headerTitleItalic);
+        if (parsed.headerTitleAlign) setHeaderTitleAlign(parsed.headerTitleAlign);
+        if (parsed.headerTitleFontSize) setHeaderTitleFontSize(parsed.headerTitleFontSize);
+
         if (parsed.headerSubtitleBold !== undefined) setHeaderSubtitleBold(parsed.headerSubtitleBold);
         if (parsed.headerSubtitleItalic !== undefined) setHeaderSubtitleItalic(parsed.headerSubtitleItalic);
+        if (parsed.headerSubtitleAlign) setHeaderSubtitleAlign(parsed.headerSubtitleAlign);
+        if (parsed.headerSubtitleFontSize) setHeaderSubtitleFontSize(parsed.headerSubtitleFontSize);
+
         if (parsed.footerLeftBold !== undefined) setFooterLeftBold(parsed.footerLeftBold);
         if (parsed.footerLeftItalic !== undefined) setFooterLeftItalic(parsed.footerLeftItalic);
+        if (parsed.footerLeftAlign) setFooterLeftAlign(parsed.footerLeftAlign);
+        if (parsed.footerLeftFontSize) setFooterLeftFontSize(parsed.footerLeftFontSize);
+
         if (parsed.footerRightBold !== undefined) setFooterRightBold(parsed.footerRightBold);
         if (parsed.footerRightItalic !== undefined) setFooterRightItalic(parsed.footerRightItalic);
+        if (parsed.footerRightAlign) setFooterRightAlign(parsed.footerRightAlign);
+        if (parsed.footerRightFontSize) setFooterRightFontSize(parsed.footerRightFontSize);
+
         if (parsed.bgColor) setBgColor(parsed.bgColor);
         if (parsed.bgGradient !== undefined) setBgGradient(parsed.bgGradient);
         if (parsed.cardBg) setCardBg(parsed.cardBg);
@@ -662,14 +829,24 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           const styleData = {
             courseCodeBold: item.courseCodeBold,
             courseCodeItalic: item.courseCodeItalic,
+            courseCodeAlign: item.courseCodeAlign,
+            courseCodeFontSize: item.courseCodeFontSize,
             examDateBold: item.examDateBold,
             examDateItalic: item.examDateItalic,
+            examDateAlign: item.examDateAlign,
+            examDateFontSize: item.examDateFontSize,
             courseNameBold: item.courseNameBold,
             courseNameItalic: item.courseNameItalic,
+            courseNameAlign: item.courseNameAlign,
+            courseNameFontSize: item.courseNameFontSize,
             examTimeBold: item.examTimeBold,
             examTimeItalic: item.examTimeItalic,
+            examTimeAlign: item.examTimeAlign,
+            examTimeFontSize: item.examTimeFontSize,
             roomsBold: item.roomsBold,
             roomsItalic: item.roomsItalic,
+            roomsAlign: item.roomsAlign,
+            roomsFontSize: item.roomsFontSize,
             accentColor: item.accentColor
           };
           itemStylesMap[key] = styleData;
@@ -1056,25 +1233,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Header Configuration</label>
                 <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-[10px] uppercase font-bold text-gray-500">Header Main Title</label>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setHeaderTitleBold(!headerTitleBold)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${headerTitleBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Bold"
-                        >
-                          <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setHeaderTitleItalic(!headerTitleItalic)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${headerTitleItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Italic"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                    <FieldFormattingToolbar
+                      label="Header Main Title"
+                      bold={headerTitleBold}
+                      italic={headerTitleItalic}
+                      align={headerTitleAlign}
+                      fontSize={headerTitleFontSize}
+                      defaultFontSize={24}
+                      onToggleBold={() => setHeaderTitleBold(!headerTitleBold)}
+                      onToggleItalic={() => setHeaderTitleItalic(!headerTitleItalic)}
+                      onChangeAlign={(align) => setHeaderTitleAlign(align)}
+                      onChangeFontSize={(size) => setHeaderTitleFontSize(size)}
+                    />
                     <input 
                       type="text" 
                       value={headerTitle} 
@@ -1083,25 +1253,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-[10px] uppercase font-bold text-gray-500">Header Subtitle</label>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setHeaderSubtitleBold(!headerSubtitleBold)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${headerSubtitleBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Bold"
-                        >
-                          <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setHeaderSubtitleItalic(!headerSubtitleItalic)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${headerSubtitleItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Italic"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                    <FieldFormattingToolbar
+                      label="Header Subtitle"
+                      bold={headerSubtitleBold}
+                      italic={headerSubtitleItalic}
+                      align={headerSubtitleAlign}
+                      fontSize={headerSubtitleFontSize}
+                      defaultFontSize={16}
+                      onToggleBold={() => setHeaderSubtitleBold(!headerSubtitleBold)}
+                      onToggleItalic={() => setHeaderSubtitleItalic(!headerSubtitleItalic)}
+                      onChangeAlign={(align) => setHeaderSubtitleAlign(align)}
+                      onChangeFontSize={(size) => setHeaderSubtitleFontSize(size)}
+                    />
                     <input 
                       type="text" 
                       value={headerSubtitle} 
@@ -1116,25 +1279,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <label className="block text-xs font-bold text-ink uppercase tracking-wide">Footer Configuration</label>
                 <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
                   <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-[10px] uppercase font-bold text-gray-500">Footer Left Text</label>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setFooterLeftBold(!footerLeftBold)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${footerLeftBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Bold"
-                        >
-                          <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setFooterLeftItalic(!footerLeftItalic)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${footerLeftItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Italic"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                    <FieldFormattingToolbar
+                      label="Footer Left Text"
+                      bold={footerLeftBold}
+                      italic={footerLeftItalic}
+                      align={footerLeftAlign}
+                      fontSize={footerLeftFontSize}
+                      defaultFontSize={13}
+                      onToggleBold={() => setFooterLeftBold(!footerLeftBold)}
+                      onToggleItalic={() => setFooterLeftItalic(!footerLeftItalic)}
+                      onChangeAlign={(align) => setFooterLeftAlign(align)}
+                      onChangeFontSize={(size) => setFooterLeftFontSize(size)}
+                    />
                     <input 
                       type="text" 
                       value={footerLeft} 
@@ -1143,25 +1299,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-[10px] uppercase font-bold text-gray-500">Footer Right Text</label>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setFooterRightBold(!footerRightBold)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${footerRightBold ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Bold"
-                        >
-                          <Bold className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setFooterRightItalic(!footerRightItalic)}
-                          className={`p-1 rounded cursor-pointer transition-colors ${footerRightItalic ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                          title="Toggle Italic"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                    <FieldFormattingToolbar
+                      label="Footer Right Text"
+                      bold={footerRightBold}
+                      italic={footerRightItalic}
+                      align={footerRightAlign}
+                      fontSize={footerRightFontSize}
+                      defaultFontSize={12}
+                      onToggleBold={() => setFooterRightBold(!footerRightBold)}
+                      onToggleItalic={() => setFooterRightItalic(!footerRightItalic)}
+                      onChangeAlign={(align) => setFooterRightAlign(align)}
+                      onChangeFontSize={(size) => setFooterRightFontSize(size)}
+                    />
                     <input 
                       type="text" 
                       value={footerRight} 
@@ -1240,29 +1389,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     )}
 
                     {/* Code & Date */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <label className="block text-[9px] uppercase font-bold text-gray-500">Course Code</label>
-                          <div className="flex gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'courseCodeBold', selectedItem.courseCodeBold === false ? true : false)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseCodeBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Bold"
-                            >
-                              <Bold className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'courseCodeItalic', !selectedItem.courseCodeItalic)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseCodeItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Italic"
-                            >
-                              <Italic className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
+                        <FieldFormattingToolbar
+                          label="Course Code"
+                          bold={selectedItem.courseCodeBold !== false}
+                          italic={!!selectedItem.courseCodeItalic}
+                          align={selectedItem.courseCodeAlign || 'left'}
+                          fontSize={selectedItem.courseCodeFontSize}
+                          defaultFontSize={14}
+                          onToggleBold={() => updateItemField(selectedItem.id, 'courseCodeBold', selectedItem.courseCodeBold === false ? true : false)}
+                          onToggleItalic={() => updateItemField(selectedItem.id, 'courseCodeItalic', !selectedItem.courseCodeItalic)}
+                          onChangeAlign={(align) => updateItemField(selectedItem.id, 'courseCodeAlign', align)}
+                          onChangeFontSize={(size) => updateItemField(selectedItem.id, 'courseCodeFontSize', size)}
+                        />
                         <input 
                           type="text" 
                           value={selectedItem.courseCode} 
@@ -1270,28 +1410,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
                         />
                       </div>
+
                       <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <label className="block text-[9px] uppercase font-bold text-gray-500">Exam Date</label>
-                          <div className="flex gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'examDateBold', selectedItem.examDateBold === false ? true : false)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examDateBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Bold"
-                            >
-                              <Bold className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'examDateItalic', !selectedItem.examDateItalic)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examDateItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Italic"
-                            >
-                              <Italic className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
+                        <FieldFormattingToolbar
+                          label="Exam Date"
+                          bold={selectedItem.examDateBold !== false}
+                          italic={!!selectedItem.examDateItalic}
+                          align={selectedItem.examDateAlign || 'left'}
+                          fontSize={selectedItem.examDateFontSize}
+                          defaultFontSize={14}
+                          onToggleBold={() => updateItemField(selectedItem.id, 'examDateBold', selectedItem.examDateBold === false ? true : false)}
+                          onToggleItalic={() => updateItemField(selectedItem.id, 'examDateItalic', !selectedItem.examDateItalic)}
+                          onChangeAlign={(align) => updateItemField(selectedItem.id, 'examDateAlign', align)}
+                          onChangeFontSize={(size) => updateItemField(selectedItem.id, 'examDateFontSize', size)}
+                        />
                         <input 
                           type="text" 
                           value={selectedItem.examDate} 
@@ -1303,27 +1435,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Course Name */}
                     <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Course Name</label>
-                        <div className="flex gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => updateItemField(selectedItem.id, 'courseNameBold', selectedItem.courseNameBold === false ? true : false)}
-                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseNameBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                            title="Toggle Bold"
-                          >
-                            <Bold className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateItemField(selectedItem.id, 'courseNameItalic', !selectedItem.courseNameItalic)}
-                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.courseNameItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                            title="Toggle Italic"
-                          >
-                            <Italic className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
+                      <FieldFormattingToolbar
+                        label="Course Name"
+                        bold={selectedItem.courseNameBold !== false}
+                        italic={!!selectedItem.courseNameItalic}
+                        align={selectedItem.courseNameAlign || 'left'}
+                        fontSize={selectedItem.courseNameFontSize}
+                        defaultFontSize={10}
+                        onToggleBold={() => updateItemField(selectedItem.id, 'courseNameBold', selectedItem.courseNameBold === false ? true : false)}
+                        onToggleItalic={() => updateItemField(selectedItem.id, 'courseNameItalic', !selectedItem.courseNameItalic)}
+                        onChangeAlign={(align) => updateItemField(selectedItem.id, 'courseNameAlign', align)}
+                        onChangeFontSize={(size) => updateItemField(selectedItem.id, 'courseNameFontSize', size)}
+                      />
                       <input 
                         type="text" 
                         value={selectedItem.courseName} 
@@ -1333,29 +1456,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     </div>
 
                     {/* Time & Accent Custom Color */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <label className="block text-[9px] uppercase font-bold text-gray-500">Time</label>
-                          <div className="flex gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'examTimeBold', selectedItem.examTimeBold === false ? true : false)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examTimeBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Bold"
-                            >
-                              <Bold className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateItemField(selectedItem.id, 'examTimeItalic', !selectedItem.examTimeItalic)}
-                              className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.examTimeItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                              title="Toggle Italic"
-                            >
-                              <Italic className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
+                        <FieldFormattingToolbar
+                          label="Time"
+                          bold={selectedItem.examTimeBold !== false}
+                          italic={!!selectedItem.examTimeItalic}
+                          align={selectedItem.examTimeAlign || 'left'}
+                          fontSize={selectedItem.examTimeFontSize}
+                          defaultFontSize={12}
+                          onToggleBold={() => updateItemField(selectedItem.id, 'examTimeBold', selectedItem.examTimeBold === false ? true : false)}
+                          onToggleItalic={() => updateItemField(selectedItem.id, 'examTimeItalic', !selectedItem.examTimeItalic)}
+                          onChangeAlign={(align) => updateItemField(selectedItem.id, 'examTimeAlign', align)}
+                          onChangeFontSize={(size) => updateItemField(selectedItem.id, 'examTimeFontSize', size)}
+                        />
                         <input 
                           type="text" 
                           value={selectedItem.examTime} 
@@ -1363,6 +1477,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           className="w-full h-8 px-1.5 text-xs border border-hairline bg-canvas rounded text-ink focus:border-primary focus:outline-none"
                         />
                       </div>
+
                       <div>
                         <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Accent Bar Color</label>
                         <div className="flex items-center gap-1.5 h-8 bg-canvas px-1.5 rounded border border-hairline">
@@ -1379,27 +1494,18 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
                     {/* Rooms List */}
                     <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="block text-[9px] uppercase font-bold text-gray-500">Rooms & Seating Counts (one per line)</label>
-                        <div className="flex gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => updateItemField(selectedItem.id, 'roomsBold', selectedItem.roomsBold === false ? true : false)}
-                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.roomsBold !== false ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                            title="Toggle Bold"
-                          >
-                            <Bold className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateItemField(selectedItem.id, 'roomsItalic', !selectedItem.roomsItalic)}
-                            className={`p-0.5 rounded cursor-pointer transition-colors ${selectedItem.roomsItalic ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft'}`}
-                            title="Toggle Italic"
-                          >
-                            <Italic className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
+                      <FieldFormattingToolbar
+                        label="Rooms & Seating Counts (one per line)"
+                        bold={selectedItem.roomsBold !== false}
+                        italic={!!selectedItem.roomsItalic}
+                        align={selectedItem.roomsAlign || 'left'}
+                        fontSize={selectedItem.roomsFontSize}
+                        defaultFontSize={12}
+                        onToggleBold={() => updateItemField(selectedItem.id, 'roomsBold', selectedItem.roomsBold === false ? true : false)}
+                        onToggleItalic={() => updateItemField(selectedItem.id, 'roomsItalic', !selectedItem.roomsItalic)}
+                        onChangeAlign={(align) => updateItemField(selectedItem.id, 'roomsAlign', align)}
+                        onChangeFontSize={(size) => updateItemField(selectedItem.id, 'roomsFontSize', size)}
+                      />
                       <textarea 
                         value={selectedItem.rooms} 
                         onChange={e => updateItemField(selectedItem.id, 'rooms', e.target.value)}
@@ -1662,14 +1768,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   borderRadius: cardRoundedness,
                   color: cardTextColor
                 }}
-                className={`p-6 text-center border border-hairline transition-all duration-300 ${cardShadow}`}
+                className={`p-6 border border-hairline transition-all duration-300 ${cardShadow}`}
               >
                 <h1 
                   style={{
                     fontWeight: headerTitleBold ? 'bold' : 'normal',
-                    fontStyle: headerTitleItalic ? 'italic' : 'normal'
+                    fontStyle: headerTitleItalic ? 'italic' : 'normal',
+                    textAlign: headerTitleAlign || headerAlign,
+                    fontSize: `${headerTitleFontSize || 24}px`
                   }}
-                  className="text-2xl tracking-tight leading-tight uppercase"
+                  className="tracking-tight leading-tight uppercase"
                 >
                   <InlineInput 
                     value={headerTitle} 
@@ -1680,9 +1788,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <h2 
                   style={{
                     fontWeight: headerSubtitleBold ? 'bold' : 'normal',
-                    fontStyle: headerSubtitleItalic ? 'italic' : 'normal'
+                    fontStyle: headerSubtitleItalic ? 'italic' : 'normal',
+                    textAlign: headerSubtitleAlign || headerAlign,
+                    fontSize: `${headerSubtitleFontSize || 16}px`
                   }}
-                  className="text-base tracking-widest uppercase mt-1 opacity-80"
+                  className="tracking-widest uppercase mt-1 opacity-80"
                 >
                   <InlineInput 
                     value={headerSubtitle} 
@@ -1722,14 +1832,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           : 'hover:scale-[1.005] hover:shadow-md'
                       }`}
                     >
-                      {/* Left Column: Date & Time + Accent color pill (aligned perfectly) */}
+                      {/* Left Column: Date & Time + Accent color pill */}
                       <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60">
                         <div 
                           style={{
                             fontWeight: item.examDateBold !== false ? 'bold' : 'normal',
-                            fontStyle: item.examDateItalic ? 'italic' : 'normal'
+                            fontStyle: item.examDateItalic ? 'italic' : 'normal',
+                            textAlign: item.examDateAlign || 'left',
+                            fontSize: `${item.examDateFontSize || 14}px`
                           }}
-                          className="text-sm leading-tight"
+                          className="leading-tight"
                         >
                           <InlineInput 
                             value={item.examDate} 
@@ -1740,9 +1852,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         <div 
                           style={{
                             fontWeight: item.examTimeBold !== false ? '600' : 'normal',
-                            fontStyle: item.examTimeItalic ? 'italic' : 'normal'
+                            fontStyle: item.examTimeItalic ? 'italic' : 'normal',
+                            textAlign: item.examTimeAlign || 'left',
+                            fontSize: `${item.examTimeFontSize || 12}px`
                           }}
-                          className="text-xs text-ink-mute mt-1.5 flex items-center gap-1.5"
+                          className={`text-ink-mute mt-1.5 flex items-center gap-1.5 ${
+                            item.examTimeAlign === 'center' ? 'justify-center' : item.examTimeAlign === 'right' ? 'justify-end' : 'justify-start'
+                          }`}
                         >
                           <InlineInput 
                             value={item.examTime} 
@@ -1762,9 +1878,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         <div 
                           style={{
                             fontWeight: item.courseCodeBold !== false ? '800' : 'normal',
-                            fontStyle: item.courseCodeItalic ? 'italic' : 'normal'
+                            fontStyle: item.courseCodeItalic ? 'italic' : 'normal',
+                            textAlign: item.courseCodeAlign || 'left',
+                            fontSize: `${item.courseCodeFontSize || 14}px`
                           }}
-                          className="text-sm leading-tight text-ink"
+                          className="leading-tight text-ink"
                         >
                           <InlineInput 
                             value={item.courseCode} 
@@ -1775,9 +1893,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         <div 
                           style={{
                             fontWeight: item.courseNameBold !== false ? 'bold' : 'normal',
-                            fontStyle: item.courseNameItalic ? 'italic' : 'normal'
+                            fontStyle: item.courseNameItalic ? 'italic' : 'normal',
+                            textAlign: item.courseNameAlign || 'left',
+                            fontSize: `${item.courseNameFontSize || 10}px`
                           }}
-                          className="text-[10px] leading-snug tracking-wide mt-1 uppercase opacity-80"
+                          className="leading-snug tracking-wide mt-1 uppercase opacity-80"
                         >
                           <InlineInput 
                             value={item.courseName} 
@@ -1796,9 +1916,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <div 
                         style={{
                           fontWeight: item.roomsBold !== false ? 'bold' : 'normal',
-                          fontStyle: item.roomsItalic ? 'italic' : 'normal'
+                          fontStyle: item.roomsItalic ? 'italic' : 'normal',
+                          textAlign: item.roomsAlign || 'left',
+                          fontSize: `${item.roomsFontSize || 12}px`
                         }}
-                        className="w-[115px] pl-3 flex flex-col justify-center text-xs font-mono leading-normal select-text whitespace-pre-line opacity-95"
+                        className="w-[115px] pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95"
                       >
                         <InlineInput 
                           value={item.rooms} 
@@ -1867,14 +1989,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   borderRadius: cardRoundedness,
                   color: cardTextColor
                 }}
-                className={`p-4 border border-hairline text-center transition-all duration-300 ${cardShadow}`}
+                className={`p-4 border border-hairline transition-all duration-300 ${cardShadow}`}
               >
                 <div 
                   style={{
                     fontWeight: footerLeftBold ? 'bold' : 'normal',
-                    fontStyle: footerLeftItalic ? 'italic' : 'normal'
+                    fontStyle: footerLeftItalic ? 'italic' : 'normal',
+                    textAlign: footerLeftAlign || 'center',
+                    fontSize: `${footerLeftFontSize || 13}px`
                   }}
-                  className="text-[13px] tracking-wider uppercase"
+                  className="tracking-wider uppercase"
                 >
                   <InlineInput 
                     value={footerLeft} 
@@ -1885,9 +2009,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <div 
                   style={{
                     fontWeight: footerRightBold ? 'bold' : 'normal',
-                    fontStyle: footerRightItalic ? 'italic' : 'normal'
+                    fontStyle: footerRightItalic ? 'italic' : 'normal',
+                    textAlign: footerRightAlign || 'center',
+                    fontSize: `${footerRightFontSize || 12}px`
                   }}
-                  className="text-[12px] tracking-wide uppercase mt-1 opacity-80"
+                  className="tracking-wide uppercase mt-1 opacity-80"
                 >
                   <InlineInput 
                     value={footerRight} 
