@@ -244,7 +244,27 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
   onChangeFontSize,
   onChangeFontWeight,
 }) => {
-  const currentWeight = fontWeight || (bold ? 700 : 400);
+  const isBoldActive = bold !== false && (fontWeight ? fontWeight >= 700 : true);
+  const currentWeight = bold === false ? 400 : (fontWeight || (bold ? 700 : 400));
+
+  const handleBoldClick = () => {
+    if (isBoldActive) {
+      onToggleBold();
+      if (onChangeFontWeight) onChangeFontWeight(400);
+    } else {
+      onToggleBold();
+      if (onChangeFontWeight) onChangeFontWeight(defaultFontWeight || 700);
+    }
+  };
+
+  const handleWeightChange = (newWeight: number) => {
+    if (onChangeFontWeight) onChangeFontWeight(newWeight);
+    if (newWeight >= 700 && bold === false) {
+      onToggleBold();
+    } else if (newWeight < 700 && bold !== false) {
+      onToggleBold();
+    }
+  };
 
   return (
     <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
@@ -252,11 +272,11 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
       <div className="flex items-center gap-0.5 bg-canvas-soft/80 p-0.5 rounded border border-hairline/60">
         <button
           type="button"
-          onClick={onToggleBold}
+          onClick={handleBoldClick}
           className={`p-0.5 rounded cursor-pointer transition-colors ${
-            bold || currentWeight >= 700 ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+            isBoldActive ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
           }`}
-          title="Toggle Bold (700)"
+          title={isBoldActive ? "Unbold (Regular 400)" : "Bold (700)"}
         >
           <Bold className="w-3 h-3" />
         </button>
@@ -278,7 +298,7 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
               <span className="text-[8px] font-bold text-gray-400 pl-0.5">WT</span>
               <select
                 value={currentWeight}
-                onChange={(e) => onChangeFontWeight(parseInt(e.target.value, 10))}
+                onChange={(e) => handleWeightChange(parseInt(e.target.value, 10))}
                 className="h-4 text-[9px] font-mono bg-white border border-hairline rounded text-ink focus:outline-none focus:border-primary px-0.5 py-0 cursor-pointer"
               >
                 <option value={300}>300 Light</option>
@@ -2247,7 +2267,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               >
                 <h1 
                   style={{
-                    fontWeight: headerTitleFontWeight || (headerTitleBold ? 700 : 400),
+                    fontWeight: headerTitleBold === false ? 400 : (headerTitleFontWeight || 700),
                     fontStyle: headerTitleItalic ? 'italic' : 'normal',
                     textAlign: headerTitleAlign || headerAlign,
                     fontSize: `${headerTitleFontSize || 24}px`
@@ -2262,7 +2282,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 </h1>
                 <h2 
                   style={{
-                    fontWeight: headerSubtitleFontWeight || (headerSubtitleBold ? 700 : 400),
+                    fontWeight: headerSubtitleBold === false ? 400 : (headerSubtitleFontWeight || 700),
                     fontStyle: headerSubtitleItalic ? 'italic' : 'normal',
                     textAlign: headerSubtitleAlign || headerAlign,
                     fontSize: `${headerSubtitleFontSize || 16}px`
@@ -2338,7 +2358,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       >
                         <div 
                           style={{
-                            fontWeight: item.examDateFontWeight || (item.examDateBold !== false ? 700 : 400),
+                            fontWeight: item.examDateBold === false ? 400 : (item.examDateFontWeight || 700),
                             fontStyle: item.examDateItalic ? 'italic' : 'normal',
                             textAlign: item.examDateAlign || cardAlign || 'left',
                             fontSize: `${item.examDateFontSize || 14}px`
@@ -2353,7 +2373,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                         <div 
                           style={{
-                            fontWeight: item.examTimeFontWeight || (item.examTimeBold !== false ? 500 : 400),
+                            fontWeight: item.examTimeBold === false ? 400 : (item.examTimeFontWeight || 500),
                             fontStyle: item.examTimeItalic ? 'italic' : 'normal',
                             textAlign: item.examTimeAlign || cardAlign || 'left',
                             fontSize: `${item.examTimeFontSize || 12}px`
@@ -2402,7 +2422,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <div className="flex-1 px-3 flex flex-col justify-center select-text overflow-hidden">
                         <div 
                           style={{
-                            fontWeight: item.courseCodeFontWeight || (item.courseCodeBold !== false ? 700 : 400),
+                            fontWeight: item.courseCodeBold === false ? 400 : (item.courseCodeFontWeight || 700),
                             fontStyle: item.courseCodeItalic ? 'italic' : 'normal',
                             textAlign: item.courseCodeAlign || cardAlign || 'left',
                             fontSize: `${item.courseCodeFontSize || 14}px`
@@ -2417,7 +2437,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         </div>
                         <div 
                           style={{
-                            fontWeight: item.courseNameFontWeight || (item.courseNameBold !== false ? 500 : 400),
+                            fontWeight: item.courseNameBold === false ? 400 : (item.courseNameFontWeight || 500),
                             fontStyle: item.courseNameItalic ? 'italic' : 'normal',
                             textAlign: item.courseNameAlign || cardAlign || 'left',
                             fontSize: `${item.courseNameFontSize || 10}px`
@@ -2459,7 +2479,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       <div 
                         style={{
                           width: `${effectiveRightWidth}px`,
-                          fontWeight: item.roomsFontWeight || (item.roomsBold !== false ? 600 : 400),
+                          fontWeight: item.roomsBold === false ? 400 : (item.roomsFontWeight || 600),
                           fontStyle: item.roomsItalic ? 'italic' : 'normal',
                           textAlign: item.roomsAlign || cardAlign || 'left',
                           fontSize: `${item.roomsFontSize || 12}px`

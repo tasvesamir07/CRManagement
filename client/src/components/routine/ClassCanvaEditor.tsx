@@ -243,7 +243,27 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
   onChangeFontSize,
   onChangeFontWeight,
 }) => {
-  const currentWeight = fontWeight || (bold ? 700 : 400);
+  const isBoldActive = bold !== false && (fontWeight ? fontWeight >= 700 : true);
+  const currentWeight = bold === false ? 400 : (fontWeight || (bold ? 700 : 400));
+
+  const handleBoldClick = () => {
+    if (isBoldActive) {
+      onToggleBold();
+      if (onChangeFontWeight) onChangeFontWeight(400);
+    } else {
+      onToggleBold();
+      if (onChangeFontWeight) onChangeFontWeight(defaultFontWeight || 700);
+    }
+  };
+
+  const handleWeightChange = (newWeight: number) => {
+    if (onChangeFontWeight) onChangeFontWeight(newWeight);
+    if (newWeight >= 700 && bold === false) {
+      onToggleBold();
+    } else if (newWeight < 700 && bold !== false) {
+      onToggleBold();
+    }
+  };
 
   return (
     <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
@@ -251,11 +271,11 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
       <div className="flex items-center gap-0.5 bg-canvas-soft/80 p-0.5 rounded border border-hairline/60">
         <button
           type="button"
-          onClick={onToggleBold}
+          onClick={handleBoldClick}
           className={`p-0.5 rounded cursor-pointer transition-colors ${
-            bold || currentWeight >= 700 ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
+            isBoldActive ? 'bg-primary/20 text-primary font-bold' : 'text-gray-400 hover:bg-canvas-soft hover:text-ink'
           }`}
-          title="Toggle Bold (700)"
+          title={isBoldActive ? "Unbold (Regular 400)" : "Bold (700)"}
         >
           <Bold className="w-3 h-3" />
         </button>
@@ -277,7 +297,7 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
               <span className="text-[8px] font-bold text-gray-400 pl-0.5">WT</span>
               <select
                 value={currentWeight}
-                onChange={(e) => onChangeFontWeight(parseInt(e.target.value, 10))}
+                onChange={(e) => handleWeightChange(parseInt(e.target.value, 10))}
                 className="h-4 text-[9px] font-mono bg-white border border-hairline rounded text-ink focus:outline-none focus:border-primary px-0.5 py-0 cursor-pointer"
               >
                 <option value={300}>300 Light</option>
@@ -1516,7 +1536,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
               >
                 <h1 
                   style={{
-                    fontWeight: semesterTitleFontWeight || (semesterTitleBold ? 800 : 400),
+                    fontWeight: semesterTitleBold === false ? 400 : (semesterTitleFontWeight || 800),
                     fontStyle: semesterTitleItalic ? 'italic' : 'normal',
                     textAlign: semesterTitleAlign || headerAlign,
                     fontSize: `${semesterTitleFontSize || 22}px`
@@ -1531,7 +1551,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </h1>
                 <h2 
                   style={{
-                    fontWeight: sectionGroupFontWeight || (sectionGroupBold ? 700 : 400),
+                    fontWeight: sectionGroupBold === false ? 400 : (sectionGroupFontWeight || 700),
                     fontStyle: sectionGroupItalic ? 'italic' : 'normal',
                     textAlign: sectionGroupAlign || headerAlign,
                     fontSize: `${sectionGroupFontSize || 14}px`
@@ -1546,7 +1566,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </h2>
                 <div 
                   style={{
-                    fontWeight: batchCodeFontWeight || (batchCodeBold ? 700 : 400),
+                    fontWeight: batchCodeBold === false ? 400 : (batchCodeFontWeight || 700),
                     fontStyle: batchCodeItalic ? 'italic' : 'normal',
                     textAlign: batchCodeAlign || headerAlign,
                     fontSize: `${batchCodeFontSize || 13}px`
@@ -1561,7 +1581,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 </div>
                 <div 
                   style={{
-                    fontWeight: effectiveDateFontWeight || (effectiveDateBold ? 500 : 400),
+                    fontWeight: effectiveDateBold === false ? 400 : (effectiveDateFontWeight || 500),
                     fontStyle: effectiveDateItalic ? 'italic' : 'normal',
                     textAlign: effectiveDateAlign || headerAlign,
                     fontSize: `${effectiveDateFontSize || 11}px`
