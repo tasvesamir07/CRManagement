@@ -65,6 +65,9 @@ interface CanvasItem {
   roomsItalic?: boolean;
   roomsAlign?: 'left' | 'center' | 'right';
   roomsFontSize?: number;
+
+  cardHeightPx?: number;
+  cardPadding?: string;
 }
 
 interface ExamCanvaEditorProps {
@@ -504,7 +507,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             roomsItalic: item.roomsItalic,
             roomsAlign: item.roomsAlign,
             roomsFontSize: item.roomsFontSize,
-            accentColor: item.accentColor
+            accentColor: item.accentColor,
+            cardHeightPx: item.cardHeightPx,
+            cardPadding: item.cardPadding,
           };
           itemStylesMap[key] = styleData;
           if (item.courseCode.trim()) {
@@ -520,7 +525,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           footerLeftBold, footerLeftItalic, footerLeftAlign, footerLeftFontSize,
           footerRightBold, footerRightItalic, footerRightAlign, footerRightFontSize,
           bgColor, bgGradient, cardBg, cardTextColor, cardBorderColor, cardBorderType,
-          cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign
+          cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign,
+          cardHeightPx, cardPadding
         };
         localStorage.setItem('exam_canva_global_styles', JSON.stringify(globalStyles));
       } catch (e) {}
@@ -574,6 +580,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [cardBorderType, setCardBorderType] = useState<'none' | 'hairline' | 'accent'>('none');
   const [cardRoundedness, setCardRoundedness] = useState('8px');
   const [cardShadow, setCardShadow] = useState('shadow-sm');
+  const [cardHeightPx, setCardHeightPx] = useState<number>(0); // 0 = Auto fit content
+  const [cardPadding, setCardPadding] = useState<string>('p-5');
   
   const [showVerticalLines, setShowVerticalLines] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
@@ -706,6 +714,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         roomsItalic: !!savedStyle.roomsItalic,
         roomsAlign: savedStyle.roomsAlign || 'left',
         roomsFontSize: savedStyle.roomsFontSize || 12,
+
+        cardHeightPx: savedStyle.cardHeightPx || 0,
+        cardPadding: savedStyle.cardPadding || '',
       };
     });
 
@@ -750,6 +761,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         if (parsed.cardBorderType) setCardBorderType(parsed.cardBorderType);
         if (parsed.cardRoundedness) setCardRoundedness(parsed.cardRoundedness);
         if (parsed.cardShadow) setCardShadow(parsed.cardShadow);
+        if (parsed.cardHeightPx !== undefined) setCardHeightPx(parsed.cardHeightPx);
+        if (parsed.cardPadding) setCardPadding(parsed.cardPadding);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
         if (parsed.headerAlign) setHeaderAlign(parsed.headerAlign);
         if (parsed.cardAlign) setCardAlign(parsed.cardAlign);
@@ -1163,7 +1176,41 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
               {/* Layout styling overrides */}
               <div className="space-y-3 pt-2 border-t border-hairline">
-                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Card Styles</label>
+                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Card Styles & Dimensions</label>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Fixed Card Height (px)</label>
+                    <CustomSelect
+                      value={cardHeightPx.toString()}
+                      onChange={(val) => setCardHeightPx(parseInt(val, 10) || 0)}
+                      size="sm"
+                      options={[
+                        { value: '0', label: 'Auto (Fit Content)' },
+                        { value: '75', label: 'Fixed 75px (Compact)' },
+                        { value: '85', label: 'Fixed 85px (Standard)' },
+                        { value: '95', label: 'Fixed 95px (Medium)' },
+                        { value: '110', label: 'Fixed 110px (Tall)' },
+                        { value: '125', label: 'Fixed 125px (Extra Tall)' },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Card Padding</label>
+                    <CustomSelect
+                      value={cardPadding}
+                      onChange={(val) => setCardPadding(val)}
+                      size="sm"
+                      options={[
+                        { value: 'p-2.5', label: 'Tight (10px)' },
+                        { value: 'p-3.5', label: 'Compact (14px)' },
+                        { value: 'p-5', label: 'Standard (20px)' },
+                        { value: 'p-6.5', label: 'Spacious (26px)' },
+                      ]}
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 mb-1 font-semibold">Corner Rounded</label>
@@ -1514,6 +1561,29 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       />
                     </div>
 
+                    {/* Card Height Override for this item */}
+                    <div className="pt-2 border-t border-hairline/60">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[9px] uppercase font-bold text-gray-500">Fixed Card Height (px)</label>
+                        <span className="text-[9px] text-gray-400 font-mono">
+                          {selectedItem.cardHeightPx ? `${selectedItem.cardHeightPx}px` : (cardHeightPx ? `Global (${cardHeightPx}px)` : 'Auto')}
+                        </span>
+                      </div>
+                      <CustomSelect
+                        value={(selectedItem.cardHeightPx || 0).toString()}
+                        onChange={(val) => updateItemField(selectedItem.id, 'cardHeightPx', parseInt(val, 10) || 0)}
+                        size="sm"
+                        options={[
+                          { value: '0', label: 'Use Global Theme / Auto' },
+                          { value: '75', label: 'Fixed 75px (Compact)' },
+                          { value: '85', label: 'Fixed 85px (Standard)' },
+                          { value: '95', label: 'Fixed 95px (Medium)' },
+                          { value: '110', label: 'Fixed 110px (Tall)' },
+                          { value: '125', label: 'Fixed 125px (Extra Tall)' },
+                        ]}
+                      />
+                    </div>
+
                     {/* Color presets quick picker */}
                     <div>
                       <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">Color Accent Presets</label>
@@ -1815,6 +1885,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                     borderStyle = `border-2`;
                   }
 
+                  const effectiveCardHeight = item.cardHeightPx !== undefined && item.cardHeightPx > 0
+                    ? item.cardHeightPx
+                    : cardHeightPx > 0
+                      ? cardHeightPx
+                      : null;
+
+                  const effectivePadding = item.cardPadding || cardPadding || 'p-5';
+
                   return (
                     <div 
                       key={item.id}
@@ -1824,16 +1902,21 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                         borderRadius: cardRoundedness,
                         color: cardTextColor,
                         borderColor: cardBorderType === 'accent' ? item.accentColor : cardBorderColor,
-                        textAlign: cardAlign
+                        textAlign: cardAlign,
+                        height: effectiveCardHeight ? `${effectiveCardHeight}px` : undefined,
+                        maxHeight: effectiveCardHeight ? `${effectiveCardHeight}px` : undefined,
+                        minHeight: effectiveCardHeight ? `${effectiveCardHeight}px` : undefined,
                       }}
-                      className={`relative p-5 flex items-stretch gap-2 group cursor-pointer transition-all duration-300 ${cardShadow} ${borderStyle} ${
+                      className={`relative ${effectivePadding} flex items-stretch gap-2 group cursor-pointer transition-all duration-300 ${cardShadow} ${borderStyle} ${
+                        effectiveCardHeight ? 'overflow-hidden' : ''
+                      } ${
                         isSelected 
                           ? 'ring-2 ring-primary ring-offset-2 scale-[1.01]' 
                           : 'hover:scale-[1.005] hover:shadow-md'
                       }`}
                     >
                       {/* Left Column: Date & Time + Accent color pill */}
-                      <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60">
+                      <div className="w-[145px] pr-3 flex flex-col justify-center select-text border-r border-[#dfdfdf]/60 overflow-hidden">
                         <div 
                           style={{
                             fontWeight: item.examDateBold !== false ? 'bold' : 'normal',
@@ -1874,7 +1957,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                       </div>
 
                       {/* Middle Column: Course Code & Subject Name */}
-                      <div className="flex-1 px-4 flex flex-col justify-center select-text">
+                      <div className="flex-1 px-4 flex flex-col justify-center select-text overflow-hidden">
                         <div 
                           style={{
                             fontWeight: item.courseCodeBold !== false ? '800' : 'normal',
@@ -1920,7 +2003,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                           textAlign: item.roomsAlign || 'left',
                           fontSize: `${item.roomsFontSize || 12}px`
                         }}
-                        className="w-[115px] pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95"
+                        className="w-[115px] pl-3 flex flex-col justify-center font-mono leading-normal select-text whitespace-pre-line opacity-95 overflow-hidden"
                       >
                         <InlineInput 
                           value={item.rooms} 
