@@ -554,22 +554,27 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             courseCodeItalic: item.courseCodeItalic,
             courseCodeAlign: item.courseCodeAlign,
             courseCodeFontSize: item.courseCodeFontSize,
+            courseCodeFontWeight: item.courseCodeFontWeight,
             examDateBold: item.examDateBold,
             examDateItalic: item.examDateItalic,
             examDateAlign: item.examDateAlign,
             examDateFontSize: item.examDateFontSize,
+            examDateFontWeight: item.examDateFontWeight,
             courseNameBold: item.courseNameBold,
             courseNameItalic: item.courseNameItalic,
             courseNameAlign: item.courseNameAlign,
             courseNameFontSize: item.courseNameFontSize,
+            courseNameFontWeight: item.courseNameFontWeight,
             examTimeBold: item.examTimeBold,
             examTimeItalic: item.examTimeItalic,
             examTimeAlign: item.examTimeAlign,
             examTimeFontSize: item.examTimeFontSize,
+            examTimeFontWeight: item.examTimeFontWeight,
             roomsBold: item.roomsBold,
             roomsItalic: item.roomsItalic,
             roomsAlign: item.roomsAlign,
             roomsFontSize: item.roomsFontSize,
+            roomsFontWeight: item.roomsFontWeight,
             accentColor: item.accentColor,
             cardHeightPx: item.cardHeightPx,
             cardPadding: item.cardPadding,
@@ -590,12 +595,12 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
         const globalStyles = {
           headerTitle, headerSubtitle, footerLeft, footerRight, routineNotes, showInstructions,
-          headerTitleBold, headerTitleItalic, headerTitleAlign, headerTitleFontSize,
-          headerSubtitleBold, headerSubtitleItalic, headerSubtitleAlign, headerSubtitleFontSize,
-          footerLeftBold, footerLeftItalic, footerLeftAlign, footerLeftFontSize,
-          footerRightBold, footerRightItalic, footerRightAlign, footerRightFontSize,
+          headerTitleBold, headerTitleItalic, headerTitleAlign, headerTitleFontSize, headerTitleFontWeight,
+          headerSubtitleBold, headerSubtitleItalic, headerSubtitleAlign, headerSubtitleFontSize, headerSubtitleFontWeight,
+          footerLeftBold, footerLeftItalic, footerLeftAlign, footerLeftFontSize, footerLeftFontWeight,
+          footerRightBold, footerRightItalic, footerRightAlign, footerRightFontSize, footerRightFontWeight,
           bgColor, bgGradient, cardBg, cardTextColor, cardBorderColor, cardBorderType,
-          cardRoundedness, cardShadow, selectedFont, headerAlign, cardAlign,
+          cardRoundedness, cardShadow, selectedFont, globalFontWeight, headerAlign, cardAlign,
           cardHeightPx, cardPadding,
           leftColWidth, rightColWidth, showLeftDivider, showRightDivider,
           vLineColor, vLineStyle, vLineOpacity, vLineHeight
@@ -929,26 +934,31 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         courseCodeItalic: !!savedStyle.courseCodeItalic,
         courseCodeAlign: savedStyle.courseCodeAlign || 'left',
         courseCodeFontSize: savedStyle.courseCodeFontSize || 14,
+        courseCodeFontWeight: savedStyle.courseCodeFontWeight || 700,
 
         examDateBold: savedStyle.examDateBold !== undefined ? savedStyle.examDateBold : true,
         examDateItalic: !!savedStyle.examDateItalic,
         examDateAlign: savedStyle.examDateAlign || 'left',
         examDateFontSize: savedStyle.examDateFontSize || 14,
+        examDateFontWeight: savedStyle.examDateFontWeight || 700,
 
         courseNameBold: savedStyle.courseNameBold !== undefined ? savedStyle.courseNameBold : true,
         courseNameItalic: !!savedStyle.courseNameItalic,
         courseNameAlign: savedStyle.courseNameAlign || 'left',
         courseNameFontSize: savedStyle.courseNameFontSize || 10,
+        courseNameFontWeight: savedStyle.courseNameFontWeight || 500,
 
         examTimeBold: savedStyle.examTimeBold !== undefined ? savedStyle.examTimeBold : true,
         examTimeItalic: !!savedStyle.examTimeItalic,
         examTimeAlign: savedStyle.examTimeAlign || 'left',
         examTimeFontSize: savedStyle.examTimeFontSize || 12,
+        examTimeFontWeight: savedStyle.examTimeFontWeight || 500,
 
         roomsBold: savedStyle.roomsBold !== undefined ? savedStyle.roomsBold : true,
         roomsItalic: !!savedStyle.roomsItalic,
         roomsAlign: savedStyle.roomsAlign || 'left',
         roomsFontSize: savedStyle.roomsFontSize || 12,
+        roomsFontWeight: savedStyle.roomsFontWeight || 600,
 
         cardHeightPx: savedStyle.cardHeightPx || 0,
         cardPadding: savedStyle.cardPadding || '',
@@ -979,21 +989,25 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         if (parsed.headerTitleItalic !== undefined) setHeaderTitleItalic(parsed.headerTitleItalic);
         if (parsed.headerTitleAlign) setHeaderTitleAlign(parsed.headerTitleAlign);
         if (parsed.headerTitleFontSize) setHeaderTitleFontSize(parsed.headerTitleFontSize);
+        if (parsed.headerTitleFontWeight !== undefined) setHeaderTitleFontWeight(parsed.headerTitleFontWeight);
 
         if (parsed.headerSubtitleBold !== undefined) setHeaderSubtitleBold(parsed.headerSubtitleBold);
         if (parsed.headerSubtitleItalic !== undefined) setHeaderSubtitleItalic(parsed.headerSubtitleItalic);
         if (parsed.headerSubtitleAlign) setHeaderSubtitleAlign(parsed.headerSubtitleAlign);
         if (parsed.headerSubtitleFontSize) setHeaderSubtitleFontSize(parsed.headerSubtitleFontSize);
+        if (parsed.headerSubtitleFontWeight !== undefined) setHeaderSubtitleFontWeight(parsed.headerSubtitleFontWeight);
 
         if (parsed.footerLeftBold !== undefined) setFooterLeftBold(parsed.footerLeftBold);
         if (parsed.footerLeftItalic !== undefined) setFooterLeftItalic(parsed.footerLeftItalic);
         if (parsed.footerLeftAlign) setFooterLeftAlign(parsed.footerLeftAlign);
         if (parsed.footerLeftFontSize) setFooterLeftFontSize(parsed.footerLeftFontSize);
+        if (parsed.footerLeftFontWeight !== undefined) setFooterLeftFontWeight(parsed.footerLeftFontWeight);
 
         if (parsed.footerRightBold !== undefined) setFooterRightBold(parsed.footerRightBold);
         if (parsed.footerRightItalic !== undefined) setFooterRightItalic(parsed.footerRightItalic);
         if (parsed.footerRightAlign) setFooterRightAlign(parsed.footerRightAlign);
         if (parsed.footerRightFontSize) setFooterRightFontSize(parsed.footerRightFontSize);
+        if (parsed.footerRightFontWeight !== undefined) setFooterRightFontWeight(parsed.footerRightFontWeight);
 
         if (parsed.bgColor) setBgColor(parsed.bgColor);
         if (parsed.bgGradient !== undefined) setBgGradient(parsed.bgGradient);
@@ -1014,6 +1028,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         if (parsed.vLineOpacity !== undefined) setVLineOpacity(parsed.vLineOpacity);
         if (parsed.vLineHeight) setVLineHeight(parsed.vLineHeight);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
+        if (parsed.globalFontWeight !== undefined) setGlobalFontWeight(parsed.globalFontWeight);
         if (parsed.headerAlign) setHeaderAlign(parsed.headerAlign);
         if (parsed.cardAlign) setCardAlign(parsed.cardAlign);
       } catch (e) {}

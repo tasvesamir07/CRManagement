@@ -526,6 +526,72 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [newSlotStart, setNewSlotStart] = useState('08:30');
   const [newSlotEnd, setNewSlotEnd] = useState('10:00');
 
+  // Load saved style preferences on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('class_canva_custom_style');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.selectedFont) setSelectedFont(data.selectedFont);
+        if (data.globalFontWeight !== undefined) setGlobalFontWeight(data.globalFontWeight);
+
+        if (data.semesterTitleFontWeight !== undefined) setSemesterTitleFontWeight(data.semesterTitleFontWeight);
+        if (data.semesterTitleFontSize !== undefined) setSemesterTitleFontSize(data.semesterTitleFontSize);
+        if (data.semesterTitleAlign !== undefined) setSemesterTitleAlign(data.semesterTitleAlign);
+        if (data.semesterTitleBold !== undefined) setSemesterTitleBold(data.semesterTitleBold);
+        if (data.semesterTitleItalic !== undefined) setSemesterTitleItalic(data.semesterTitleItalic);
+
+        if (data.sectionGroupFontWeight !== undefined) setSectionGroupFontWeight(data.sectionGroupFontWeight);
+        if (data.sectionGroupFontSize !== undefined) setSectionGroupFontSize(data.sectionGroupFontSize);
+        if (data.sectionGroupAlign !== undefined) setSectionGroupAlign(data.sectionGroupAlign);
+        if (data.sectionGroupBold !== undefined) setSectionGroupBold(data.sectionGroupBold);
+        if (data.sectionGroupItalic !== undefined) setSectionGroupItalic(data.sectionGroupItalic);
+
+        if (data.batchCodeFontWeight !== undefined) setBatchCodeFontWeight(data.batchCodeFontWeight);
+        if (data.batchCodeFontSize !== undefined) setBatchCodeFontSize(data.batchCodeFontSize);
+        if (data.batchCodeAlign !== undefined) setBatchCodeAlign(data.batchCodeAlign);
+        if (data.batchCodeBold !== undefined) setBatchCodeBold(data.batchCodeBold);
+        if (data.batchCodeItalic !== undefined) setBatchCodeItalic(data.batchCodeItalic);
+
+        if (data.effectiveDateFontWeight !== undefined) setEffectiveDateFontWeight(data.effectiveDateFontWeight);
+        if (data.effectiveDateFontSize !== undefined) setEffectiveDateFontSize(data.effectiveDateFontSize);
+        if (data.effectiveDateAlign !== undefined) setEffectiveDateAlign(data.effectiveDateAlign);
+        if (data.effectiveDateBold !== undefined) setEffectiveDateBold(data.effectiveDateBold);
+        if (data.effectiveDateItalic !== undefined) setEffectiveDateItalic(data.effectiveDateItalic);
+
+        if (data.courseCodeFontWeight !== undefined) setCourseCodeFontWeight(data.courseCodeFontWeight);
+        if (data.courseCodeFontSize !== undefined) setCourseCodeFontSize(data.courseCodeFontSize);
+        if (data.teacherCodeFontWeight !== undefined) setTeacherCodeFontWeight(data.teacherCodeFontWeight);
+        if (data.teacherCodeFontSize !== undefined) setTeacherCodeFontSize(data.teacherCodeFontSize);
+        if (data.roomNumberFontWeight !== undefined) setRoomNumberFontWeight(data.roomNumberFontWeight);
+        if (data.roomNumberFontSize !== undefined) setRoomNumberFontSize(data.roomNumberFontSize);
+        if (data.dayHeaderFontWeight !== undefined) setDayHeaderFontWeight(data.dayHeaderFontWeight);
+        if (data.dayHeaderFontSize !== undefined) setDayHeaderFontSize(data.dayHeaderFontSize);
+        if (data.timeColumnFontWeight !== undefined) setTimeColumnFontWeight(data.timeColumnFontWeight);
+        if (data.timeColumnFontSize !== undefined) setTimeColumnFontSize(data.timeColumnFontSize);
+
+        if (data.canvasBg) setCanvasBg(data.canvasBg);
+        if (data.canvasGradient !== undefined) setCanvasGradient(data.canvasGradient);
+        if (data.headerBg) setHeaderBg(data.headerBg);
+        if (data.headerTextColor) setHeaderTextColor(data.headerTextColor);
+        if (data.timeColumnBg) setTimeColumnBg(data.timeColumnBg);
+        if (data.timeTextColor) setTimeTextColor(data.timeTextColor);
+        if (data.dayHeaderBg) setDayHeaderBg(data.dayHeaderBg);
+        if (data.dayHeaderTextColor) setDayHeaderTextColor(data.dayHeaderTextColor);
+        if (data.cellBg) setCellBg(data.cellBg);
+        if (data.cellTextColor) setCellTextColor(data.cellTextColor);
+        if (data.borderColor) setBorderColor(data.borderColor);
+
+        if (data.headerAlign) setHeaderAlign(data.headerAlign);
+        if (data.cellAlign) setCellAlign(data.cellAlign);
+        if (data.showInstructions !== undefined) setShowInstructions(data.showInstructions);
+        if (data.routineNotes !== undefined) setRoutineNotes(data.routineNotes);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   // Dynamic Font Loader
   useEffect(() => {
     const fontObj = FONTS.find(f => f.family === selectedFont);
