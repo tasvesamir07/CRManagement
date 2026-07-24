@@ -257,12 +257,17 @@ const AnnouncementForm: React.FC = () => {
                             </div>
                             <div className="space-y-3">
                               {notice.sections.map((sec: any, idx: number) => (
-                                <div key={idx} className="p-3 bg-canvas-soft/40 border border-hairline/60 rounded-md relative space-y-3">
-                                  {notice.sections.length > 1 && (
-                                    <button type="button" onClick={() => removeSectionField(nIdx, idx)} className="absolute top-2 right-2 p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent" title="Remove section">
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                <div key={idx} className="p-3 bg-canvas-soft/40 border border-hairline/60 rounded-md space-y-3">
+                                  <div className="flex items-center justify-between pb-1.5 border-b border-hairline/40">
+                                    <span className="text-[11px] font-bold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5">
+                                      Section {sec.name ? `(${sec.name})` : `#${idx + 1}`}
+                                    </span>
+                                    {notice.sections.length > 1 && (
+                                      <button type="button" onClick={() => removeSectionField(nIdx, idx)} className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer border-none bg-transparent" title="Remove section">
+                                        <X className="w-3.5 h-3.5" /> Remove
+                                      </button>
+                                    )}
+                                  </div>
                                   
                                   {/* Row 1: Section & Timing */}
                                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
