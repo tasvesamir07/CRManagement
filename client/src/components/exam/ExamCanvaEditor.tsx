@@ -606,9 +606,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           vLineColor, vLineStyle, vLineOpacity, vLineHeight
         };
         localStorage.setItem('exam_canva_global_styles', JSON.stringify(globalStyles));
+
+        await examRoutinesAPI.saveSettings({ itemStylesMap, globalStyles });
       } catch (e) {}
       
-      toast.success('Successfully saved all routine data to the database!');
+      toast.success('Successfully saved all routine data and design layout to database!');
       if (onRefresh) {
         await onRefresh();
       }
@@ -894,93 +896,105 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     return timeStr;
   };
 
-  // Initialize Canvas items from prop routines and saved item formatting
+  // Initialize Canvas items from prop routines and saved item formatting from DB (with localStorage fallback)
   useEffect(() => {
-    let savedItemStyles: Record<string, any> = {};
-    try {
-      const savedStr = localStorage.getItem('exam_canva_item_styles');
-      if (savedStr) {
-        savedItemStyles = JSON.parse(savedStr);
-      }
-    } catch {}
+    const initExamStyles = async () => {
+      let savedItemStyles: Record<string, any> = {};
+      let savedGlobal: any = null;
 
-    const formattedItems = routines.map((r: any, index: number) => {
-      const rooms = r.room_number 
-        ? r.room_number.split(',').map((s: string) => s.trim()).join('\n') 
-        : '';
-      
-      const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length].value;
-
-      const matchedCourse = courses.find((c: any) => c.id === r.course_id);
-      const code = r.c_id 
-        || r.course_code 
-        || (typeof r.course_id === 'string' ? r.course_id : '') 
-        || matchedCourse?.course_id 
-        || '';
-
-      const rIdKey = `routine-${r.id}`;
-      const savedStyle = savedItemStyles[rIdKey] || savedItemStyles[code] || savedItemStyles[`index-${index}`] || {};
-
-      return {
-        id: rIdKey,
-        courseCode: code,
-        courseName: r.course_name || matchedCourse?.course_name || '',
-        examDate: formatDateToShort(r.exam_date),
-        examTime: formatTimeTo12Hour(r.start_time),
-        rooms: rooms,
-        accentColor: savedStyle.accentColor || accentColor,
-
-        courseCodeBold: savedStyle.courseCodeBold !== undefined ? savedStyle.courseCodeBold : true,
-        courseCodeItalic: !!savedStyle.courseCodeItalic,
-        courseCodeAlign: savedStyle.courseCodeAlign || 'left',
-        courseCodeFontSize: savedStyle.courseCodeFontSize || 14,
-        courseCodeFontWeight: savedStyle.courseCodeFontWeight || 700,
-
-        examDateBold: savedStyle.examDateBold !== undefined ? savedStyle.examDateBold : true,
-        examDateItalic: !!savedStyle.examDateItalic,
-        examDateAlign: savedStyle.examDateAlign || 'left',
-        examDateFontSize: savedStyle.examDateFontSize || 14,
-        examDateFontWeight: savedStyle.examDateFontWeight || 700,
-
-        courseNameBold: savedStyle.courseNameBold !== undefined ? savedStyle.courseNameBold : true,
-        courseNameItalic: !!savedStyle.courseNameItalic,
-        courseNameAlign: savedStyle.courseNameAlign || 'left',
-        courseNameFontSize: savedStyle.courseNameFontSize || 10,
-        courseNameFontWeight: savedStyle.courseNameFontWeight || 500,
-
-        examTimeBold: savedStyle.examTimeBold !== undefined ? savedStyle.examTimeBold : true,
-        examTimeItalic: !!savedStyle.examTimeItalic,
-        examTimeAlign: savedStyle.examTimeAlign || 'left',
-        examTimeFontSize: savedStyle.examTimeFontSize || 12,
-        examTimeFontWeight: savedStyle.examTimeFontWeight || 500,
-
-        roomsBold: savedStyle.roomsBold !== undefined ? savedStyle.roomsBold : true,
-        roomsItalic: !!savedStyle.roomsItalic,
-        roomsAlign: savedStyle.roomsAlign || 'left',
-        roomsFontSize: savedStyle.roomsFontSize || 12,
-        roomsFontWeight: savedStyle.roomsFontWeight || 600,
-
-        cardHeightPx: savedStyle.cardHeightPx || 0,
-        cardPadding: savedStyle.cardPadding || '',
-        leftColWidth: savedStyle.leftColWidth || 145,
-        rightColWidth: savedStyle.rightColWidth || 115,
-        showLeftDivider: savedStyle.showLeftDivider !== undefined ? savedStyle.showLeftDivider : true,
-        showRightDivider: savedStyle.showRightDivider !== undefined ? savedStyle.showRightDivider : true,
-        vLineColor: savedStyle.vLineColor || '#dfdfdf',
-        vLineStyle: savedStyle.vLineStyle || 'solid',
-        vLineOpacity: savedStyle.vLineOpacity !== undefined ? savedStyle.vLineOpacity : 0.6,
-      };
-    });
-
-    setItems(formattedItems);
-
-    const savedGlobal = localStorage.getItem('exam_canva_global_styles');
-    if (savedGlobal) {
       try {
-        const parsed = JSON.parse(savedGlobal);
-        if (parsed.headerTitle) setHeaderTitle(parsed.headerTitle);
-        if (parsed.headerSubtitle) setHeaderSubtitle(parsed.headerSubtitle);
-        if (parsed.footerLeft) setFooterLeft(parsed.footerLeft);
+        const dbSettings = await examRoutinesAPI.getSettings();
+        if (dbSettings) {
+          if (dbSettings.itemStylesMap) savedItemStyles = dbSettings.itemStylesMap;
+          if (dbSettings.globalStyles) savedGlobal = dbSettings.globalStyles;
+        }
+      } catch (e) {}
+
+      if (!savedGlobal) {
+        try {
+          const savedStr = localStorage.getItem('exam_canva_item_styles');
+          if (savedStr) savedItemStyles = JSON.parse(savedStr);
+          const globalStr = localStorage.getItem('exam_canva_global_styles');
+          if (globalStr) savedGlobal = JSON.parse(globalStr);
+        } catch (e) {}
+      }
+
+      const formattedItems = routines.map((r: any, index: number) => {
+        const rooms = r.room_number 
+          ? r.room_number.split(',').map((s: string) => s.trim()).join('\n') 
+          : '';
+        
+        const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length].value;
+
+        const matchedCourse = courses.find((c: any) => c.id === r.course_id);
+        const code = r.c_id 
+          || r.course_code 
+          || (typeof r.course_id === 'string' ? r.course_id : '') 
+          || matchedCourse?.course_id 
+          || '';
+
+        const rIdKey = `routine-${r.id}`;
+        const savedStyle = savedItemStyles[rIdKey] || savedItemStyles[code] || savedItemStyles[`index-${index}`] || {};
+
+        return {
+          id: rIdKey,
+          courseCode: code,
+          courseName: r.course_name || matchedCourse?.course_name || '',
+          examDate: formatDateToShort(r.exam_date),
+          examTime: formatTimeTo12Hour(r.start_time),
+          rooms: rooms,
+          accentColor: savedStyle.accentColor || accentColor,
+
+          courseCodeBold: savedStyle.courseCodeBold !== undefined ? savedStyle.courseCodeBold : true,
+          courseCodeItalic: !!savedStyle.courseCodeItalic,
+          courseCodeAlign: savedStyle.courseCodeAlign || 'left',
+          courseCodeFontSize: savedStyle.courseCodeFontSize || 14,
+          courseCodeFontWeight: savedStyle.courseCodeFontWeight || 700,
+
+          examDateBold: savedStyle.examDateBold !== undefined ? savedStyle.examDateBold : true,
+          examDateItalic: !!savedStyle.examDateItalic,
+          examDateAlign: savedStyle.examDateAlign || 'left',
+          examDateFontSize: savedStyle.examDateFontSize || 14,
+          examDateFontWeight: savedStyle.examDateFontWeight || 700,
+
+          courseNameBold: savedStyle.courseNameBold !== undefined ? savedStyle.courseNameBold : true,
+          courseNameItalic: !!savedStyle.courseNameItalic,
+          courseNameAlign: savedStyle.courseNameAlign || 'left',
+          courseNameFontSize: savedStyle.courseNameFontSize || 10,
+          courseNameFontWeight: savedStyle.courseNameFontWeight || 500,
+
+          examTimeBold: savedStyle.examTimeBold !== undefined ? savedStyle.examTimeBold : true,
+          examTimeItalic: !!savedStyle.examTimeItalic,
+          examTimeAlign: savedStyle.examTimeAlign || 'left',
+          examTimeFontSize: savedStyle.examTimeFontSize || 12,
+          examTimeFontWeight: savedStyle.examTimeFontWeight || 500,
+
+          roomsBold: savedStyle.roomsBold !== undefined ? savedStyle.roomsBold : true,
+          roomsItalic: !!savedStyle.roomsItalic,
+          roomsAlign: savedStyle.roomsAlign || 'left',
+          roomsFontSize: savedStyle.roomsFontSize || 12,
+          roomsFontWeight: savedStyle.roomsFontWeight || 600,
+
+          cardHeightPx: savedStyle.cardHeightPx || 0,
+          cardPadding: savedStyle.cardPadding || '',
+          leftColWidth: savedStyle.leftColWidth || 145,
+          rightColWidth: savedStyle.rightColWidth || 115,
+          showLeftDivider: savedStyle.showLeftDivider !== undefined ? savedStyle.showLeftDivider : true,
+          showRightDivider: savedStyle.showRightDivider !== undefined ? savedStyle.showRightDivider : true,
+          vLineColor: savedStyle.vLineColor || '#dfdfdf',
+          vLineStyle: savedStyle.vLineStyle || 'solid',
+          vLineOpacity: savedStyle.vLineOpacity !== undefined ? savedStyle.vLineOpacity : 0.6,
+        };
+      });
+
+      setItems(formattedItems);
+
+      if (savedGlobal) {
+        try {
+          const parsed = typeof savedGlobal === 'string' ? JSON.parse(savedGlobal) : savedGlobal;
+          if (parsed.headerTitle) setHeaderTitle(parsed.headerTitle);
+          if (parsed.headerSubtitle) setHeaderSubtitle(parsed.headerSubtitle);
+          if (parsed.footerLeft) setFooterLeft(parsed.footerLeft);
         if (parsed.footerRight) setFooterRight(parsed.footerRight);
         if (parsed.routineNotes) setRoutineNotes(parsed.routineNotes);
         if (parsed.showInstructions !== undefined) setShowInstructions(parsed.showInstructions);
@@ -1041,7 +1055,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         setFooterLeft(`SECTION - ${sections.join(' & ')}`);
       }
     }
-  }, [routines, courses]);
+  };
+  initExamStyles();
+}, [routines, courses]);
 
   // Handle re-ordering items
   const moveItem = (index: number, direction: 'up' | 'down') => {

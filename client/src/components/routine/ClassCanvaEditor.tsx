@@ -489,7 +489,9 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const handleSaveRoutineData = async () => {
     setSavingData(true);
     try {
-      localStorage.setItem('class_canva_custom_style', JSON.stringify({
+      const stylePayload = {
+        semesterTitle, sectionGroup, batchCode, effectiveDate,
+        customDays, customSlots,
         selectedFont,
         globalFontWeight,
         semesterTitleFontWeight, semesterTitleFontSize, semesterTitleAlign, semesterTitleBold, semesterTitleItalic,
@@ -502,11 +504,13 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         dayHeaderFontWeight, dayHeaderFontSize,
         timeColumnFontWeight, timeColumnFontSize,
         canvasBg, canvasGradient, headerBg, headerTextColor, timeColumnBg, timeTextColor, dayHeaderBg, dayHeaderTextColor, cellBg, cellTextColor, borderColor,
-        headerAlign, cellAlign
-      }));
-      toast.success('Class routine formatting & data saved!');
+        headerAlign, cellAlign, showInstructions, routineNotes
+      };
+      localStorage.setItem('class_canva_custom_style', JSON.stringify(stylePayload));
+      await routinesAPI.saveSettings(stylePayload);
+      toast.success('Class routine formatting & header data saved!');
     } catch (e: any) {
-      toast.error('Failed to save settings');
+      toast.error('Failed to save settings: ' + (e.response?.data?.error || e.message));
     } finally {
       setSavingData(false);
     }
@@ -526,12 +530,25 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [newSlotStart, setNewSlotStart] = useState('08:30');
   const [newSlotEnd, setNewSlotEnd] = useState('10:00');
 
-  // Load saved style preferences on mount
+  // Load saved style preferences on mount from DB (with localStorage fallback)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('class_canva_custom_style');
-      if (saved) {
-        const data = JSON.parse(saved);
+    const loadStyles = async () => {
+      let data: any = null;
+      try {
+        data = await routinesAPI.getSettings();
+      } catch (e) {}
+      if (!data) {
+        try {
+          const saved = localStorage.getItem('class_canva_custom_style');
+          if (saved) data = JSON.parse(saved);
+        } catch (e) {}
+      }
+      if (data) {
+        if (data.semesterTitle) setSemesterTitle(data.semesterTitle);
+        if (data.sectionGroup) setSectionGroup(data.sectionGroup);
+        if (data.batchCode) setBatchCode(data.batchCode);
+        if (data.effectiveDate) setEffectiveDate(data.effectiveDate);
+
         if (data.selectedFont) setSelectedFont(data.selectedFont);
         if (data.globalFontWeight !== undefined) setGlobalFontWeight(data.globalFontWeight);
 
@@ -587,9 +604,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         if (data.showInstructions !== undefined) setShowInstructions(data.showInstructions);
         if (data.routineNotes !== undefined) setRoutineNotes(data.routineNotes);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+    loadStyles();
   }, []);
 
   // Dynamic Font Loader

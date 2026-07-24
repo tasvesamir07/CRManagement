@@ -20,5 +20,13 @@ export const examRoutinesAPI = {
   delete: async (id: number) => {
     const res = await api.delete(`/exam-routines/${id}`);
     return res.data;
+  },
+  getSettings: async () => {
+    const res = await api.get('/exam-routines/settings');
+    return res.data;
+  },
+  saveSettings: async (settings: any) => {
+    const res = await api.post('/exam-routines/settings', { settings });
+    return res.data;
   }
 };

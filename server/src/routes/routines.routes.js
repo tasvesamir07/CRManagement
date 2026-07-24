@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const routineService = require('../services/routine.service');
 const authMiddleware = require('../middleware/auth.middleware');
+const db = require('../config/database');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
 
 /**
@@ -163,6 +164,45 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
     try {
         await routineService.deleteRoutine(req.params.id);
         return res.json({ message: 'Routine entry deleted successfully' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /routines/settings:
+ *   get:
+ *     tags: [Routines]
+ *     summary: Get persisted routine layout & design settings
+ *   post:
+ *     tags: [Routines]
+ *     summary: Save routine layout & design settings
+ */
+router.get('/settings', authMiddleware, async (req, res) => {
+    try {
+        const result = await db.query("SELECT value FROM system_settings WHERE key = $1", ['class_routine_settings']);
+        if (result.rows && result.rows.length > 0) {
+            return res.json(JSON.parse(result.rows[0].value));
+        }
+        return res.json(null);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/settings', authMiddleware, async (req, res) => {
+    try {
+        const { settings } = req.body;
+        const serialized = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
+        await db.query(
+            `INSERT INTO system_settings (key, value)
+             VALUES ($1, $2)
+             ON CONFLICT (key)
+             DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            ['class_routine_settings', serialized]
+        );
+        return res.json({ success: true, settings: typeof settings === 'string' ? JSON.parse(settings) : settings });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

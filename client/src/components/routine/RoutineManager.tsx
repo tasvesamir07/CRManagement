@@ -52,12 +52,22 @@ const RoutineManager = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [routinesData, coursesData] = await Promise.all([
+      const [routinesData, coursesData, settingsData] = await Promise.all([
         routinesAPI.list(),
-        coursesAPI.list()
+        coursesAPI.list(),
+        routinesAPI.getSettings().catch(() => null)
       ]);
       setRoutines(Array.isArray(routinesData) ? routinesData : []);
       setCourses(Array.isArray(coursesData) ? coursesData : []);
+
+      if (settingsData) {
+        if (settingsData.semesterTitle) setSemesterTitle(settingsData.semesterTitle);
+        if (settingsData.sectionGroup) setSectionGroup(settingsData.sectionGroup);
+        if (settingsData.batchCode) setBatchCode(settingsData.batchCode);
+        if (settingsData.effectiveDate) setEffectiveDate(settingsData.effectiveDate);
+        if (settingsData.customDays) setCustomDays(settingsData.customDays);
+        if (settingsData.customSlots) setCustomSlots(settingsData.customSlots);
+      }
     } catch (e) {
       console.error('Failed to fetch class routines:', e);
     } finally {
@@ -69,11 +79,23 @@ const RoutineManager = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleSaveLayout = (days: string[], slots: Slot[]) => {
+  const handleSaveLayout = async (days: string[], slots: Slot[]) => {
     setCustomDays(days);
     setCustomSlots(slots);
     localStorage.setItem('routine_custom_days', JSON.stringify(days));
     localStorage.setItem('routine_custom_slots', JSON.stringify(slots));
+    try {
+      await routinesAPI.saveSettings({
+        semesterTitle,
+        sectionGroup,
+        batchCode,
+        effectiveDate,
+        customDays: days,
+        customSlots: slots
+      });
+    } catch (e) {
+      console.error('Failed to persist layout to DB', e);
+    }
   };
 
   if (loading) {

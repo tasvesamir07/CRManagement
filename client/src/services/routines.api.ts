@@ -16,5 +16,13 @@ export const routinesAPI = {
   delete: async (id: number | string) => {
     const res = await api.delete(`/routines/${id}`);
     return res.data;
+  },
+  getSettings: async () => {
+    const res = await api.get('/routines/settings');
+    return res.data;
+  },
+  saveSettings: async (settings: any) => {
+    const res = await api.post('/routines/settings', { settings });
+    return res.data;
   }
 };
