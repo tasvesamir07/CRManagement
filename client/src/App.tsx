@@ -9,6 +9,7 @@ import DashboardLayout from './components/dashboard/DashboardLayout';
 const Login = lazy(() => import('./components/auth/Login'));
 const Register = lazy(() => import('./components/auth/Register'));
 const ForgotPassword = lazy(() => import('./components/auth/ForgotPassword'));
+const LandingPage = lazy(() => import('./components/landing/LandingPage'));
 const MainDashboard = lazy(() => import('./components/dashboard/MainDashboard'));
 const AnnouncementForm = lazy(() => import('./components/announcement/AnnouncementForm'));
 const AnnouncementDetail = lazy(() => import('./components/announcement/AnnouncementDetail'));
@@ -92,11 +93,17 @@ function App() {
       });
     }, 1500);
 
-    fetch(healthUrl, { method: 'GET', mode: 'no-cors' })
-      .then(() => {
+    fetch(healthUrl)
+      .then(res => {
         clearTimeout(showWakeupToastTimer);
-        if (toastId) {
-          toast.success('Server is online and ready!', { id: toastId, duration: 3000 });
+        if (res.ok) {
+          if (toastId) {
+            toast.success('Server is online and ready!', { id: toastId, duration: 3000 });
+          }
+        } else {
+          if (toastId) {
+            toast.error('Server is still loading. Please refresh.', { id: toastId });
+          }
         }
       })
       .catch(() => {
@@ -140,27 +147,26 @@ function App() {
                 </PublicRoute>
               } />
               <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
-              <Route path="/" element={
+              <Route path="/" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+              <Route element={
                 <ProtectedRoute>
                   <ErrorBoundary><DashboardLayout /></ErrorBoundary>
                 </ProtectedRoute>
               }>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<ErrorBoundary><MainDashboard /></ErrorBoundary>} />
-                <Route path="announcement/new" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementForm /></ErrorBoundary></RoleRoute>} />
-                <Route path="announcement/edit/:id" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementForm /></ErrorBoundary></RoleRoute>} />
-                <Route path="announcement/:id" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementDetail /></ErrorBoundary></RoleRoute>} />
-                <Route path="courses" element={<RoleRoute allowedRole="cr"><ErrorBoundary><CourseManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><RoutineManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="platforms" element={<RoleRoute allowedRole="cr"><ErrorBoundary><PlatformManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="files" element={<RoleRoute allowedRole="cr"><ErrorBoundary><FilesManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="students" element={<RoleRoute allowedRole="cr"><ErrorBoundary><StudentManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="attendance" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AttendanceManager /></ErrorBoundary></RoleRoute>} />
-                <Route path="exam-routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><ExamRoutineManager /></ErrorBoundary></RoleRoute>} />
-
-                <Route path="logs" element={<ErrorBoundary><LogsManager /></ErrorBoundary>} />
-                <Route path="profile" element={<ErrorBoundary><Profile /></ErrorBoundary>} />
-                <Route path="admin/users" element={<RoleRoute allowedRole="admin"><ErrorBoundary><AdminUsers /></ErrorBoundary></RoleRoute>} />
+                <Route path="/dashboard" element={<ErrorBoundary><MainDashboard /></ErrorBoundary>} />
+                <Route path="/announcement/new" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementForm /></ErrorBoundary></RoleRoute>} />
+                <Route path="/announcement/edit/:id" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementForm /></ErrorBoundary></RoleRoute>} />
+                <Route path="/announcement/:id" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AnnouncementDetail /></ErrorBoundary></RoleRoute>} />
+                <Route path="/courses" element={<RoleRoute allowedRole="cr"><ErrorBoundary><CourseManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><RoutineManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/platforms" element={<RoleRoute allowedRole="cr"><ErrorBoundary><PlatformManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/files" element={<RoleRoute allowedRole="cr"><ErrorBoundary><FilesManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/students" element={<RoleRoute allowedRole="cr"><ErrorBoundary><StudentManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/attendance" element={<RoleRoute allowedRole="cr"><ErrorBoundary><AttendanceManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/exam-routines" element={<RoleRoute allowedRole="cr"><ErrorBoundary><ExamRoutineManager /></ErrorBoundary></RoleRoute>} />
+                <Route path="/logs" element={<ErrorBoundary><LogsManager /></ErrorBoundary>} />
+                <Route path="/profile" element={<ErrorBoundary><Profile /></ErrorBoundary>} />
+                <Route path="/admin/users" element={<RoleRoute allowedRole="admin"><ErrorBoundary><AdminUsers /></ErrorBoundary></RoleRoute>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
