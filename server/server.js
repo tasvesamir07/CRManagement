@@ -103,18 +103,39 @@ app.use(helmet({
     // Prevent MIME-type sniffing
     nosniff: true,
 }));
-const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
-if (corsOrigin === '*') {
+const rawCorsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
+if (rawCorsOrigin === '*') {
     console.error('FATAL: CORS_ORIGIN cannot be wildcard (*). Specify explicit origins (comma-separated).');
     process.exit(1);
 }
-const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
+
+const allowedOriginsSet = new Set();
+rawCorsOrigin.split(',').forEach(s => {
+    const cleaned = s.trim().replace(/\/+$/, '');
+    if (cleaned) {
+        allowedOriginsSet.add(cleaned);
+        try {
+            const parsed = new URL(cleaned);
+            if (parsed.hostname.startsWith('www.')) {
+                const altHost = parsed.hostname.replace(/^www\./, '');
+                allowedOriginsSet.add(`${parsed.protocol}//${altHost}${parsed.port ? ':' + parsed.port : ''}`);
+            } else if (!parsed.hostname.includes('localhost') && !parsed.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+                allowedOriginsSet.add(`${parsed.protocol}//www.${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}`);
+            }
+        } catch (e) {
+            // Ignore invalid URL parse
+        }
+    }
+});
+
 app.use(cors({
     origin: (origin, cb) => {
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
+        if (!origin) return cb(null, true);
+        const cleanOrigin = origin.trim().replace(/\/+$/, '');
+        if (allowedOriginsSet.has(cleanOrigin) || Array.from(allowedOriginsSet).some(o => cleanOrigin.startsWith(o))) {
             cb(null, true);
         } else {
-            console.warn(`CORS blocked origin: ${origin}`);
+            console.warn(`CORS blocked origin: ${origin} (allowed origins: ${Array.from(allowedOriginsSet).join(', ')})`);
             cb(null, false);
         }
     },
