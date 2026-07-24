@@ -217,43 +217,51 @@ const AttendanceManager = () => {
   const unmarkedCount = records.filter(r => !r.status).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-md tracking-tight font-sans text-ink">Attendance</h1>
-          <p className="text-sm text-ink-mute mt-1.5">Mark and manage daily attendance.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              DAILY CLASS TRACKER
+            </span>
+          </div>
+          <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+            Attendance <span className="gradient-text">Console</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-mute mt-1">Mark, export, and manage daily student class attendance sheets.</p>
         </div>
       </div>
 
-      <div className="flex border-b border-hairline-cool">
+      <div className="flex border-b border-hairline/60 gap-2">
         <button
           onClick={() => setActiveTab('take')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-all cursor-pointer ${
+          className={`px-5 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
             activeTab === 'take'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-ink-mute hover:text-ink'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary'
+              : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
           }`}
         >
           Take Attendance
         </button>
         <button
           onClick={() => setActiveTab('saved')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-all cursor-pointer ${
+          className={`px-5 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
             activeTab === 'saved'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-ink-mute hover:text-ink'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary'
+              : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
           }`}
         >
-          Saved Attendance
+          Saved Attendance Sheets
         </button>
       </div>
 
       {activeTab === 'take' && (
         <>
-          <div className="bg-canvas border border-hairline rounded-lg p-4 shadow-sm">
+          <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl">
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="w-full sm:w-64">
-                <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Course *</label>
+                <label className="block text-xs font-bold text-ink-secondary uppercase tracking-wider mb-1.5">Course *</label>
                 <CustomSelect
                   value={selectedCourseId}
                   onChange={(val) => setSelectedCourseId(val ? parseInt(val) : '')}

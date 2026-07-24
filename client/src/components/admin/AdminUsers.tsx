@@ -184,42 +184,50 @@ const AdminUsers = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-md tracking-tight font-sans text-ink">User & Class Management</h1>
-          <p className="text-sm text-ink-mute mt-1.5">Manage user credentials and map course members for sharing notice updates.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              ADMINISTRATION & USER ROLES
+            </span>
+          </div>
+          <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+            User & Access <span className="gradient-text">Console</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-mute mt-1">Manage user account credentials, active roles, and course member access mappings.</p>
         </div>
         {activeTab === 'accounts' && (
           <button
             onClick={() => setShowCreate(!showCreate)}
-            className="flex items-center px-4 py-2 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold text-xs text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 transition-all cursor-pointer self-start sm:self-auto"
           >
             {showCreate ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showCreate ? 'Cancel' : 'Create User'}
+            {showCreate ? 'Close Form' : 'Create User Account'}
           </button>
         )}
       </div>
 
-      <div className="flex border-b border-hairline-cool gap-6 mb-6">
+      <div className="flex border-b border-hairline/60 gap-2 mb-6">
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`pb-3 text-sm font-semibold cursor-pointer transition-all border-b-2 ${
+          className={`px-5 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
             activeTab === 'accounts' 
-              ? 'border-primary text-primary' 
-              : 'border-transparent text-ink-mute hover:text-ink'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary' 
+              : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
           }`}
         >
           User Accounts
         </button>
         <button
           onClick={() => setActiveTab('assignments')}
-          className={`pb-3 text-sm font-semibold cursor-pointer transition-all border-b-2 ${
+          className={`px-5 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
             activeTab === 'assignments' 
-              ? 'border-primary text-primary' 
-              : 'border-transparent text-ink-mute hover:text-ink'
+              ? 'bg-primary/10 text-primary border-b-2 border-primary' 
+              : 'text-ink-mute hover:text-ink hover:bg-canvas-soft'
           }`}
         >
-          Course Assignments
+          Course Member Assignments
         </button>
       </div>
 

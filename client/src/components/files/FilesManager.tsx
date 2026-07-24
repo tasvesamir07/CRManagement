@@ -545,21 +545,29 @@ const FilesManager = () => {
   const pctOthers = (breakOthers / totalLimit) * 100;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink font-sans">Uploaded Files</h1>
-          <p className="text-xs text-ink-mute mt-1.5 font-sans">Manage uploaded assets and files used across broadcast channels.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              CLOUD STORAGE & MEDIA ASSETS
+            </span>
+          </div>
+          <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+            File <span className="gradient-text">Vault</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-mute mt-1">Manage uploaded documents, attachments, and media across broadcast channels.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
             <input
               type="text"
-              placeholder="Search files..."
+              placeholder="Search files & assets..."
               value={search}
               onChange={handleSearch}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-hairline rounded-sm bg-canvas text-ink placeholder-ink-mute/60 focus:outline-none focus:border-primary transition-colors"
+              className="glass-input block w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-ink font-medium"
             />
           </div>
           {selectedFileIds.size > 0 && (

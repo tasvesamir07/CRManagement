@@ -49,16 +49,16 @@ const OtpTimer = ({ expiresAt, onExpired }: OtpTimerProps) => {
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className={`transition-all duration-1000 ease-linear ${remaining > 120 ? 'text-primary' : remaining > 30 ? 'text-accent-yellow' : 'text-accent-tomato'}`}
+            className={`transition-all duration-1000 ease-linear ${remaining > 120 ? 'text-primary' : remaining > 30 ? 'text-amber-400' : 'text-rose-500'}`}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-sm font-mono font-medium ${remaining > 120 ? 'text-ink' : 'text-accent-tomato'}`}>
+          <span className={`text-sm font-mono font-bold ${remaining > 120 ? 'text-ink' : 'text-rose-500'}`}>
             {mins}:{secs.toString().padStart(2, '0')}
           </span>
         </div>
       </div>
-      <span className="text-xs text-ink-mute">OTP expires in</span>
+      <span className="text-xs text-ink-mute font-mono">OTP expires in</span>
     </div>
   );
 };
@@ -160,30 +160,34 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-canvas flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="w-14 h-14 rounded-sm bg-ink flex items-center justify-center">
-            <span className="text-primary font-bold text-xl">CR</span>
+    <div className="min-h-screen bg-canvas cyber-grid text-ink flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="absolute top-10 left-10 w-[450px] h-[450px] bg-primary/20 rounded-full blur-[150px] pointer-events-none animate-float-slow"></div>
+      <div className="absolute bottom-10 right-10 w-[500px] h-[500px] bg-accent-violet/20 rounded-full blur-[160px] pointer-events-none animate-float-reverse"></div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-slide-up text-center">
+        <Link to="/" className="inline-flex items-center gap-3 group mb-4">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center text-on-primary font-extrabold text-xl shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
+            CR
           </div>
-        </div>
-        <h2 className="mt-6 text-center text-2xl font-semibold text-ink">
+          <span className="text-2xl font-extrabold tracking-tight text-ink">CR Dashboard</span>
+        </Link>
+        <h2 className="text-3xl font-extrabold tracking-tight text-ink">
           {step === 'email' ? 'Forgot Password' : step === 'otp' ? 'Verify OTP' : 'Set New Password'}
         </h2>
-        <p className="mt-2 text-center text-sm text-ink-mute">
-          {step === 'email' && "Enter your email address and we'll send you an OTP."}
+        <p className="mt-2 text-sm text-ink-mute">
+          {step === 'email' && "Enter your email address and we'll send you an OTP code."}
           {step === 'otp' && `Enter the 6-digit code sent to ${email}`}
           {step === 'password' && 'Choose a new password for your account.'}
           {step === 'expired' && 'The OTP has expired.'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-canvas border border-hairline rounded-lg px-6 py-8 shadow-sm">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
+        <div className="glass-panel py-8 px-6 sm:px-10 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 backdrop-blur-2xl animate-slide-up">
           {step === 'email' ? (
-            <form className="space-y-6" onSubmit={handleSendOtp}>
+            <form className="space-y-5" onSubmit={handleSendOtp}>
               <div>
-                <label htmlFor="email" className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">
+                <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
                   Email Address
                 </label>
                 <input
@@ -192,7 +196,7 @@ const ForgotPassword = () => {
                   required
                   value={email}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-hairline rounded-sm text-sm text-ink bg-canvas placeholder-ink-mute focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="glass-input block w-full px-4 py-3 rounded-xl text-sm text-ink font-medium"
                   placeholder="you@university.edu"
                 />
               </div>
@@ -200,26 +204,26 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full flex items-center justify-center px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center py-3.5 px-4 rounded-xl text-sm font-bold text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/30 disabled:opacity-50 transition-all duration-150 cursor-pointer"
               >
                 {submitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 ) : (
-                  <Mail className="w-4 h-4 mr-2" />
+                  <Mail className="w-5 h-5 mr-2" />
                 )}
-                Send OTP
+                Send Verification OTP
               </button>
             </form>
           ) : step === 'expired' ? (
             <div className="text-center py-8 space-y-4">
-              <div className="w-14 h-14 rounded-full bg-accent-tomato/10 flex items-center justify-center mx-auto">
-                <Shield className="w-7 h-7 text-accent-tomato" />
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/15 flex items-center justify-center mx-auto text-rose-500">
+                <Shield className="w-7 h-7" />
               </div>
-              <p className="text-sm text-ink-mute">OTP has expired. Please request a new one.</p>
+              <p className="text-sm font-medium text-ink-mute">OTP has expired. Please request a new one.</p>
               <button
                 type="button"
                 onClick={handleRequestNewOtp}
-                className="px-4 py-2 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer"
+                className="px-6 py-3 bg-gradient-to-r from-primary to-accent-cyan text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/25 hover:scale-105 transition-all cursor-pointer"
               >
                 Request New OTP
               </button>
@@ -231,14 +235,14 @@ const ForgotPassword = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">OTP Code</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">OTP Code</label>
                 <input
                   ref={otpInputRef}
                   type="text"
                   required
                   value={otp}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-3 py-3 border border-hairline rounded-sm text-sm text-ink bg-canvas placeholder-ink-mute focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center tracking-[0.5em] text-xl"
+                  className="glass-input block w-full px-4 py-3.5 rounded-xl text-2xl text-ink font-mono font-bold text-center tracking-[0.5em]"
                   placeholder="000000"
                   maxLength={6}
                   inputMode="numeric"
@@ -249,44 +253,44 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={submitting || otp.length !== 6}
-                className="w-full flex items-center justify-center px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center py-3.5 px-4 rounded-xl text-sm font-bold text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/30 disabled:opacity-50 transition-all duration-150 cursor-pointer"
               >
                 {submitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
                 )}
                 Verify OTP
               </button>
             </form>
           ) : (
-            <form className="space-y-6" onSubmit={handleReset}>
-              <div className="flex justify-center">
-                <div className="flex items-center gap-2 text-sm text-primary">
+            <form className="space-y-5" onSubmit={handleReset}>
+              <div className="flex justify-center mb-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>OTP verified</span>
+                  <span>OTP Verified</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">New Password</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">New Password</label>
                   <PasswordInput
                     ref={passwordInputRef}
                     required
                     value={newPassword}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-hairline rounded-sm text-sm text-ink bg-canvas placeholder-ink-mute focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
                     placeholder="Min 6 characters"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">Confirm Password</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">Confirm Password</label>
                   <PasswordInput
                     required
                     value={confirmPassword}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-hairline rounded-sm text-sm text-ink bg-canvas placeholder-ink-mute focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
                     placeholder="Re-enter password"
                   />
                 </div>
@@ -295,12 +299,12 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full flex items-center justify-center px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center py-3.5 px-4 rounded-xl text-sm font-bold text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/30 disabled:opacity-50 transition-all duration-150 cursor-pointer"
               >
                 {submitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 ) : (
-                  <KeyRound className="w-4 h-4 mr-2" />
+                  <KeyRound className="w-5 h-5 mr-2" />
                 )}
                 Reset Password
               </button>
@@ -308,26 +312,26 @@ const ForgotPassword = () => {
           )}
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 pt-6 border-t border-hairline text-center">
           {step === 'email' || step === 'expired' ? (
-            <Link to="/login" className="text-sm font-medium text-primary hover:underline">
-              Back to Sign In
+            <Link to="/login" className="text-xs font-bold text-primary hover:underline">
+              ← Return to Sign In
             </Link>
           ) : step === 'otp' ? (
             <button
               type="button"
               onClick={() => { setStep('email'); setOtp(''); setExpiresAt(null); }}
-              className="text-sm font-medium text-primary hover:underline cursor-pointer"
+              className="text-xs font-bold text-primary hover:underline cursor-pointer"
             >
-              Back to Email
+              ← Back to Email Step
             </button>
           ) : (
             <button
               type="button"
               onClick={() => { setStep('otp'); setNewPassword(''); setConfirmPassword(''); }}
-              className="text-sm font-medium text-primary hover:underline cursor-pointer"
+              className="text-xs font-bold text-primary hover:underline cursor-pointer"
             >
-              Back to OTP
+              ← Back to OTP Step
             </button>
           )}
         </div>
@@ -337,3 +341,4 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
+

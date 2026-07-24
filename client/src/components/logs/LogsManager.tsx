@@ -38,25 +38,30 @@ const LogsManager = () => {
   } = useLogsManager(isAdmin);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-md tracking-tight font-sans text-ink">
-            {isAdmin ? 'System Audit Logs' : 'Broadcast & Delivery Logs'}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+              SECURITY AUDIT & TELEMETRY
+            </span>
+          </div>
+          <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+            {isAdmin ? 'System Audit' : 'Delivery History'} <span className="gradient-text">Logs</span>
           </h1>
-          <p className="text-sm text-ink-mute mt-1.5">
+          <p className="text-xs sm:text-sm text-ink-mute mt-1">
             {isAdmin 
-              ? 'View all administrative events, user updates, and delivery history logs.'
-              : 'View status history and troubleshooting advice for your notice broadcasts.'
+              ? 'View administrative actions, security telemetry, user updates, and system events.'
+              : 'View status history and troubleshooting trace logs for your notice broadcasts.'
             }
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleClearLogs}
             disabled={logs.length === 0}
-            className="flex items-center px-3 py-1.5 border border-accent-tomato/20 rounded-sm text-xs font-medium text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center px-4 py-2.5 rounded-xl font-bold text-xs text-rose-500 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all cursor-pointer disabled:opacity-50"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             {isAdmin ? 'Clear All Logs' : 'Clear Logs'}

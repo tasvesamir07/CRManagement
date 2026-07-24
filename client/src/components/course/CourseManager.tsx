@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { coursesAPI } from '../../services/api';
-import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag, Sparkles } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 
@@ -132,40 +132,48 @@ const CourseManager = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-md tracking-tight font-sans text-ink">Course Directory</h1>
-          <p className="text-sm text-ink-mute mt-1.5">Configure course entities for automated notification templates.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">
+              ACADEMIC CONFIGURATION
+            </span>
+          </div>
+          <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+            Course <span className="gradient-text">Directory</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-mute mt-1">Configure course entities and instructor mappings for notice templates.</p>
         </div>
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center justify-center px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep rounded-sm transition-colors duration-150 cursor-pointer shadow-sm self-start sm:self-auto"
+            className="inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold text-xs text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 transition-all duration-150 cursor-pointer self-start sm:self-auto"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Course
+            <Plus className="w-4 h-4 mr-2" /> Register New Course
           </button>
         )}
       </div>
 
       {/* Inline Add/Edit Form */}
       {showForm && (
-        <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-hairline-cool pb-3">
-            <h3 className="text-md font-medium text-ink">
+        <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl space-y-5 animate-slide-up">
+          <div className="flex items-center justify-between border-b border-hairline/60 pb-4">
+            <h3 className="text-base font-extrabold text-ink tracking-tight flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
               {editId ? 'Edit Course Details' : 'Register New Course'}
             </h3>
-            <button onClick={resetForm} className="text-ink-mute hover:text-ink cursor-pointer">
+            <button onClick={resetForm} className="p-2 text-ink-mute hover:text-rose-500 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
           
           {err && (
-            <div className="bg-accent-tomato/10 border border-accent-tomato/20 text-accent-tomato text-sm p-3 rounded-sm flex items-center">
+            <div className="bg-rose-500/15 border border-rose-500/30 text-rose-500 text-sm p-3.5 rounded-xl font-medium flex items-center">
               <AlertCircle className="w-4 h-4 mr-2" /> {err}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
                 Course Code *
               </label>
               <input
@@ -174,11 +182,11 @@ const CourseManager = () => {
                 value={courseId}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseId(e.target.value)}
                 placeholder="SE211"
-                className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink font-mono uppercase"
+                className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink font-mono uppercase font-bold"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
                 Course Name *
               </label>
               <input
@@ -187,11 +195,11 @@ const CourseManager = () => {
                 value={courseName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseName(e.target.value)}
                 placeholder="Software Engineering"
-                className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
+                className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink font-medium"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
                 Teacher Name *
               </label>
               <input
@@ -200,11 +208,11 @@ const CourseManager = () => {
                 value={teacherName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherName(e.target.value)}
                 placeholder="Dr. Nadirali"
-                className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
+                className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink font-medium"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
                 Teacher Initials *
               </label>
               <input
@@ -213,32 +221,32 @@ const CourseManager = () => {
                 value={teacherInitials}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTeacherInitials(e.target.value)}
                 placeholder="NA"
-                className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink font-mono uppercase"
+                className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink font-mono uppercase font-bold"
               />
             </div>
 
             {editId && (
-              <div className="md:col-span-4 border-t border-hairline-cool pt-4">
-                <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-2">
+              <div className="md:col-span-4 border-t border-hairline/60 pt-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-2">
                   Assigned Representatives ({editMembers.length})
                 </label>
                 {loadingMembers ? (
-                  <div className="text-xs text-ink-mute flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    Loading members...
+                  <div className="text-xs text-ink-mute flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                    Loading assigned representatives...
                   </div>
                 ) : editMembers.length === 0 ? (
-                  <div className="text-xs text-ink-mute">No Course Representatives assigned yet.</div>
+                  <div className="text-xs text-ink-mute">No Representatives assigned to this course yet.</div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {editMembers.map((member) => (
                       <span
                         key={member.id}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-canvas-soft border border-hairline text-xs font-medium text-ink"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl glass-card text-xs font-bold text-ink"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                         {member.display_name || member.username} (@{member.username})
-                        <span className="text-[10px] text-ink-mute font-semibold uppercase px-1 bg-hairline-cool rounded ml-1">
+                        <span className="text-[10px] text-primary font-mono uppercase px-1.5 py-0.5 bg-primary/10 rounded-md">
                           {member.role}
                         </span>
                       </span>
@@ -248,17 +256,17 @@ const CourseManager = () => {
               </div>
             )}
 
-            <div className="md:col-span-4 flex justify-end gap-3 pt-3 border-t border-hairline-cool">
+            <div className="md:col-span-4 flex justify-end gap-3 pt-3 border-t border-hairline/60">
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+                className="px-4 py-2.5 border border-hairline rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 transition-all cursor-pointer"
               >
                 {editId ? 'Save Changes' : 'Create Course'}
               </button>
@@ -268,49 +276,50 @@ const CourseManager = () => {
       )}
 
       {/* Courses List */}
-      <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
+      <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl">
         {loading ? (
-          <div className="p-12 text-center text-ink-mute text-sm">
+          <div className="p-12 text-center text-ink-mute text-xs">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            Loading courses database...
+            Loading course directory...
           </div>
         ) : courses.length === 0 ? (
-          <div className="p-12 text-center text-ink-mute text-sm">
-            <BookOpen className="w-12 h-12 text-hairline-strong mx-auto stroke-[1] mb-3" />
-            No courses registered. Click 'Add Course' to start.
+          <div className="p-12 text-center text-ink-mute text-xs">
+            <BookOpen className="w-12 h-12 text-primary/40 mx-auto stroke-[1.5] mb-3 animate-pulse" />
+            <p className="font-bold text-sm text-ink mb-1">No Courses Registered</p>
+            Click 'Register New Course' to configure your first course.
           </div>
         ) : (
           <>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-hairline-cool">
+              <table className="min-w-full divide-y divide-hairline/60">
                 <thead>
-                  <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider bg-canvas-soft">
-                    <th className="py-3 px-6">Code</th>
-                    <th className="py-3 px-6">Course Name</th>
-                    <th className="py-3 px-6">Instructor</th>
-                    <th className="py-3 px-6">Initials</th>
-                    <th className="py-3 px-6">Default Platforms</th>
-                    <th className="py-3 px-6">CRs Assigned</th>
-                    <th className="py-3 px-6 text-right">Actions</th>
+                  <tr className="text-left text-[11px] font-bold text-ink-mute uppercase tracking-wider">
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4">Course Name</th>
+                    <th className="py-3 px-4">Instructor</th>
+                    <th className="py-3 px-4">Initials</th>
+                    <th className="py-3 px-4">Default Platforms</th>
+                    <th className="py-3 px-4">CRs Assigned</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
+                <tbody className="divide-y divide-hairline/60 text-xs">
                   {courses.map((course) => (
-                    <tr key={course.id} className="hover:bg-canvas-soft transition-colors">
-                      <td className="py-4 px-6 font-mono text-xs font-bold text-ink">{course.course_id}</td>
-                      <td className="py-4 px-6 font-medium text-ink">{course.course_name}</td>
-                      <td className="py-4 px-6">{course.teacher_name}</td>
-                      <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-hairline-cool text-ink">
+                    <tr key={course.id} className="hover:bg-canvas-soft/60 transition-colors">
+                      <td className="py-4 px-4 font-mono text-xs font-bold text-primary">{course.course_id}</td>
+                      <td className="py-4 px-4 font-bold text-ink text-sm">{course.course_name}</td>
+                      <td className="py-4 px-4 font-semibold text-ink-secondary">{course.teacher_name}</td>
+                      <td className="py-4 px-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-canvas-soft text-ink border border-hairline">
                           {course.teacher_initials}
                         </span>
                       </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-4">
                       {(course.default_platform_ids || []).length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {(course.default_platform_ids || []).map(pid => (
-                            <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary-deep">
+                            <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
                               <Flag className="w-2.5 h-2.5" />
                               {pid}
                             </span>
@@ -320,24 +329,24 @@ const CourseManager = () => {
                         <span className="text-xs text-ink-mute">None</span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary-deep">
+                    <td className="py-4 px-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                         {course.member_count || 0} {course.member_count === 1 ? 'CR' : 'CRs'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right">
-                        <div className="flex justify-end gap-3">
+                    <td className="py-4 px-4 text-right">
+                        <div className="flex justify-end gap-1">
                           <button
                             onClick={() => handleEdit(course)}
-                            className="p-1 text-ink-mute hover:text-ink hover:bg-hairline-cool rounded transition-all cursor-pointer"
-                            title="Edit"
+                            className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer"
+                            title="Edit Course"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(course.id)}
-                            className="p-1 text-ink-mute hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-all cursor-pointer"
-                            title="Delete"
+                            className="p-2 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                            title="Delete Course"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -350,36 +359,36 @@ const CourseManager = () => {
             </div>
 
             {/* Mobile Card-Based View */}
-            <div className="md:hidden divide-y divide-hairline-cool bg-canvas">
+            <div className="md:hidden space-y-3">
               {courses.map((course) => (
-                <div key={course.id} className="p-4 space-y-3">
+                <div key={course.id} className="glass-card rounded-2xl p-4 space-y-3 border border-hairline">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-base font-bold text-ink">{course.course_id}</h4>
-                      <p className="text-sm font-medium text-ink-secondary">{course.course_name}</p>
+                      <h4 className="text-base font-extrabold text-primary font-mono">{course.course_id}</h4>
+                      <p className="text-sm font-bold text-ink">{course.course_name}</p>
                     </div>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-hairline-cool text-ink">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-canvas-soft text-ink border border-hairline">
                       {course.teacher_initials}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2 text-xs text-ink-mute">
                     <div>
-                      <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">Instructor</span>
-                      <span className="text-ink-secondary">{course.teacher_name}</span>
+                      <span className="block text-[10px] uppercase font-bold text-ink-mute">Instructor</span>
+                      <span className="text-ink font-semibold">{course.teacher_name}</span>
                     </div>
                     <div>
-                      <span className="block text-[10px] uppercase font-semibold text-ink-mute/70">CRs Assigned</span>
-                      <span className="text-ink-secondary">{course.member_count || 0} CR(s)</span>
+                      <span className="block text-[10px] uppercase font-bold text-ink-mute">CRs Assigned</span>
+                      <span className="text-ink font-semibold">{course.member_count || 0} CR(s)</span>
                     </div>
                   </div>
 
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold text-ink-mute/70 mb-1">Default Platforms</span>
+                    <span className="block text-[10px] uppercase font-bold text-ink-mute mb-1">Default Platforms</span>
                     {(course.default_platform_ids || []).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {(course.default_platform_ids || []).map(pid => (
-                          <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary-deep">
+                          <span key={pid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
                             <Flag className="w-2.5 h-2.5" />
                             {pid}
                           </span>
@@ -390,16 +399,16 @@ const CourseManager = () => {
                     )}
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-2 border-t border-hairline-cool/40">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-hairline/60">
                     <button
                       onClick={() => handleEdit(course)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-hairline rounded text-xs font-semibold text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 glass-card rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
                     >
-                      <Edit2 className="w-3.5 h-3.5" /> Edit
+                      <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Edit
                     </button>
                     <button
                       onClick={() => handleDelete(course.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-tomato/20 rounded text-xs font-semibold text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
@@ -415,3 +424,4 @@ const CourseManager = () => {
 };
 
 export default CourseManager;
+

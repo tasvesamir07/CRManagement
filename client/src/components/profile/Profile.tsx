@@ -178,46 +178,59 @@ const Profile = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-display-md tracking-tight font-sans text-ink">Profile Settings</h1>
-        <p className="text-sm text-ink-mute mt-1.5">Manage your account details, security, and preferences.</p>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">
+            SECURITY & ACCOUNT PREFERENCES
+          </span>
+        </div>
+        <h1 className="text-display-md tracking-tight font-extrabold text-ink">
+          Profile <span className="gradient-text">Settings</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-ink-mute mt-1">Manage your account identity, security options, and password authentication.</p>
       </div>
 
-      <div className="bg-canvas border border-hairline rounded-lg p-6 shadow-sm space-y-6">
-        <div className="flex items-center gap-3 border-b border-hairline-cool pb-4">
-          <div className="w-12 h-12 rounded-full bg-hairline-strong flex items-center justify-center">
-            <User className="w-6 h-6 text-ink-secondary" />
+      <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl space-y-6">
+        <div className="flex items-center gap-4 border-b border-hairline/60 pb-5">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center shadow-lg shadow-primary/25">
+            <User className="w-7 h-7 text-on-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-ink">{user.display_name || user.username}</h2>
-            <p className="text-sm text-ink-mute">{user.email} · {user.role}</p>
+            <h2 className="text-xl font-extrabold text-ink tracking-tight">{user.display_name || user.username}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-medium text-ink-mute">{user.email}</span>
+              <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+                {user.role}
+              </span>
+            </div>
           </div>
         </div>
 
         <form onSubmit={handleSaveProfile} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">Display Name</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 border border-hairline rounded-sm text-sm text-ink bg-canvas focus:outline-none focus:ring-1 focus:ring-primary"
+              className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink font-medium"
               placeholder="Your display name"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink-mute uppercase tracking-wider mb-1.5">Email</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1.5">Email</label>
             <input
               type="email"
               value={user.email}
               disabled
-              className="w-full px-3 py-2 border border-hairline rounded-sm text-sm text-ink-mute bg-canvas-soft cursor-not-allowed"
+              className="glass-input block w-full px-4 py-2.5 rounded-xl text-xs text-ink-mute opacity-60 cursor-not-allowed"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center px-4 py-2 bg-primary text-on-primary text-sm font-medium rounded-sm hover:bg-primary-deep transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center px-5 py-2.5 rounded-xl font-bold text-xs text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 transition-all cursor-pointer disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save Changes
