@@ -5,7 +5,7 @@ import ErrorBoundary from '../ui/ErrorBoundary';
 import {
   LayoutDashboard, Megaphone, BookOpen, Calendar, Radio,
   LogOut, Menu, Shield, ClipboardList, FileUp,
-  Sun, Moon, WifiOff, Users, UserCheck, GraduationCap, type LucideIcon
+  Sun, Moon, WifiOff, Users, UserCheck, GraduationCap, type LucideIcon, Sparkles
 } from 'lucide-react';
 import { User as UserIcon } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -108,23 +108,26 @@ const DashboardLayout = () => {
   const handleToggleTheme: React.MouseEventHandler<HTMLButtonElement> = toggleTheme;
 
   return (
-    <div className="min-h-screen bg-canvas-soft flex flex-col md:flex-row">
+    <div className="min-h-screen bg-canvas cyber-grid text-ink flex flex-col md:flex-row relative">
       {/* Skip to content link for keyboard users */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded-sm focus:text-sm focus:font-medium">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded-xl focus:text-sm focus:font-medium">
         Skip to main content
       </a>
+
       {/* Mobile top bar */}
-      <div className="md:hidden bg-canvas border-b border-hairline px-4 py-3 flex items-center justify-between sticky top-0 z-50" role="banner">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-sm bg-ink flex items-center justify-center text-primary font-bold text-base">CR</div>
-          <span className="text-md font-semibold tracking-tight text-ink">CR Dashboard</span>
+      <div className="md:hidden glass-panel border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-xl" role="banner">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center text-on-primary font-extrabold text-sm shadow-md">
+            CR
+          </div>
+          <span className="text-base font-extrabold tracking-tight text-ink">CR Dashboard</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleToggleTheme} className="p-2 text-ink-mute hover:text-ink rounded-sm hover:bg-canvas-soft transition-colors cursor-pointer" title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}>
-            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          <button onClick={handleToggleTheme} className="p-2 text-ink-mute hover:text-ink rounded-xl hover:bg-canvas-soft transition-colors cursor-pointer" title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}>
+            {theme === 'light' ? <Moon className="w-4.5 h-4.5 text-accent-violet" /> : <Sun className="w-4.5 h-4.5 text-amber-400" />}
           </button>
-          <Link to="/profile" className="p-2 text-ink-mute hover:text-ink rounded-sm hover:bg-canvas-soft transition-colors" title="Profile Settings">
-            <UserIcon className="w-4 h-4" />
+          <Link to="/profile" className="p-2 text-ink-mute hover:text-ink rounded-xl hover:bg-canvas-soft transition-colors" title="Profile Settings">
+            <UserIcon className="w-4.5 h-4.5" />
           </Link>
         </div>
       </div>
@@ -132,84 +135,89 @@ const DashboardLayout = () => {
       <MobileDrawer open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} user={user} onLogout={handleLogout} />
 
       {/* Mobile Bottom Tab Bar */}
-      <nav aria-label="Mobile navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-canvas border-t border-hairline py-2 px-3 flex items-center justify-around z-40 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-lg">
+      <nav aria-label="Mobile navigation" className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 py-2.5 px-3 flex items-center justify-around z-40 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-2xl backdrop-blur-2xl">
         {user?.role === 'admin' ? (
           <>
-            <Link to="/dashboard" className={`flex flex-col items-center ${location.pathname === '/dashboard' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/dashboard" className={`flex flex-col items-center transition-colors ${location.pathname === '/dashboard' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <LayoutDashboard className="w-5 h-5" /><span className="text-[10px] mt-1">Overview</span>
             </Link>
-            <Link to="/logs" className={`flex flex-col items-center ${location.pathname === '/logs' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/logs" className={`flex flex-col items-center transition-colors ${location.pathname === '/logs' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <ClipboardList className="w-5 h-5" /><span className="text-[10px] mt-1">Logs</span>
             </Link>
-            <Link to="/admin/users" className={`flex flex-col items-center ${location.pathname === '/admin/users' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/admin/users" className={`flex flex-col items-center transition-colors ${location.pathname === '/admin/users' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <Shield className="w-5 h-5" /><span className="text-[10px] mt-1">Admin</span>
             </Link>
-            <Link to="/profile" className={`flex flex-col items-center ${location.pathname === '/profile' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/profile" className={`flex flex-col items-center transition-colors ${location.pathname === '/profile' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <UserIcon className="w-5 h-5" /><span className="text-[10px] mt-1">Profile</span>
             </Link>
-            <button onClick={handleLogout} className="flex flex-col items-center text-ink-mute cursor-pointer">
+            <button onClick={handleLogout} className="flex flex-col items-center text-ink-mute hover:text-rose-500 transition-colors cursor-pointer">
               <LogOut className="w-5 h-5" /><span className="text-[10px] mt-1">Exit</span>
             </button>
           </>
         ) : (
           <>
-            <Link to="/dashboard" className={`flex flex-col items-center ${location.pathname === '/dashboard' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/dashboard" className={`flex flex-col items-center transition-colors ${location.pathname === '/dashboard' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <LayoutDashboard className="w-5 h-5" /><span className="text-[10px] mt-1">Overview</span>
             </Link>
-            <Link to="/announcement/new" className={`flex flex-col items-center ${location.pathname === '/announcement/new' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/announcement/new" className={`flex flex-col items-center transition-colors ${location.pathname === '/announcement/new' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <Megaphone className="w-5 h-5" /><span className="text-[10px] mt-1">Broadcast</span>
             </Link>
-            <Link to="/courses" className={`flex flex-col items-center ${location.pathname === '/courses' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/courses" className={`flex flex-col items-center transition-colors ${location.pathname === '/courses' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <BookOpen className="w-5 h-5" /><span className="text-[10px] mt-1">Courses</span>
             </Link>
-            <Link to="/platforms" className={`flex flex-col items-center ${location.pathname === '/platforms' ? 'text-primary' : 'text-ink-mute'}`}>
+            <Link to="/platforms" className={`flex flex-col items-center transition-colors ${location.pathname === '/platforms' ? 'text-primary font-bold' : 'text-ink-mute'}`}>
               <Radio className="w-5 h-5" /><span className="text-[10px] mt-1">Platforms</span>
             </Link>
-            <button onClick={() => setMoreMenuOpen(true)} className={`flex flex-col items-center ${moreMenuOpen ? 'text-primary' : 'text-ink-mute'} cursor-pointer`}>
+            <button onClick={() => setMoreMenuOpen(true)} className={`flex flex-col items-center transition-colors ${moreMenuOpen ? 'text-primary font-bold' : 'text-ink-mute'} cursor-pointer`}>
               <Menu className="w-5 h-5" /><span className="text-[10px] mt-1">More</span>
             </button>
           </>
         )}
       </nav>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-canvas border-r border-hairline z-30">
+      {/* Desktop Futuristic Glass Sidebar */}
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 glass-panel border-r border-white/10 dark:border-white/5 z-30 backdrop-blur-2xl shadow-2xl">
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center h-16 flex-shrink-0 px-6 border-b border-hairline gap-2.5">
-            <div className="w-9 h-9 rounded-sm bg-ink flex items-center justify-center text-primary font-bold text-lg shadow-sm">CR</div>
-            <span className="text-lg font-semibold tracking-tight text-ink">CR Dashboard</span>
-          </div>
+          <Link to="/" className="flex items-center h-20 flex-shrink-0 px-6 border-b border-hairline/60 gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center text-on-primary font-extrabold text-lg shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
+              CR
+            </div>
+            <div>
+              <span className="text-base font-extrabold tracking-tight text-ink block leading-none">CR Dashboard</span>
+              <span className="text-[10px] font-mono text-primary font-bold tracking-wider uppercase mt-1 block">Pro Console</span>
+            </div>
+          </Link>
 
-          <nav aria-label="Main navigation" className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+          <nav aria-label="Main navigation" className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
               return (
                 <Link key={item.name} to={item.href} aria-current={isActive ? 'page' : undefined}
-                  className={`group flex items-center px-3.5 py-2.5 text-sm font-medium rounded-sm transition-all duration-150 ${
+                  className={`group flex items-center px-3.5 py-3 text-xs font-bold rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-ink dark:bg-primary/15 text-on-dark dark:text-primary font-medium shadow-sm'
-                      : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
+                      ? 'bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary border-l-4 border-l-primary shadow-sm shadow-primary/10'
+                      : 'text-ink-mute hover:bg-canvas-soft hover:text-ink hover:translate-x-1'
                   }`}
                 >
-                  <Icon className={`mr-3 h-4.5 w-4.5 ${isActive ? 'text-primary' : 'text-ink-mute group-hover:text-ink'}`} />
+                  <Icon className={`mr-3 h-4.5 w-4.5 transition-colors ${isActive ? 'text-primary' : 'text-ink-mute group-hover:text-ink'}`} />
                   {item.name}
                 </Link>
               );
             })}
-            <hr className="border-hairline my-3" />
+            <hr className="border-hairline/60 my-4" />
             {bottomLinks.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
               return (
                 <Link key={item.name} to={item.href} aria-current={isActive ? 'page' : undefined}
-                  className={`group flex items-center px-3.5 py-2.5 text-sm font-medium rounded-sm transition-all duration-150 ${
+                  className={`group flex items-center px-3.5 py-3 text-xs font-bold rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-ink dark:bg-primary/15 text-on-dark dark:text-primary font-medium shadow-sm'
-                      : 'text-ink-mute hover:bg-canvas-soft hover:text-ink'
+                      ? 'bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-primary border-l-4 border-l-primary shadow-sm shadow-primary/10'
+                      : 'text-ink-mute hover:bg-canvas-soft hover:text-ink hover:translate-x-1'
                   }`}
                 >
-                  <Icon className={`mr-3 h-4.5 w-4.5 ${isActive ? 'text-primary' : 'text-ink-mute group-hover:text-ink'}`} />
+                  <Icon className={`mr-3 h-4.5 w-4.5 transition-colors ${isActive ? 'text-primary' : 'text-ink-mute group-hover:text-ink'}`} />
                   {item.name}
                 </Link>
               );
@@ -217,40 +225,41 @@ const DashboardLayout = () => {
           </nav>
 
           {!isOnline ? (
-            <div className="px-4 py-2 bg-accent-yellow/10 border-t border-accent-yellow/20 flex items-center gap-2 text-xs text-ink font-medium">
-              <WifiOff className="w-3.5 h-3.5 text-ink-mute" />
+            <div className="mx-3 my-2 px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs text-amber-500 font-bold">
+              <WifiOff className="w-4 h-4" />
               Offline Mode
             </div>
           ) : (
-            <div className="px-4 py-2 bg-primary/5 border-t border-hairline flex items-center justify-between text-[11px] text-ink-mute font-medium">
-              <span className="flex items-center gap-1.5">
+            <div className="mx-3 my-2 px-3.5 py-2.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between text-xs text-ink-mute font-semibold">
+              <span className="flex items-center gap-2 text-ink">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                Broadcast System
+                Broadcast Hub
               </span>
-              <span className="text-primary font-semibold text-[10px] uppercase tracking-wider">Active</span>
+              <span className="text-primary font-bold font-mono text-[10px] uppercase tracking-wider">ACTIVE</span>
             </div>
           )}
-          <div className="flex-shrink-0 flex flex-col p-4 border-t border-hairline bg-canvas-soft">
+
+          <div className="flex-shrink-0 flex flex-col p-4 border-t border-hairline/60 bg-canvas/40">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-hairline-strong flex items-center justify-center text-ink-secondary">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-violet to-accent-indigo flex items-center justify-center text-white font-bold shadow-md">
                 <UserIcon className="w-4.5 h-4.5" />
               </div>
               <div className="truncate flex-1">
-                <h4 className="text-sm font-medium text-ink truncate">{user?.display_name || user?.username}</h4>
-                <p className="text-xs text-ink-mute capitalize truncate">{user?.role} Account</p>
+                <h4 className="text-xs font-bold text-ink truncate">{user?.display_name || user?.username}</h4>
+                <p className="text-[10px] font-mono text-ink-mute capitalize truncate">{user?.role} Account</p>
               </div>
               <button onClick={handleToggleTheme} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                className="p-2 text-ink-mute hover:text-ink rounded-sm hover:bg-canvas transition-colors cursor-pointer"
+                className="p-2 text-ink-mute hover:text-ink rounded-xl hover:bg-canvas transition-colors cursor-pointer"
                 title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}
               >
-                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                {theme === 'light' ? <Moon className="w-4 h-4 text-accent-violet" /> : <Sun className="w-4 h-4 text-amber-400" />}
               </button>
             </div>
             <button onClick={handleLogout} aria-label="Sign out of your account"
-              className="flex w-full items-center justify-center px-3 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-accent-tomato/10 hover:text-accent-tomato hover:border-accent-tomato/20 transition-all duration-150 cursor-pointer"
+              className="flex w-full items-center justify-center px-3 py-2 rounded-xl text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all duration-150 cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />Sign Out
             </button>
@@ -259,14 +268,14 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen pb-16 md:pb-0">
+      <div className="flex-1 md:pl-64 flex flex-col min-h-screen pb-20 md:pb-0 relative z-10">
         {!isOnline && (
-          <div className="md:hidden bg-accent-yellow/90 text-ink text-xs text-center py-1.5 px-4 font-medium sticky top-0 z-50 backdrop-blur-sm flex items-center justify-center gap-2">
-            <WifiOff className="w-3.5 h-3.5" />
-            You're offline — drafts will be saved locally and synced when reconnected
+          <div className="md:hidden bg-amber-500/90 text-white text-xs text-center py-2 px-4 font-bold sticky top-0 z-50 backdrop-blur-md flex items-center justify-center gap-2 shadow-lg">
+            <WifiOff className="w-4 h-4" />
+            Offline Mode — Changes will sync automatically once reconnected
           </div>
         )}
-        <main id="main-content" className="flex-1 py-4 sm:py-8 px-2 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
+        <main id="main-content" className="flex-1 py-6 sm:py-10 px-4 sm:px-8 max-w-7xl w-full mx-auto">
           <ErrorBoundary>
             <div key={location.pathname} className="route-enter-active">
               <Outlet />
@@ -279,3 +288,4 @@ const DashboardLayout = () => {
 };
 
 export default DashboardLayout;
+

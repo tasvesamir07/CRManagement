@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import PasswordInput from '../ui/PasswordInput';
 
 const Register = () => {
@@ -35,114 +35,118 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen bg-canvas flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center items-center gap-2">
-                    <div className="w-8 h-8 rounded-sm bg-ink flex items-center justify-center text-primary font-bold text-lg">
+        <div className="min-h-screen bg-canvas cyber-grid text-ink flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+            <div className="absolute top-10 right-10 w-[450px] h-[450px] bg-primary/20 rounded-full blur-[150px] pointer-events-none animate-float-slow"></div>
+            <div className="absolute bottom-10 left-10 w-[500px] h-[500px] bg-accent-violet/20 rounded-full blur-[160px] pointer-events-none animate-float-reverse"></div>
+
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-slide-up text-center">
+                <Link to="/" className="inline-flex items-center gap-3 group mb-4">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center text-on-primary font-extrabold text-xl shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
                         CR
                     </div>
-                    <span className="text-xl font-semibold tracking-tight text-ink">CR Dashboard</span>
-                </div>
-                <h2 className="mt-6 text-center text-3xl font-medium tracking-tight text-ink font-sans">
-                    Create your account
+                    <span className="text-2xl font-extrabold tracking-tight text-ink">CR Dashboard</span>
+                </Link>
+                <h2 className="text-3xl font-extrabold tracking-tight text-ink">
+                    Create CR Account
                 </h2>
-                <p className="mt-2 text-center text-sm text-ink-mute">
-                    Register to start managing notices and routines
+                <p className="mt-2 text-sm text-ink-mute">
+                    Register to manage class announcements & routines
                 </p>
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-canvas py-8 px-4 border border-hairline rounded-lg sm:px-10 shadow-sm">
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
+                <div className="glass-panel py-8 px-6 sm:px-10 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 backdrop-blur-2xl animate-slide-up">
                     {err && (
-                        <div className="mb-4 bg-accent-tomato/10 border border-accent-tomato/20 text-accent-tomato text-sm p-3 rounded-sm">
+                        <div className="mb-4 bg-accent-tomato/15 border border-accent-tomato/30 text-accent-tomato text-sm p-3.5 rounded-xl font-medium">
                             {err}
                         </div>
                     )}
 
-                    <form className="space-y-6" onSubmit={handleSubmit}>
+                    <form className="space-y-4" onSubmit={handleSubmit}>
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-ink-secondary">
-                                Username <span className="text-accent-tomato">*</span>
+                            <label htmlFor="username" className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">
+                                Username <span className="text-rose-500">*</span>
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    id="username"
-                                    type="text"
-                                    required
-                                    value={username}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
-                                    placeholder="cr_jack"
-                                />
-                            </div>
+                            <input
+                                id="username"
+                                type="text"
+                                required
+                                value={username}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+                                className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
+                                placeholder="cr_alex"
+                            />
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-ink-secondary">
-                                Email address <span className="text-accent-tomato">*</span>
+                            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">
+                                Email Address <span className="text-rose-500">*</span>
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    id="email"
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
-                                    placeholder="jack@university.edu"
-                                />
-                            </div>
+                            <input
+                                id="email"
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                                className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
+                                placeholder="alex@university.edu"
+                            />
                         </div>
 
                         <div>
-                            <label htmlFor="displayName" className="block text-sm font-medium text-ink-secondary">
-                                Display Name (Optional)
+                            <label htmlFor="displayName" className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">
+                                Display Name <span className="text-ink-mute text-[10px] font-normal">(Optional)</span>
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    id="displayName"
-                                    type="text"
-                                    value={displayName}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
-                                    placeholder="Jack (CR SWE)"
-                                />
-                            </div>
+                            <input
+                                id="displayName"
+                                type="text"
+                                value={displayName}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+                                className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
+                                placeholder="Alex (CR CSE Batch 28)"
+                            />
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-ink-secondary">
-                                Password <span className="text-accent-tomato">*</span>
+                            <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-ink-secondary mb-1">
+                                Password <span className="text-rose-500">*</span>
                             </label>
-                            <div className="mt-1">
-                                <PasswordInput
-                                    id="password"
-                                    required
-                                    value={password}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-hairline rounded-sm shadow-sm placeholder-ink-faint focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-ink"
-                                    placeholder="••••••••"
-                                />
-                            </div>
+                            <PasswordInput
+                                id="password"
+                                required
+                                value={password}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                                className="glass-input block w-full px-4 py-2.5 rounded-xl text-sm text-ink font-medium"
+                                placeholder="••••••••"
+                            />
                         </div>
 
-                        <div>
+                        <div className="pt-3">
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+                                className="w-full flex justify-center items-center py-3.5 px-4 rounded-xl text-sm font-bold text-on-primary bg-gradient-to-r from-primary via-emerald-400 to-accent-cyan hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/30 disabled:opacity-50 transition-all duration-150 cursor-pointer"
                             >
-                                {submitting ? 'Registering...' : 'Register'}
-                                <ArrowRight className="ml-2 w-4 h-4" />
+                                {submitting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Creating Account...
+                                    </>
+                                ) : (
+                                    <>
+                                        Register Now
+                                        <ArrowRight className="ml-2 w-4 h-4" />
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>
 
-                    <div className="mt-6 text-center">
-                        <p className="text-sm text-ink-mute">
-                            Already have an account?{' '}
-                            <Link to="/login" className="font-medium text-ink hover:underline">
-                                Sign in
+                    <div className="mt-6 pt-6 border-t border-hairline text-center">
+                        <p className="text-sm text-ink-mute font-medium">
+                            Already registered?{' '}
+                            <Link to="/login" className="font-bold text-primary hover:underline">
+                                Sign In
                             </Link>
                         </p>
                     </div>
@@ -153,3 +157,4 @@ const Register = () => {
 };
 
 export default Register;
+
