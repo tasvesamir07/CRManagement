@@ -46,13 +46,14 @@ async function initDatabase() {
                 const client = await pool.connect();
                 logger.info(`PostgreSQL database connected successfully (attempt ${attempt}/${maxRetries}).`);
                 
-                // Lightweight check: query information_schema for one core table
-                const tableCheck = await client.query(
-                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') AS exists"
-                );
-                if (!tableCheck.rows[0].exists) {
-                    logger.warn('Tables not found. Run migration: node scripts/migrate.js');
-                }
+                // Ensure system_settings table exists for persistent configuration (including Messenger AppState)
+                await client.query(`
+                    CREATE TABLE IF NOT EXISTS system_settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                `);
 
                 client.release();
                 useJsonDb = false;
