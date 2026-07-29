@@ -437,27 +437,26 @@ if (isRelayMode) {
             throw new Error('WhatsApp is already connected. No pairing needed.');
         }
 
-        if (!sock) {
+        if (!sock || connectionStatus === 'DISCONNECTED') {
             clearTimeout(reconnectTimer);
             await initWhatsApp();
             if (isMockMode) {
                 throw new Error('WhatsApp engine failed to initialize. Check server logs for details.');
             }
-            if (!sock) {
-                throw new Error('WhatsApp client failed to initialize. Please try again.');
-            }
         }
 
-        for (let i = 0; i < 45; i++) {
-            if (connectionStatus === 'QR_READY' || connectionStatus === 'CONNECTED') break;
-            await new Promise(r => setTimeout(r, 1000));
-        }
-        if (connectionStatus !== 'QR_READY' && connectionStatus !== 'CONNECTED') {
-            throw new Error(`WhatsApp connection not ready (status: ${connectionStatus}). Please wait for QR code and try again.`);
+        // Wait up to 10 seconds for socket state to stabilize (instead of 45s which causes HTTP timeout)
+        for (let i = 0; i < 20; i++) {
+            if (connectionStatus === 'QR_READY' || connectionStatus === 'CONNECTED' || (sock && connectionStatus === 'CONNECTING')) break;
+            await new Promise(r => setTimeout(r, 500));
         }
 
-        appLogger.info({ phone: cleanPhone.replace(/\d(?=\d{4})/g, '*') }, 'Waiting for socket stabilization before requesting pairing code');
-        await new Promise(r => setTimeout(r, 3000));
+        if (!sock) {
+            throw new Error('WhatsApp client failed to initialize. Please try again.');
+        }
+
+        appLogger.info({ phone: cleanPhone.replace(/\d(?=\d{4})/g, '*') }, 'Requesting pairing code from WhatsApp socket');
+        await new Promise(r => setTimeout(r, 1000));
 
         try {
             const code = await sock.requestPairingCode(cleanPhone);
@@ -673,7 +672,12 @@ if (isRelayMode) {
         initWhatsApp,
         sendMessageToGroup,
         getChats,
-        getStatus: () => ({ status: connectionStatus, qr: latestQr, isMock: isMockMode }),
+        getStatus: () => {
+            if (!sock && !isMockMode && !isVercel && connectionStatus === 'DISCONNECTED') {
+                initWhatsApp().catch(err => appLogger.error({ err: err.message }, 'Auto initWhatsApp on getStatus failed'));
+            }
+            return { status: connectionStatus, qr: latestQr, isMock: isMockMode };
+        },
         isMock: () => isMockMode,
         setWsBroadcaster,
         restartWhatsApp,

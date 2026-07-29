@@ -369,7 +369,7 @@ announcementService.setWsBroadcaster((payload) => {
 });
 
 // Start services (Skip WhatsApp client on Vercel as it requires persistent session/WebSocket)
-// Defer initialization by 30 seconds to prevent blocking initial requests and high CPU startup spikes
+// Short 2s delay after server startup to allow DB and HTTP server listeners to settle
 setTimeout(() => {
     logger.info('Initializing WhatsApp, Telegram, and Messenger clients...');
     if (!isVercel) {
@@ -377,7 +377,7 @@ setTimeout(() => {
     }
     telegramService.initTelegram();
     messengerService.initMessenger();
-}, 30000);
+}, 2000);
 
 // Skip active crons and recursive schedulers on Vercel as it is an ephemeral serverless environment
 if (!isVercel) {

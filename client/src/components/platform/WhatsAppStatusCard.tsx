@@ -48,6 +48,10 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
   }, [waQr, waStatus]);
 
   useEffect(() => {
+    fetchWhatsAppStatusHttp();
+  }, []);
+
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (waStatus === 'QR_READY') {
       setCountdown(20);
@@ -176,6 +180,16 @@ const WhatsAppStatusCard = ({ waStatus, setWaStatus, waQr, setWaQr, isWaMock, se
             <AlertTriangle className="w-12 h-12 text-ink-mute stroke-[1.25] mx-auto" />
             <h4 className="text-sm font-medium text-ink">Not Connected</h4>
             <p className="text-xs text-ink-mute">WhatsApp is not linked. Use the QR code or phone pairing below to connect.</p>
+            {!isWaMock && (
+              <button
+                onClick={handleRestartWhatsApp}
+                disabled={actionLoading}
+                className="mt-2 inline-flex items-center justify-center px-3 py-1.5 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft transition-colors cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${actionLoading ? 'animate-spin' : ''}`} />
+                Generate QR Code
+              </button>
+            )}
           </div>
         )}
       </div>

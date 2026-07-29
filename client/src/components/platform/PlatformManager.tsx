@@ -115,6 +115,15 @@ const PlatformManager = () => {
     } catch (e) { console.error(e); }
   }, []);
 
+  const fetchWhatsAppStatus = useCallback(async () => {
+    try {
+      const res = await platformsAPI.getWhatsAppStatus() as { status: string; qr: string; isMock: boolean };
+      setWaStatus(res.status);
+      setWaQr(res.qr);
+      setIsWaMock(res.isMock);
+    } catch (e) { console.error(e); }
+  }, []);
+
   const handleWsMessage = useCallback((payload: WsPayload) => {
     if (payload.type === 'whatsapp_status') {
       setWaStatus(payload.data.status);
@@ -131,9 +140,10 @@ const PlatformManager = () => {
       fetchPlatforms(),
       fetchCourses(),
       fetchTelegramStatus(),
-      fetchMessengerStatus()
+      fetchMessengerStatus(),
+      fetchWhatsAppStatus()
     ]).finally(() => setLoading(false));
-  }, [fetchPlatforms, fetchCourses, fetchTelegramStatus, fetchMessengerStatus]);
+  }, [fetchPlatforms, fetchCourses, fetchTelegramStatus, fetchMessengerStatus, fetchWhatsAppStatus]);
 
   useEffect(() => {
     if (courses.length > 0) {
