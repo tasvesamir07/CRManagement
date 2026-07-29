@@ -403,6 +403,61 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [routineNotes, setRoutineNotes] = useState<string>('');
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
 
+  // Workspace Panning & Drag State
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const [canvasHeight, setCanvasHeight] = useState<number>(850);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === canvasRef.current) {
+          setCanvasHeight(entry.target.clientHeight);
+        }
+      }
+    });
+    observer.observe(canvasRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"]')) return;
+
+    if (workspaceRef.current) {
+      setIsPanning(true);
+      panStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: workspaceRef.current.scrollLeft,
+        scrollTop: workspaceRef.current.scrollTop
+      };
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch (_) {}
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPanning || !panStartRef.current || !workspaceRef.current) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    workspaceRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+    workspaceRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isPanning) {
+      setIsPanning(false);
+      panStartRef.current = null;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    }
+  };
+
   // Text Styling States
   const [globalFontWeight, setGlobalFontWeight] = useState<number>(700);
 
@@ -1598,18 +1653,31 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
         {/* Scrollable Workspace (Figma Dot Grid Style) */}
         <div 
+          ref={workspaceRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           style={{
             backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
-            backgroundSize: '16px 16px'
+            backgroundSize: '16px 16px',
+            touchAction: 'none'
           }}
-          className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center bg-[#f8fafc]"
+          className={`flex-1 overflow-auto p-4 sm:p-12 flex items-start justify-center bg-[#f8fafc] select-none ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
-          
-          {/* Zoom Wrapper */}
-          <div 
-            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }} 
-            className="transition-transform duration-150 py-2 sm:py-4"
+          {/* Layout Bounding Box to keep scroll width & height aligned with scaled visual size */}
+          <div
+            style={{
+              width: `${750 * (zoom / 100)}px`,
+              height: `${canvasHeight * (zoom / 100)}px`,
+            }}
+            className="shrink-0 flex items-start justify-center relative my-2"
           >
+            {/* Zoom Wrapper */}
+            <div 
+              style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }} 
+              className="transition-transform duration-75"
+            >
             
             {/* Poster Canvas */}
             <div
@@ -1870,8 +1938,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
           </div>
         </div>
-
       </div>
+    </div>
 
     </div>
   );
