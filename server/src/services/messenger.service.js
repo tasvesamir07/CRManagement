@@ -190,7 +190,7 @@ async function getBot() {
 
             const instance = await createMessengerBot(
                 { appState: appStateData },
-                { listenEvents: false, autoListen: true, autoReconnect: true, online: false }
+                { listenEvents: true, autoListen: true, autoReconnect: true, online: false }
             );
             botInstance = instance;
             botReady = true;
@@ -198,7 +198,7 @@ async function getBot() {
             // Check MQTT client connection in background (non-blocking)
             (async () => {
                 let attempts = 0;
-                while (attempts < 20) { // 20 * 500ms = 10s
+                while (attempts < 30) { // 30 * 500ms = 15s
                     const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
                     if (isConnected) {
                         logger.info("Messenger MQTT client is fully connected and initialized.");
@@ -261,6 +261,16 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
 
     try {
         const bot = await getBot();
+
+        // Ensure MQTT client is connected if available
+        if (bot.ctx && bot.ctx.mqttClient && !bot.ctx.mqttClient.connected) {
+            logger.info("Waiting for Messenger MQTT client connection before sending message...");
+            let waitAttempts = 0;
+            while (waitAttempts < 20 && bot.ctx.mqttClient && !bot.ctx.mqttClient.connected) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                waitAttempts++;
+            }
+        }
 
         // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
