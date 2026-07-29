@@ -305,6 +305,16 @@ if (isRelayMode) {
 
         try {
             const { state, saveCreds } = await useDbAuthState();
+            const { fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+            
+            let version;
+            try {
+                const verResult = await fetchLatestBaileysVersion();
+                version = verResult.version;
+                appLogger.info({ version, isLatest: verResult.isLatest }, 'Fetched WhatsApp Web version');
+            } catch (vErr) {
+                appLogger.warn({ err: vErr.message }, 'Failed to fetch latest Baileys version, using default');
+            }
 
             const socketConfig = {
                 auth: state,
@@ -312,10 +322,11 @@ if (isRelayMode) {
                 printQRInTerminal: false,
                 markOnlineOnConnect: true,
                 syncFullHistory: false,
-                browser: Browsers ? Browsers.ubuntu('Chrome') : ['Chrome (Linux)', '', ''],
+                browser: Browsers ? Browsers.ubuntu('Chrome') : ['Ubuntu', 'Chrome', '22.04.4'],
                 generateHighQualityLinkPreview: false,
                 keepAliveIntervalMs: 15000,
-                connectTimeoutMs: 60000
+                connectTimeoutMs: 60000,
+                ...(version ? { version } : {})
             };
 
             const proxyUrl = process.env.PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
@@ -608,6 +619,8 @@ if (isRelayMode) {
         clearTimeout(reconnectTimer);
         if (sock) {
             try {
+                sock.ev.removeAllListeners('connection.update');
+                sock.ev.removeAllListeners('creds.update');
                 sock.end(undefined);
             } catch (err) {
                 appLogger.error({ err: err.message }, 'Error ending socket');
@@ -618,7 +631,7 @@ if (isRelayMode) {
         connectionStatus = 'DISCONNECTED';
         isMockMode = false;
         broadcastStatus();
-        initWhatsApp();
+        await initWhatsApp();
     }
 
     async function clearSession() {
@@ -626,6 +639,8 @@ if (isRelayMode) {
         clearTimeout(reconnectTimer);
         if (sock) {
             try {
+                sock.ev.removeAllListeners('connection.update');
+                sock.ev.removeAllListeners('creds.update');
                 sock.end(undefined);
             } catch (err) {
                 appLogger.error({ err: err.message }, 'Error ending socket');
