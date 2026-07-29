@@ -331,6 +331,13 @@ if (isRelayMode) {
 
             sock = makeWASocket(socketConfig);
 
+            let connectingWatchdogTimer = setTimeout(() => {
+                if (connectionStatus === 'CONNECTING' && !latestQr && sock) {
+                    appLogger.warn('WhatsApp connection stuck in CONNECTING state. Auto-clearing session to refresh credentials.');
+                    clearSession().catch(() => {});
+                }
+            }, 25000);
+
             sock.ev.on('creds.update', (update) => {
                 const wasQrReady = connectionStatus === 'QR_READY';
                 saveCreds(update);
@@ -343,6 +350,10 @@ if (isRelayMode) {
 
             sock.ev.on('connection.update', (update) => {
                 const { connection, lastDisconnect, qr } = update;
+
+                if (qr || connection === 'open' || connection === 'close') {
+                    clearTimeout(connectingWatchdogTimer);
+                }
 
                 if (qr) {
                     appLogger.info('WhatsApp QR emitted (new code ready for scanning)');
