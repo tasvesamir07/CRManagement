@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Link, type NavigateFunction } from 'react-router-dom';
 import {
   Megaphone, BookOpen, Radio, Send, Clock, CheckCircle, AlertTriangle,
-  ArrowRight, Trash2, Eye, Edit3, Filter, X, Sparkles, Search, Layers, Copy, Check, CopyPlus
+  ArrowRight, Trash2, Eye, Edit3, Filter, X, Sparkles, Search, Layers, CopyPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
@@ -32,8 +31,6 @@ const getStatusBadge = (status: string) => {
 };
 
 const CRDashboard = ({ navigate }: CRDashboardProps) => {
-  const [copiedNoticeId, setCopiedNoticeId] = useState<number | null>(null);
-
   const {
     courses, announcements, loading, search, statusFilter, courseFilter,
     dateFrom, dateTo, page, totalPages, totalCount, filtersOpen, stats,
@@ -42,19 +39,6 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
     handleEditClick, handleDeleteAnnouncement, deleteOfflineDraft,
     clearFilters, getUniquePlatformDeliveries: getDeliveries
   } = useDashboardData(navigate);
-
-  const handleCopyNotice = (ann: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const textToCopy = ann.content || ann.title;
-    if (!textToCopy) {
-      toast.error('No notice content to copy');
-      return;
-    }
-    navigator.clipboard.writeText(textToCopy);
-    setCopiedNoticeId(ann.id);
-    toast.success('Notice copied to clipboard!');
-    setTimeout(() => setCopiedNoticeId(null), 2000);
-  };
 
   const handleDuplicateNotice = (ann: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -286,12 +270,8 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                   <div className="flex-shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       <button onClick={(e: React.MouseEvent) => handleDuplicateNotice(ann, e)}
-                        className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Duplicate Notice to New Broadcast">
+                        className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Copy to New Broadcast">
                         <CopyPlus className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e: React.MouseEvent) => handleCopyNotice(ann, e)}
-                        className="p-2 text-ink-mute hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer" title="Copy Notice Text">
-                        {copiedNoticeId === ann.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                       </button>
                       <Link to={`/announcement/${ann.id}`}
                         className="p-2 text-ink-mute hover:text-primary hover:bg-primary/10 rounded-xl transition-colors" title="View Details">
@@ -399,12 +379,8 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                     <td className="py-4 px-4 text-center whitespace-nowrap" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                       <div className="flex justify-center items-center gap-1">
                         <button onClick={(e: React.MouseEvent) => handleDuplicateNotice(ann, e)}
-                          className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Duplicate Notice to New Broadcast">
+                          className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Copy to New Broadcast">
                           <CopyPlus className="w-4 h-4" />
-                        </button>
-                        <button onClick={(e: React.MouseEvent) => handleCopyNotice(ann, e)}
-                          className="p-2 text-ink-mute hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer" title="Copy Notice Text">
-                          {copiedNoticeId === ann.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         </button>
                         <Link to={`/announcement/${ann.id}`}
                           className="p-2 text-ink-mute hover:text-primary hover:bg-primary/10 rounded-xl transition-colors cursor-pointer" title="View Details">
