@@ -95,7 +95,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   if (notice.category === 'class_cancel') {
     if (course) msg += formatCourseHeader(course, notice.sections);
     const sectionNames = notice.sections.map(sec => sec.name).filter(Boolean);
-    if (sectionNames.length > 0) msg += `👥 *Section ${sectionNames.join(', ')}*\n`;
+    if (sectionNames.length > 0) msg += `👥 *Section:* ${sectionNames.join(', ')}\n`;
     if (isSameDateAcrossSections && commonDate) {
       msg += `📅 *Date:* ${formatDateStr(commonDate)}\n`;
     }
@@ -139,7 +139,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const hasSections = notice.sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom' || sec.date);
   const firstSection = notice.sections[0];
   const isSingleSection = notice.sections.length === 1 && hasSections;
-  if (isSingleSection && firstSection?.name) msg += `👥 *Section ${firstSection.name}*\n`;
+  if (isSingleSection && firstSection?.name) msg += `👥 *Section:* ${firstSection.name}\n`;
   const isAssignment = notice.category === 'assignment' || notice.category === 'lab_report';
   const dateLabel = isAssignment ? 'Deadline' : 'Date';
   if (isSameDateAcrossSections && commonDate) {
@@ -147,7 +147,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   }
   if (hasSections) {
     notice.sections.forEach(sec => {
-      if (!isSingleSection && sec.name) msg += `\n👥 *Section ${sec.name}*\n`;
+      if (!isSingleSection && sec.name) msg += `\n👥 *Section:* ${sec.name}\n`;
       const secDate = getEffectiveDate(sec);
       if (!isSameDateAcrossSections && secDate) {
         msg += `📅 *${dateLabel}:* ${formatDateStr(secDate)}\n`;

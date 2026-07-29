@@ -278,14 +278,12 @@ const AnnouncementForm: React.FC = () => {
                                     </div>
 
                                     <div className="sm:col-span-3">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider">Date (Optional)</label>
-                                        {sec.date && (
-                                          <button type="button" onClick={() => handleSectionChange(nIdx, idx, 'date', '')} className="text-[9px] font-semibold text-accent-tomato hover:underline border-none bg-transparent cursor-pointer">Clear</button>
-                                        )}
-                                      </div>
-                                      <input type="date" value={sec.date || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'date', e.target.value)}
-                                        className="w-full h-9 px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Date (Optional)</label>
+                                      <DatePicker
+                                        value={sec.date || ''}
+                                        onChange={(val: string) => handleSectionChange(nIdx, idx, 'date', val)}
+                                        placeholder="Inherit Event Date"
+                                      />
                                     </div>
 
                                     <div className="sm:col-span-3">
