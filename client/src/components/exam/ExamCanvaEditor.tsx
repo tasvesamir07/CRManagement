@@ -683,50 +683,38 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
 
-  // Workspace Panning & Drag State
+  // 2D Canvas Pan & Drag State
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
-  const [canvasHeight, setCanvasHeight] = useState<number>(850);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === canvasRef.current) {
-          setCanvasHeight(entry.target.clientHeight);
-        }
-      }
-    });
-    observer.observe(canvasRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const panStartRef = useRef<{ pointerX: number; pointerY: number; panX: number; panY: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    if (workspaceRef.current) {
-      setIsPanning(true);
-      panStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        scrollLeft: workspaceRef.current.scrollLeft,
-        scrollTop: workspaceRef.current.scrollTop
-      };
-      try {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      } catch (_) {}
-    }
+    setIsPanning(true);
+    panStartRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      panX: pan.x,
+      panY: pan.y
+    };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanning || !panStartRef.current || !workspaceRef.current) return;
-    const dx = e.clientX - panStartRef.current.x;
-    const dy = e.clientY - panStartRef.current.y;
-    workspaceRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
-    workspaceRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+    if (!isPanning || !panStartRef.current) return;
+    const dx = e.clientX - panStartRef.current.pointerX;
+    const dy = e.clientY - panStartRef.current.pointerY;
+
+    setPan({
+      x: panStartRef.current.panX + dx,
+      y: panStartRef.current.panY + dy
+    });
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -737,6 +725,11 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
       } catch (_) {}
     }
+  };
+
+  const resetView = () => {
+    setZoom(typeof window !== 'undefined' && window.innerWidth < 640 ? 50 : 100);
+    setPan({ x: 0, y: 0 });
   };
   
   // Custom font & text alignment state
@@ -2280,9 +2273,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => setZoom(typeof window !== 'undefined' && window.innerWidth < 640 ? 50 : 100)}
+                onClick={resetView}
                 className="px-2 py-1 text-[10px] font-bold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-1"
-                title="Fit routine to screen"
+                title="Reset view and fit routine to screen"
               >
                 Fit
               </button>
@@ -2327,7 +2320,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           </div>
         </div>
 
-        {/* Scrollable Workspace Container (Figma Dot Grid Style) */}
+        {/* 2D Infinite Workspace Container (Figma Dot Grid Style) */}
         <div 
           ref={workspaceRef}
           onPointerDown={handlePointerDown}
@@ -2337,21 +2330,19 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           style={{
             backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
             backgroundSize: '16px 16px',
-            touchAction: 'pan-x pan-y'
+            touchAction: 'none'
           }}
-          className={`flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center bg-[#f8fafc] select-none ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`flex-1 overflow-hidden flex items-center justify-center bg-[#f8fafc] select-none relative h-full min-h-[480px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
-          {/* Zoom & Margin Compensated Scaled Poster Wrapper */}
+          {/* 2D Panned & Scaled Poster Wrapper */}
           <div 
             style={{ 
               width: '550px',
-              transform: `scale(${zoom / 100})`,
-              transformOrigin: 'top center',
-              marginLeft: `${(550 * (zoom / 100) - 550) / 2}px`,
-              marginRight: `${(550 * (zoom / 100) - 550) / 2}px`,
-              marginBottom: `${(canvasHeight * (zoom / 100) - canvasHeight)}px`
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`,
+              transformOrigin: 'center center',
+              willChange: 'transform'
             }} 
-            className="transition-transform duration-75 shrink-0 my-2"
+            className="transition-transform duration-75 ease-out shrink-0"
           >
             
             {/* The Actual Poster Canvas */}
