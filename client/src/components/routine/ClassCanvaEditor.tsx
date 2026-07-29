@@ -402,6 +402,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [isLocked, setIsLocked] = useState(false);
   const [routineNotes, setRoutineNotes] = useState<string>('');
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState<boolean>(false);
 
   // 2D Canvas Pan & Drag State
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -930,16 +931,28 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none">
+    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
+      <div className={`lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col overflow-y-auto lg:overflow-hidden ${
+        showMobileSidebar 
+          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4' 
+          : 'hidden lg:flex h-auto lg:h-full'
+      }`}>
         
-        <div className="p-4 border-b border-hairline flex items-center bg-canvas flex-shrink-0">
+        <div className="p-3 sm:p-4 border-b border-hairline flex items-center justify-between bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary animate-pulse" />
-            <h2 className="font-bold text-ink">Class Routine Canva Editor</h2>
+            <h2 className="font-bold text-ink text-sm sm:text-base">Class Routine Canva Editor</h2>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowMobileSidebar(false)}
+            className="lg:hidden p-1.5 rounded hover:bg-canvas-soft text-ink-mute hover:text-ink cursor-pointer"
+            title="Close Settings Panel"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Tab Controls */}
@@ -1556,49 +1569,62 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col min-h-[480px] h-auto lg:h-full bg-[#f8fafc] overflow-auto">
+      <div className="lg:col-span-8 flex flex-col h-full bg-[#f8fafc] overflow-hidden relative">
         
-        {/* Toolbar Controls */}
-        <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
+        {/* Canvas Toolbar Controls */}
+        <div className="p-2 sm:p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-2 bg-canvas no-export flex-shrink-0 z-30 shadow-xs">
           
-          {/* Zoom and Lock toggles */}
-          <div className="flex items-center gap-2">
+          {/* Left Group: Mobile Edit Controls Toggle + Lock + Zoom */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <button
+              onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+              className={`lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded cursor-pointer border transition-colors ${
+                showMobileSidebar 
+                  ? 'bg-primary text-on-primary border-primary shadow-xs' 
+                  : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>{showMobileSidebar ? 'Hide Controls' : 'Edit Controls'}</span>
+            </button>
+
             <button
               onClick={() => setIsLocked(!isLocked)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded cursor-pointer border ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded cursor-pointer border ${
                 isLocked 
                   ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
                   : 'bg-canvas border-hairline text-gray-600 hover:bg-canvas-soft'
               }`}
+              title={isLocked ? 'Unlock canvas for editing' : 'Lock canvas into design mode'}
             >
               {isLocked ? (
-                <><Lock className="w-3.5 h-3.5 text-amber-500" /> Locked</>
+                <><Lock className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Locked</span></>
               ) : (
-                <><Unlock className="w-3.5 h-3.5 text-gray-400" /> Unlocked</>
+                <><Unlock className="w-3.5 h-3.5 text-gray-400" /> <span className="hidden sm:inline">Unlocked</span></>
               )}
             </button>
 
-            <div className="h-6 w-px bg-hairline" />
+            <div className="h-5 w-px bg-hairline hidden sm:block" />
 
             <div className="flex items-center gap-1">
               <button 
                 onClick={() => setZoom(Math.max(25, zoom - 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
+                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-mono font-medium px-1 w-10 text-center text-ink">{zoom}%</span>
+              <span className="text-[11px] sm:text-xs font-mono font-medium px-0.5 sm:px-1 w-8 sm:w-10 text-center text-ink">{zoom}%</span>
               <button 
                 onClick={() => setZoom(Math.min(150, zoom + 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
+                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={resetView}
-                className="px-2 py-1 text-[10px] font-bold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-1"
+                className="px-1.5 sm:px-2 py-1 text-[10px] font-bold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-0.5"
                 title="Reset view and fit routine to screen"
               >
                 Fit
@@ -1606,40 +1632,42 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
             </div>
           </div>
 
-          {/* Export Actions */}
-          <div className="flex items-center gap-2">
+          {/* Right Group: Save + Download PNG + Share Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               disabled={savingData}
               onClick={handleSaveRoutineData}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-sm disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1.5 sm:px-3 text-xs font-semibold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-sm disabled:opacity-50"
               title="Save routine design, custom formatting and grid layout"
             >
               {savingData ? (
-                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Saving...</>
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> <span className="hidden sm:inline">Saving...</span></>
               ) : (
-                <><Save className="w-3.5 h-3.5 text-primary" /> Save Routine Data</>
+                <><Save className="w-3.5 h-3.5 text-primary" /> <span className="hidden sm:inline">Save Data</span></>
               )}
             </button>
             <button
               disabled={exporting}
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-sm disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1.5 sm:px-3 text-xs font-semibold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-sm disabled:opacity-50"
+              title="Download PNG poster"
             >
               {exporting ? (
-                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Rendering...</>
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> <span className="hidden sm:inline">Rendering...</span></>
               ) : (
-                <><Download className="w-3.5 h-3.5 text-primary" /> Download PNG</>
+                <><Download className="w-3.5 h-3.5 text-primary" /> <span className="hidden sm:inline">PNG</span></>
               )}
             </button>
             <button
               disabled={sharing}
               onClick={handleShareToNotice}
-              className="flex items-center gap-1.5 px-4.5 py-1.5 text-xs font-semibold bg-primary text-on-primary rounded hover:bg-primary-deep cursor-pointer transition-all shadow-sm disabled:opacity-50"
+              className="flex items-center gap-1 px-2.5 py-1.5 sm:px-4 text-xs font-semibold bg-primary text-on-primary rounded hover:bg-primary-deep cursor-pointer transition-all shadow-sm disabled:opacity-50"
+              title="Share to Notice Board"
             >
               {sharing ? (
-                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Uploading...</>
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> <span className="hidden sm:inline">Uploading...</span></>
               ) : (
-                <><Share2 className="w-3.5 h-3.5" /> Share to Notice Board</>
+                <><Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Share</span></>
               )}
             </button>
           </div>
