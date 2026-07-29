@@ -108,7 +108,7 @@ const RoutineManager = () => {
   }
 
   return (
-    <div className="-mx-2 sm:-mx-6 lg:-mx-8 -my-4 sm:-my-8 h-[calc(100vh-120px)] md:h-[calc(100vh-0px)] overflow-hidden">
+    <div className="-mx-2 sm:-mx-6 lg:-mx-8 -my-4 sm:-my-8 min-h-[calc(100vh-120px)] lg:h-[calc(100vh-0px)] overflow-y-auto lg:overflow-hidden">
       <ClassCanvaEditor 
         routines={routines}
         courses={courses}

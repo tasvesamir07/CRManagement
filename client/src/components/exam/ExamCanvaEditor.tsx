@@ -674,7 +674,12 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   
   const [showVerticalLines, setShowVerticalLines] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return 50;
+    }
+    return 100;
+  });
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   
@@ -2177,7 +2182,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       </div>
 
       {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-[550px] lg:h-full bg-[#e2e8f0] overflow-hidden">
+      <div className="lg:col-span-8 flex flex-col min-h-[480px] h-auto lg:h-full bg-[#e2e8f0] overflow-auto">
         
         {/* Canvas Toolbar Controls */}
         <div className="p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 bg-canvas no-export flex-shrink-0">
@@ -2204,19 +2209,26 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
             <div className="flex items-center gap-1">
               <button 
-                onClick={() => setZoom(Math.max(50, zoom - 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-400 hover:text-ink"
+                onClick={() => setZoom(Math.max(25, zoom - 10))} 
+                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-mono font-medium px-1.5 w-12 text-center text-ink">{zoom}%</span>
+              <span className="text-xs font-mono font-medium px-1 w-10 text-center text-ink">{zoom}%</span>
               <button 
                 onClick={() => setZoom(Math.min(150, zoom + 10))} 
-                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-400 hover:text-ink"
+                className="p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setZoom(typeof window !== 'undefined' && window.innerWidth < 640 ? 50 : 100)}
+                className="px-2 py-1 text-[10px] font-bold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-1"
+                title="Fit routine to screen"
+              >
+                Fit
               </button>
             </div>
           </div>
@@ -2265,13 +2277,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
             backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
             backgroundSize: '16px 16px'
           }}
-          className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[500px] bg-[#f8fafc]"
+          className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center bg-[#f8fafc]"
         >
           
           {/* Zoom Wrapper */}
           <div 
-            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center center' }} 
-            className="transition-transform duration-150 py-4"
+            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }} 
+            className="transition-transform duration-150 py-2 sm:py-4"
           >
             
             {/* The Actual Poster Canvas */}
