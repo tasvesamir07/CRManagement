@@ -82,11 +82,11 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-full items-center justify-between rounded-sm border border-hairline bg-canvas px-2 py-1 text-xs text-ink placeholder-ink-faint shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer text-left"
+        className="flex h-9 w-full items-center justify-between gap-1.5 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-xs text-ink placeholder-ink-faint shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer text-left font-sans select-none"
       >
-        <span className={cn("flex items-center gap-1.5 whitespace-nowrap", !value && "text-ink-mute")}>
-          <Clock className="h-3.5 w-3.5 shrink-0" />
-          {value ? displayValue : placeholder}
+        <span className={cn("flex items-center gap-1.5 min-w-0 truncate whitespace-nowrap", !value && "text-ink-mute")}>
+          <Clock className="h-3.5 w-3.5 shrink-0 text-ink-mute" />
+          <span className="truncate">{value ? displayValue : placeholder}</span>
         </span>
         {value && (
           <span
@@ -94,7 +94,7 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
               e.stopPropagation()
               onChange?.("")
             }}
-            className="rounded p-0.5 hover:bg-canvas-soft text-ink-mute hover:text-ink transition-colors cursor-pointer shrink-0"
+            className="rounded p-0.5 hover:bg-canvas-soft text-ink-mute hover:text-ink transition-colors cursor-pointer shrink-0 ml-0.5"
           >
             <X className="h-3 w-3" />
           </span>
@@ -102,7 +102,7 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 z-50 flex gap-2 rounded-md border border-hairline bg-canvas p-3 shadow-lg animate-in fade-in slide-in-from-top-1 duration-150 h-52">
+        <div className="absolute left-0 top-full mt-1.5 z-50 flex gap-2 rounded-md border border-hairline bg-canvas p-3 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150 h-52">
           {/* Hours column */}
           <div className="flex flex-col overflow-y-auto w-12 border-r border-hairline pr-1 h-full scrollbar-none scroll-smooth">
             <span className="text-[10px] text-ink-mute uppercase text-center font-bold mb-1 select-none">Hr</span>

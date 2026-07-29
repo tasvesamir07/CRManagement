@@ -162,9 +162,9 @@ const AnnouncementForm: React.FC = () => {
               {notices.map((notice: any, nIdx: number) => {
                 const showTopics = getShowTopics(notice);
                 return (
-                  <div key={notice.id || nIdx} className="border border-hairline rounded-md bg-canvas shadow-sm overflow-hidden transition-all">
+                  <div key={notice.id || nIdx} className="border border-hairline rounded-md bg-canvas shadow-sm transition-all">
                     <div onClick={() => handleNoticeFieldChange(nIdx, 'isExpanded', !notice.isExpanded)}
-                      className="flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 bg-canvas-soft border-b border-hairline cursor-pointer select-none hover:bg-canvas-soft-strong transition-colors">
+                      className="flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 bg-canvas-soft border-b border-hairline cursor-pointer select-none hover:bg-canvas-soft-strong transition-colors rounded-t-md">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-ink">Notice #{nIdx + 1}: {notice.title || 'Untitled'}</span>
                         <span className="text-[10px] font-mono text-ink-mute bg-canvas border border-hairline px-1.5 py-0.5 rounded-sm uppercase">{notice.category}</span>
@@ -269,16 +269,16 @@ const AnnouncementForm: React.FC = () => {
                                     )}
                                   </div>
                                   
-                                  {/* Row 1: Section, Date (Optional), & Timing */}
+                                  {/* Row 1: Section, Date (Optional), & Time Option */}
                                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                                     <div className="sm:col-span-2">
-                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Section *</label>
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Section *</label>
                                       <input type="text" required value={sec.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'name', e.target.value)} placeholder="e.g. A"
                                         className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-center font-bold" />
                                     </div>
 
-                                    <div className="sm:col-span-3">
-                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Date (Optional)</label>
+                                    <div className="sm:col-span-5">
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Date (Optional)</label>
                                       <DatePicker
                                         value={sec.date || ''}
                                         onChange={(val: string) => handleSectionChange(nIdx, idx, 'date', val)}
@@ -286,8 +286,8 @@ const AnnouncementForm: React.FC = () => {
                                       />
                                     </div>
 
-                                    <div className="sm:col-span-3">
-                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Time Option</label>
+                                    <div className="sm:col-span-5">
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Time Option</label>
                                       <CustomSelect
                                         value={sec.timeOption || 'select'}
                                         onChange={(opt) => {
@@ -303,42 +303,43 @@ const AnnouncementForm: React.FC = () => {
                                         size="sm"
                                       />
                                     </div>
-
-                                    {sec.timeOption === 'custom' ? (
-                                      <div className="sm:col-span-4">
-                                        <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Custom Time Text</label>
-                                        <input type="text" value={sec.startTime || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'startTime', e.target.value)} placeholder="e.g. 11:30 AM (Tentative)"
-                                          className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                      </div>
-                                    ) : (!sec.timeOption || sec.timeOption === 'select') ? (
-                                      <>
-                                        <div className="sm:col-span-2">
-                                          <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Start Time</label>
-                                          <TimePicker value={sec.startTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'startTime', val)} placeholder="Start" className="text-xs" />
-                                        </div>
-                                        <div className="sm:col-span-2">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider">End Time</label>
-                                            <label className="inline-flex items-center text-[9px] font-semibold text-primary cursor-pointer select-none">
-                                              <input type="checkbox" checked={sec.hasEndTime !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { handleSectionChange(nIdx, idx, 'hasEndTime', e.target.checked); if (!e.target.checked) handleSectionChange(nIdx, idx, 'endTime', ''); }} className="mr-0.5 accent-primary w-2.5 h-2.5" /> Range
-                                            </label>
-                                          </div>
-                                          {sec.hasEndTime !== false ? (
-                                            <TimePicker value={sec.endTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'endTime', val)} placeholder="End" className="text-xs" />
-                                          ) : (
-                                            <div className="w-full px-1 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[9px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular</div>
-                                          )}
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <div className="sm:col-span-4">
-                                        <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Timing Status</label>
-                                        <div className="w-full px-3 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-xs text-ink-mute h-9 flex items-center justify-center select-none font-medium">
-                                          {sec.timeOption === 'tbd' ? '⏳ Will announce later' : '❌ No time needed'}
-                                        </div>
-                                      </div>
-                                    )}
                                   </div>
+
+                                  {/* Row 1b: Timings / Custom Time Text */}
+                                  {sec.timeOption === 'custom' ? (
+                                    <div className="pt-1">
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Custom Time Text</label>
+                                      <input type="text" value={sec.startTime || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'startTime', e.target.value)} placeholder="e.g. 11:30 AM (Tentative)"
+                                        className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    </div>
+                                  ) : (!sec.timeOption || sec.timeOption === 'select') ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                      <div>
+                                        <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Start Time</label>
+                                        <TimePicker value={sec.startTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'startTime', val)} placeholder="Start Time" className="text-xs" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1 gap-2">
+                                          <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider whitespace-nowrap">End Time</label>
+                                          <label className="inline-flex items-center text-[10px] font-semibold text-primary cursor-pointer select-none whitespace-nowrap">
+                                            <input type="checkbox" checked={sec.hasEndTime !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { handleSectionChange(nIdx, idx, 'hasEndTime', e.target.checked); if (!e.target.checked) handleSectionChange(nIdx, idx, 'endTime', ''); }} className="mr-1 accent-primary w-3 h-3 cursor-pointer" /> Range
+                                          </label>
+                                        </div>
+                                        {sec.hasEndTime !== false ? (
+                                          <TimePicker value={sec.endTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'endTime', val)} placeholder="End Time" className="text-xs" />
+                                        ) : (
+                                          <div className="w-full px-2 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[10px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="pt-1">
+                                      <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1 whitespace-nowrap">Timing Status</label>
+                                      <div className="w-full px-3 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-xs text-ink-mute h-9 flex items-center justify-center select-none font-medium">
+                                        {sec.timeOption === 'tbd' ? '⏳ Will announce later' : '❌ No time needed'}
+                                      </div>
+                                    </div>
+                                  )}
 
                                   {/* Row 2: Location & Classroom */}
                                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end pt-1 border-t border-hairline-cool/40">

@@ -55,11 +55,11 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-full items-center justify-between rounded-sm border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink placeholder-ink-faint shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer text-left"
+        className="flex h-9 w-full items-center justify-between gap-1.5 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-xs text-ink placeholder-ink-faint shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary hover:border-hairline-strong transition-all duration-150 cursor-pointer text-left font-sans select-none"
       >
-        <span className={cn("flex items-center gap-2", !value && "text-ink-mute")}>
-          <CalendarIcon className="h-4 w-4" />
-          {value ? displayValue : placeholder}
+        <span className={cn("flex items-center gap-1.5 min-w-0 truncate whitespace-nowrap", !value && "text-ink-mute")}>
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-ink-mute" />
+          <span className="truncate">{value ? displayValue : placeholder}</span>
         </span>
         {value && (
           <span
@@ -67,7 +67,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
               e.stopPropagation()
               onChange?.("")
             }}
-            className="rounded p-0.5 hover:bg-canvas-soft text-ink-mute hover:text-ink transition-colors cursor-pointer"
+            className="rounded p-0.5 hover:bg-canvas-soft text-ink-mute hover:text-ink transition-colors cursor-pointer shrink-0 ml-0.5"
           >
             <X className="h-3.5 w-3.5" />
           </span>
@@ -75,7 +75,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 z-50 rounded-md border border-hairline bg-canvas p-3 shadow-lg animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute left-0 top-full mt-1.5 z-50 rounded-md border border-hairline bg-canvas p-3 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150">
           <JollyCalendar
             aria-label="Select date"
             value={dateValue}
