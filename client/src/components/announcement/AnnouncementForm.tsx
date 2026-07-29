@@ -269,7 +269,7 @@ const AnnouncementForm: React.FC = () => {
                                     )}
                                   </div>
                                   
-                                  {/* Row 1: Section & Timing */}
+                                  {/* Row 1: Section, Date (Optional), & Timing */}
                                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                                     <div className="sm:col-span-2">
                                       <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Section *</label>
@@ -277,7 +277,18 @@ const AnnouncementForm: React.FC = () => {
                                         className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-center font-bold" />
                                     </div>
 
-                                    <div className="sm:col-span-4">
+                                    <div className="sm:col-span-3">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider">Date (Optional)</label>
+                                        {sec.date && (
+                                          <button type="button" onClick={() => handleSectionChange(nIdx, idx, 'date', '')} className="text-[9px] font-semibold text-accent-tomato hover:underline border-none bg-transparent cursor-pointer">Clear</button>
+                                        )}
+                                      </div>
+                                      <input type="date" value={sec.date || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'date', e.target.value)}
+                                        className="w-full h-9 px-2 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    </div>
+
+                                    <div className="sm:col-span-3">
                                       <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Time Option</label>
                                       <CustomSelect
                                         value={sec.timeOption || 'select'}
@@ -296,18 +307,18 @@ const AnnouncementForm: React.FC = () => {
                                     </div>
 
                                     {sec.timeOption === 'custom' ? (
-                                      <div className="sm:col-span-6">
+                                      <div className="sm:col-span-4">
                                         <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Custom Time Text</label>
                                         <input type="text" value={sec.startTime || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSectionChange(nIdx, idx, 'startTime', e.target.value)} placeholder="e.g. 11:30 AM (Tentative)"
                                           className="w-full h-9 px-3 py-1.5 border border-hairline rounded-sm text-xs bg-canvas text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                       </div>
                                     ) : (!sec.timeOption || sec.timeOption === 'select') ? (
                                       <>
-                                        <div className="sm:col-span-3">
+                                        <div className="sm:col-span-2">
                                           <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Start Time</label>
-                                          <TimePicker value={sec.startTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'startTime', val)} placeholder="Start Time" className="text-xs" />
+                                          <TimePicker value={sec.startTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'startTime', val)} placeholder="Start" className="text-xs" />
                                         </div>
-                                        <div className="sm:col-span-3">
+                                        <div className="sm:col-span-2">
                                           <div className="flex items-center justify-between mb-1">
                                             <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider">End Time</label>
                                             <label className="inline-flex items-center text-[9px] font-semibold text-primary cursor-pointer select-none">
@@ -315,14 +326,14 @@ const AnnouncementForm: React.FC = () => {
                                             </label>
                                           </div>
                                           {sec.hasEndTime !== false ? (
-                                            <TimePicker value={sec.endTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'endTime', val)} placeholder="End Time" className="text-xs" />
+                                            <TimePicker value={sec.endTime || ''} onChange={(val: string) => handleSectionChange(nIdx, idx, 'endTime', val)} placeholder="End" className="text-xs" />
                                           ) : (
-                                            <div className="w-full px-2 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[10px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular Time</div>
+                                            <div className="w-full px-1 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-[9px] text-ink-mute font-medium text-center h-9 flex items-center justify-center select-none">Singular</div>
                                           )}
                                         </div>
                                       </>
                                     ) : (
-                                      <div className="sm:col-span-6">
+                                      <div className="sm:col-span-4">
                                         <label className="block text-[10px] font-semibold text-ink-mute uppercase tracking-wider mb-1">Timing Status</label>
                                         <div className="w-full px-3 py-1.5 border border-dashed border-hairline bg-canvas-soft rounded-sm text-xs text-ink-mute h-9 flex items-center justify-center select-none font-medium">
                                           {sec.timeOption === 'tbd' ? '⏳ Will announce later' : '❌ No time needed'}

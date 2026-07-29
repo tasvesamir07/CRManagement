@@ -6,6 +6,7 @@ export interface Section {
   mode: 'Offline' | 'Online';
   timeOption: 'select' | 'custom' | 'tbd' | 'none';
   hasEndTime?: boolean;
+  date?: string;
 }
 
 export interface NoteItem {

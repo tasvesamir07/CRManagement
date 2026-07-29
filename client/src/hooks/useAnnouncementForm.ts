@@ -206,12 +206,12 @@ getInitialValue('uploadedFiles', []));
     setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], selectedCourseId: courseId }; return u; });
     if (isEditMode) return;
     if (!courseId) {
-      setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }] }; return u; });
+      setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }] }; return u; });
       return;
     }
     const routines = await getCourseRoutines(courseId);
     const nextOcc = getNextOccurrence(routines.map((r: any) => r.day_of_week));
-    let sectionsToSet = [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }];
+    let sectionsToSet = [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }];
     if (nextOcc) {
       const d = new Date(parseInt(nextOcc.split('-')[0]), parseInt(nextOcc.split('-')[1]) - 1, parseInt(nextOcc.split('-')[2]));
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
@@ -220,7 +220,7 @@ getInitialValue('uploadedFiles', []));
         sectionsToSet = matched.map((m: any) => ({
           name: m.section || '', startTime: m.start_time?.substring(0, 5) || '',
           endTime: m.end_time?.substring(0, 5) || '', room: m.room_number || '',
-          mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd'
+          mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd', date: ''
         }));
       }
     }
@@ -243,13 +243,13 @@ getInitialValue('uploadedFiles', []));
     const routines = await getCourseRoutines(notice.selectedCourseId);
     const matched = routines.filter((r: any) => r.day_of_week.toLowerCase() === dayName.toLowerCase());
     const sectionsToSet = matched.length > 0
-      ? matched.map((m: any) => ({ name: m.section || '', startTime: m.start_time?.substring(0, 5) || '', endTime: m.end_time?.substring(0, 5) || '', room: m.room_number || '', mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd' }))
-      : [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }];
+      ? matched.map((m: any) => ({ name: m.section || '', startTime: m.start_time?.substring(0, 5) || '', endTime: m.end_time?.substring(0, 5) || '', room: m.room_number || '', mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd', date: '' }))
+      : [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }];
     setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], sections: sectionsToSet }; return u; });
   };
 
   const addSectionField = (index: number) => {
-    setNotices(prev => { const u = [...prev]; const n = u[index]; n.sections = [...n.sections, { name: '', startTime: '', endTime: '', room: '', mode: n.makeupStatus === 'online' ? 'Online' : 'Offline', timeOption: 'select' }]; return u; });
+    setNotices(prev => { const u = [...prev]; const n = u[index]; n.sections = [...n.sections, { name: '', startTime: '', endTime: '', room: '', mode: n.makeupStatus === 'online' ? 'Online' : 'Offline', timeOption: 'select', date: '' }]; return u; });
   };
 
   const removeSectionField = (noticeIndex: number, sectionIndex: number) => {

@@ -11,6 +11,7 @@ interface Section {
   endTime?: string;
   timeOption?: string;
   mode?: string;
+  date?: string;
 }
 
 interface NoticeNote {
@@ -44,27 +45,47 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   notice: '📣'
 };
 
+function formatDateStr(dateStr?: string): string {
+  if (!dateStr) return '';
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  if (!yearStr || !monthStr || !dayStr) return '';
+  const eventDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
+  const day = String(eventDate.getDate()).padStart(2, '0');
+  const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+  const year = String(eventDate.getFullYear()).substring(2);
+  const dayName = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+  return `${day}/${month}/${year} ${dayName}`;
+}
+
 export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const course = courses.find(c => c.id === parseInt(notice.selectedCourseId || '0'));
   const emoji = CATEGORY_EMOJIS[notice.category] || '📢';
   const cleanTitle = notice.title?.trim() || 'Title';
   let msg = `${emoji} *${cleanTitle}*\n\n`;
+
+  const getEffectiveDate = (sec: Section) => sec.date || notice.selectedDate || '';
+  const effectiveDates = notice.sections.map(getEffectiveDate);
+  const uniqueDates = Array.from(new Set(effectiveDates.filter(Boolean)));
+  const isSameDateAcrossSections = uniqueDates.length <= 1;
+  const commonDate = uniqueDates[0] || notice.selectedDate || '';
+
   if (notice.category === 'class_cancel') {
     if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
     const sectionNames = notice.sections.map(sec => sec.name).filter(Boolean);
     if (sectionNames.length > 0) msg += `👥 *Section ${sectionNames.join(', ')}*\n`;
-    const [yearStr, monthStr, dayStr] = (notice.selectedDate || '').split('-');
-    const eventDate = yearStr ? new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr)) : new Date();
-    const day = String(eventDate.getDate()).padStart(2, '0');
-    const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-    const year = String(eventDate.getFullYear()).substring(2);
-    const dayName = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
-    msg += `📅 *Date:* ${day}/${month}/${year} ${dayName}\n\n❌ *Status:* Class Cancelled\n\n`;
+    if (isSameDateAcrossSections && commonDate) {
+      msg += `📅 *Date:* ${formatDateStr(commonDate)}\n`;
+    }
+    msg += `\n❌ *Status:* Class Cancelled\n\n`;
     if (notice.makeupStatus === 'later') msg += '📝 *Note:* Make-up class time will be shared later.\n';
     else if (notice.makeupStatus === 'rescheduled' || notice.makeupStatus === 'online') {
       msg += `📝 *Note:* ${notice.makeupStatus === 'online' ? 'Class will be held Online' : 'Rescheduled to new slot'}:\n`;
       notice.sections.forEach(sec => {
         if (sec.name) msg += ` · Section ${sec.name}:\n`;
+        const secDate = getEffectiveDate(sec);
+        if (!isSameDateAcrossSections && secDate) {
+          msg += `   📅 *Date:* ${formatDateStr(secDate)}\n`;
+        }
         if (sec.timeOption === 'none') { /* no time info */ }
         else if (sec.timeOption === 'custom') { if (sec.startTime) msg += `   ⏰ *Time:* ${sec.startTime}\n`; }
         else if (sec.timeOption === 'tbd') { msg += '   ⏰ *Time:* Will announce later\n'; }
@@ -92,20 +113,22 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
     return msg;
   }
   if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
-  const hasSections = notice.sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom');
+  const hasSections = notice.sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom' || sec.date);
   const firstSection = notice.sections[0];
   const isSingleSection = notice.sections.length === 1 && hasSections;
   if (isSingleSection && firstSection?.name) msg += `👥 *Section ${firstSection.name}*\n`;
   const isAssignment = notice.category === 'assignment' || notice.category === 'lab_report';
   const dateLabel = isAssignment ? 'Deadline' : 'Date';
-  if (notice.selectedDate) {
-    const [yearStr, monthStr, dayStr] = notice.selectedDate.split('-');
-    const eventDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-    msg += `📅 *${dateLabel}:* ${String(eventDate.getDate()).padStart(2, '0')}/${String(eventDate.getMonth() + 1).padStart(2, '0')}/${String(eventDate.getFullYear()).substring(2)} ${eventDate.toLocaleDateString('en-US', { weekday: 'long' })}\n`;
+  if (isSameDateAcrossSections && commonDate) {
+    msg += `📅 *${dateLabel}:* ${formatDateStr(commonDate)}\n`;
   }
   if (hasSections) {
     notice.sections.forEach(sec => {
       if (!isSingleSection && sec.name) msg += `\n👥 *Section ${sec.name}*\n`;
+      const secDate = getEffectiveDate(sec);
+      if (!isSameDateAcrossSections && secDate) {
+        msg += `📅 *${dateLabel}:* ${formatDateStr(secDate)}\n`;
+      }
       if (sec.timeOption === 'none') { /* no time info */ }
       else if (sec.timeOption === 'custom') { if (sec.startTime) msg += `⏰ *Time:* ${sec.startTime}\n`; }
       else if (sec.timeOption === 'tbd') { msg += '⏰ *Time:* Will announce later\n'; }
