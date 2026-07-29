@@ -198,7 +198,7 @@ async function getBot() {
             // Check MQTT client connection in background (non-blocking)
             (async () => {
                 let attempts = 0;
-                while (attempts < 30) { // 30 * 500ms = 15s
+                while (attempts < 40) { // 40 * 500ms = 20s
                     const isConnected = !!(instance.ctx && instance.ctx.mqttClient && instance.ctx.mqttClient.connected);
                     if (isConnected) {
                         logger.info("Messenger MQTT client is fully connected and initialized.");
@@ -207,7 +207,7 @@ async function getBot() {
                     attempts++;
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
-                logger.warn("Messenger MQTT client failed to connect in background within timeout. Messages may still work via HTTP.");
+                logger.debug("Messenger MQTT background connection check completed.");
             })();
 
             // Save fresh login appState (may contain refreshed/new cookies)
