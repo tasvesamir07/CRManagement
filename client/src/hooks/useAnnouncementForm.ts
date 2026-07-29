@@ -563,6 +563,44 @@ getInitialValue('uploadedFiles', []));
     }
   }, [searchParams]);
 
+  const populateFormFromAnnouncement = useCallback((ann: any, isClone = false) => {
+    if (!ann) return;
+    if (!isClone) {
+      setAnnouncementId(ann.id);
+      if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
+    }
+    if (ann.metadata && typeof ann.metadata === 'object') {
+      const meta = ann.metadata;
+      if (meta.broadcastMode) setBroadcastMode(meta.broadcastMode);
+      if (meta.customText !== undefined) setCustomText(meta.customText);
+      if (meta.fileCaption !== undefined) setFileCaption(meta.fileCaption);
+      if (meta.closingText !== undefined) setClosingText(meta.closingText);
+      if (meta.notices && Array.isArray(meta.notices)) {
+        const noticesToSet = isClone
+          ? meta.notices.map((n: any, idx: number) => ({ ...n, id: Date.now() + idx }))
+          : meta.notices;
+        setNotices(noticesToSet);
+      }
+    } else {
+      setBroadcastMode(ann.category === 'share_file' ? 'share_file' : (ann.category === 'custom' ? 'custom' : 'notice'));
+      if (ann.category === 'share_file') setFileCaption(ann.content === 'Shared File(s)' ? '' : (ann.content || ''));
+      else if (ann.category === 'custom') {
+        setCustomText(ann.content || '');
+        setNotices([{ id: Date.now(), titlePreset: 'Custom', title: ann.title || '', category: 'custom', selectedCourseId: ann.course_id ? String(ann.course_id) : '', selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }], topics: [], notes: [], makeupStatus: 'later', customMakeupText: '', currentTopic: '', currentNote: '', noteType: 'note', isExpanded: true }]);
+      } else {
+        setNotices([{ id: Date.now(), titlePreset: 'Custom', title: ann.title || '', category: ann.category || 'notice', selectedCourseId: ann.course_id ? String(ann.course_id) : '', selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }], topics: [], notes: [], makeupStatus: 'later', customMakeupText: '', currentTopic: '', currentNote: '', noteType: 'note', isExpanded: true }]);
+      }
+    }
+    if (ann.files && Array.isArray(ann.files)) setUploadedFiles(ann.files);
+    else if (ann.file_ids?.length > 0 || ann.file_id) setUploadedFiles(ann.files || []);
+    if (ann.delivery?.length > 0) {
+      setSelectedPlatforms(ann.delivery.filter((d: any) => d.platform_status !== 'sent').map((d: any) => d.platform_id));
+      if (!isClone) {
+        setAlreadySentPlatforms(ann.delivery.filter((d: any) => d.platform_status === 'sent').map((d: any) => d.platform_id));
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!isEditMode && location.state) {
       let stateChanged = false;
@@ -575,6 +613,39 @@ getInitialValue('uploadedFiles', []));
       if (stateChanged) window.history.replaceState({}, document.title);
     }
   }, [location, isEditMode]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    const cloneAnn = location.state?.cloneAnn;
+    const cloneId = location.state?.cloneFromId || searchParams.get('cloneFrom');
+
+    if (cloneAnn) {
+      populateFormFromAnnouncement(cloneAnn, true);
+      toast.success('Notice duplicated into New Broadcast! Modify any details as needed.');
+      window.history.replaceState({}, document.title);
+      return;
+    }
+
+    if (cloneId) {
+      (async () => {
+        try {
+          setLoadingData(true);
+          let ann;
+          if (String(cloneId).startsWith('local_')) ann = await OfflineDrafts.get(cloneId);
+          else ann = await announcementsAPI.get(cloneId);
+          if (ann) {
+            populateFormFromAnnouncement(ann, true);
+            toast.success('Notice duplicated into New Broadcast! Modify any details as needed.');
+          }
+          window.history.replaceState({}, document.title);
+        } catch {
+          toast.error('Failed to duplicate notice');
+        } finally {
+          setLoadingData(false);
+        }
+      })();
+    }
+  }, [location, searchParams, isEditMode, populateFormFromAnnouncement]);
 
   useEffect(() => {
     const init = async () => {
@@ -635,32 +706,12 @@ getInitialValue('uploadedFiles', []));
         else ann = await announcementsAPI.get(editId);
         if (!ann) { toast.error('Notice draft not found.'); setLoadingData(false); navigate('/dashboard'); return; }
         if (ann.status !== 'draft' && ann.status !== 'scheduled' && ann.status !== 'partial' && ann.status !== 'failed') { toast.error('Cannot edit this notice.'); setLoadingData(false); navigate('/dashboard'); return; }
-        setAnnouncementId(ann.id || editId);
-        if (ann.scheduled_at) { setScheduleDateTime(new Date(ann.scheduled_at).toISOString().slice(0, 16)); setShowSchedulePicker(true); }
-        if (ann.metadata && typeof ann.metadata === 'object') {
-          const meta = ann.metadata;
-          if (meta.broadcastMode) setBroadcastMode(meta.broadcastMode);
-          if (meta.customText !== undefined) setCustomText(meta.customText);
-          if (meta.fileCaption !== undefined) setFileCaption(meta.fileCaption);
-          if (meta.closingText !== undefined) setClosingText(meta.closingText);
-          if (meta.notices && Array.isArray(meta.notices)) setNotices(meta.notices);
-        } else {
-          setBroadcastMode(ann.category === 'share_file' ? 'share_file' : (ann.category === 'custom' ? 'custom' : 'notice'));
-          if (ann.category === 'share_file') setFileCaption(ann.content === 'Shared File(s)' ? '' : (ann.content || ''));
-          else if (ann.category === 'custom') {
-            setCustomText(ann.content || '');
-            setNotices([{ id: Date.now(), titlePreset: 'Custom', title: ann.title || '', category: 'custom', selectedCourseId: ann.course_id ? String(ann.course_id) : '', selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }], topics: [], notes: [], makeupStatus: 'later', customMakeupText: '', currentTopic: '', currentNote: '', noteType: 'note', isExpanded: true }]);
-          } else {
-            setNotices([{ id: Date.now(), titlePreset: 'Custom', title: ann.title || '', category: ann.category || 'notice', selectedCourseId: ann.course_id ? String(ann.course_id) : '', selectedDate: '', sections: [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select' }], topics: [], notes: [], makeupStatus: 'later', customMakeupText: '', currentTopic: '', currentNote: '', noteType: 'note', isExpanded: true }]);
-          }
-        }
-        if (ann.file_ids?.length > 0 || ann.file_id) setUploadedFiles(ann.files || []);
-        if (ann.delivery?.length > 0) { setSelectedPlatforms(ann.delivery.filter((d: any) => d.platform_status !== 'sent').map((d: any) => d.platform_id)); setAlreadySentPlatforms(ann.delivery.filter((d: any) => d.platform_status === 'sent').map((d: any) => d.platform_id)); }
+        populateFormFromAnnouncement(ann, false);
         setLoadingData(false);
       } catch { toast.error('Failed to load announcement'); setLoadingData(false); navigate('/dashboard'); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId]);
+  }, [editId, populateFormFromAnnouncement]);
 
   useEffect(() => { if (isEditMode) { isDateRestored.current = true; isSectionsRestored.current = true; } }, [isEditMode]);
 

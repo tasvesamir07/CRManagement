@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, type NavigateFunction } from 'react-router-dom';
 import {
   Megaphone, BookOpen, Radio, Send, Clock, CheckCircle, AlertTriangle,
-  ArrowRight, Trash2, Eye, Edit3, Filter, X, Sparkles, Search, Layers, Copy, Check
+  ArrowRight, Trash2, Eye, Edit3, Filter, X, Sparkles, Search, Layers, Copy, Check, CopyPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
@@ -54,6 +54,11 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
     setCopiedNoticeId(ann.id);
     toast.success('Notice copied to clipboard!');
     setTimeout(() => setCopiedNoticeId(null), 2000);
+  };
+
+  const handleDuplicateNotice = (ann: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/announcement/new', { state: { cloneFromId: ann.id, cloneAnn: ann } });
   };
 
   if (loading) {
@@ -280,6 +285,10 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                   </div>
                   <div className="flex-shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
+                      <button onClick={(e: React.MouseEvent) => handleDuplicateNotice(ann, e)}
+                        className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Duplicate Notice to New Broadcast">
+                        <CopyPlus className="w-4 h-4" />
+                      </button>
                       <button onClick={(e: React.MouseEvent) => handleCopyNotice(ann, e)}
                         className="p-2 text-ink-mute hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer" title="Copy Notice Text">
                         {copiedNoticeId === ann.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -389,6 +398,10 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
                     </td>
                     <td className="py-4 px-4 text-center whitespace-nowrap" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                       <div className="flex justify-center items-center gap-1">
+                        <button onClick={(e: React.MouseEvent) => handleDuplicateNotice(ann, e)}
+                          className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer" title="Duplicate Notice to New Broadcast">
+                          <CopyPlus className="w-4 h-4" />
+                        </button>
                         <button onClick={(e: React.MouseEvent) => handleCopyNotice(ann, e)}
                           className="p-2 text-ink-mute hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer" title="Copy Notice Text">
                           {copiedNoticeId === ann.id ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
