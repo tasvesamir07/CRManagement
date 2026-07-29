@@ -349,12 +349,12 @@ if (isRelayMode) {
                     latestQr = qr;
                     connectionStatus = 'QR_READY';
                     broadcastStatus();
-                }
-
-                if (connection === 'connecting') {
+                } else if (connection === 'connecting') {
                     appLogger.info('WhatsApp client is connecting...');
-                    connectionStatus = 'CONNECTING';
-                    broadcastStatus();
+                    if (!latestQr && connectionStatus !== 'QR_READY') {
+                        connectionStatus = 'CONNECTING';
+                        broadcastStatus();
+                    }
                 }
 
                 if (connection === 'open') {
