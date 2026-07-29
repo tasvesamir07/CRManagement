@@ -704,7 +704,8 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, button, select, textarea, [contenteditable="true"]')) return;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     if (workspaceRef.current) {
       setIsPanning(true);
@@ -2336,23 +2337,22 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           style={{
             backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
             backgroundSize: '16px 16px',
-            touchAction: 'none'
+            touchAction: 'pan-x pan-y'
           }}
-          className={`flex-1 overflow-auto p-4 sm:p-12 flex items-start justify-center bg-[#f8fafc] select-none ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center bg-[#f8fafc] select-none ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
-          {/* Layout Bounding Box to keep scroll width & height aligned with scaled visual size */}
-          <div
-            style={{
-              width: `${550 * (zoom / 100)}px`,
-              height: `${canvasHeight * (zoom / 100)}px`,
-            }}
-            className="shrink-0 flex items-start justify-center relative my-2"
+          {/* Zoom & Margin Compensated Scaled Poster Wrapper */}
+          <div 
+            style={{ 
+              width: '550px',
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: 'top center',
+              marginLeft: `${(550 * (zoom / 100) - 550) / 2}px`,
+              marginRight: `${(550 * (zoom / 100) - 550) / 2}px`,
+              marginBottom: `${(canvasHeight * (zoom / 100) - canvasHeight)}px`
+            }} 
+            className="transition-transform duration-75 shrink-0 my-2"
           >
-            {/* Zoom Wrapper */}
-            <div 
-              style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }} 
-              className="transition-transform duration-75"
-            >
             
             {/* The Actual Poster Canvas */}
             <div
@@ -2752,7 +2752,6 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           </div>
         </div>
       </div>
-    </div>
 
     </div>
   );
