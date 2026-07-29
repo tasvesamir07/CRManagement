@@ -58,7 +58,7 @@ function formatDateStr(dateStr?: string): string {
 }
 
 function formatCourseHeader(course: Course, sections: Section[]): string {
-  const sectionNames = sections.map(s => s.name).filter(Boolean);
+  const sectionNames = sections.map(s => s.name).filter((name): name is string => Boolean(name));
   let displayId = course.course_id;
 
   for (const name of sectionNames) {
