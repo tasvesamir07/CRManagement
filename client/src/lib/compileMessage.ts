@@ -57,6 +57,29 @@ function formatDateStr(dateStr?: string): string {
   return `${day}/${month}/${year} ${dayName}`;
 }
 
+function formatCourseHeader(course: Course, sections: Section[]): string {
+  const sectionNames = sections.map(s => s.name).filter(Boolean);
+  let displayId = course.course_id;
+
+  for (const name of sectionNames) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const reg = new RegExp(`-${esc}$`, 'i');
+    if (reg.test(displayId)) {
+      displayId = displayId.replace(reg, '');
+      break;
+    }
+  }
+
+  const genericSecRegex = /-(?:[A-Z]{1,2}\d*|\d{1,2}[A-Z]*)$/i;
+  if (genericSecRegex.test(displayId)) {
+    displayId = displayId.replace(genericSecRegex, '');
+  }
+
+  const labSuffix = (course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab')) ? ' Lab' : '';
+
+  return `📚 *Course:* ${displayId} ${course.course_name}${labSuffix}\n`;
+}
+
 export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const course = courses.find(c => c.id === parseInt(notice.selectedCourseId || '0'));
   const emoji = CATEGORY_EMOJIS[notice.category] || '📢';
@@ -70,7 +93,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
   const commonDate = uniqueDates[0] || notice.selectedDate || '';
 
   if (notice.category === 'class_cancel') {
-    if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
+    if (course) msg += formatCourseHeader(course, notice.sections);
     const sectionNames = notice.sections.map(sec => sec.name).filter(Boolean);
     if (sectionNames.length > 0) msg += `👥 *Section ${sectionNames.join(', ')}*\n`;
     if (isSameDateAcrossSections && commonDate) {
@@ -112,7 +135,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
     if (groupedNotes.note && groupedNotes.note.length > 0) { const label = groupedNotes.note.length > 1 ? '📝 *Notes:*' : '📝 *Note:*'; msg += `\n${label}\n`; groupedNotes.note.forEach(text => { msg += ` · *${text}*\n`; }); }
     return msg;
   }
-  if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n`;
+  if (course) msg += formatCourseHeader(course, notice.sections);
   const hasSections = notice.sections.some(sec => sec.name || sec.room || sec.startTime || sec.endTime || sec.timeOption === 'tbd' || sec.timeOption === 'custom' || sec.date);
   const firstSection = notice.sections[0];
   const isSingleSection = notice.sections.length === 1 && hasSections;
@@ -184,7 +207,7 @@ export function getCompiledMessage({ notices, broadcastMode, customText, fileCap
     const titleVal = notices[0]?.title?.trim();
     if (titleVal) msg += `📢 *${titleVal}*\n\n`;
     const course = courses.find(c => c.id === parseInt(notices[0]?.selectedCourseId || '0'));
-    if (course) msg += `📚 *Course:* ${course.course_id} ${course.course_name}${course.course_id.toLowerCase().includes('lab') && !course.course_name.toLowerCase().includes('lab') ? ' Lab' : ''}\n\n`;
+    if (course) msg += `${formatCourseHeader(course, notices[0]?.sections || [])}\n`;
     msg += customText;
     return msg;
   }
