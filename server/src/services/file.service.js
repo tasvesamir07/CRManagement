@@ -71,10 +71,10 @@ async function uploadFile(file, userId, { overwrite = false, folderId = null } =
     const fileTypeLower = fileType.toLowerCase();
     const isImage = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(fileTypeLower);
     if (isImage) {
-        fileType = 'image/webp';
+        fileType = 'image/png';
         const ext = path.extname(originalName);
-        if (ext.toLowerCase() !== '.webp') {
-            originalName = originalName.substring(0, originalName.length - ext.length) + '.webp';
+        if (ext.toLowerCase() !== '.png') {
+            originalName = originalName.substring(0, originalName.length - ext.length) + '.png';
         }
     }
 

@@ -604,6 +604,16 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         if (data.batchCode) setBatchCode(data.batchCode);
         if (data.effectiveDate) setEffectiveDate(data.effectiveDate);
 
+        if (Array.isArray(data.customDays) && data.customDays.length > 0) {
+          localStorage.setItem('routine_custom_days', JSON.stringify(data.customDays));
+        }
+        if (Array.isArray(data.customSlots) && data.customSlots.length > 0) {
+          localStorage.setItem('routine_custom_slots', JSON.stringify(data.customSlots));
+        }
+        if (Array.isArray(data.customDays) && Array.isArray(data.customSlots) && onSaveLayout) {
+          onSaveLayout(data.customDays, data.customSlots);
+        }
+
         if (data.selectedFont) setSelectedFont(data.selectedFont);
         if (data.globalFontWeight !== undefined) setGlobalFontWeight(data.globalFontWeight);
 

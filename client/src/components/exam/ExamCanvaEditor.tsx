@@ -960,8 +960,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       try {
         const dbSettings = await examRoutinesAPI.getSettings();
         if (dbSettings) {
-          if (dbSettings.itemStylesMap) savedItemStyles = dbSettings.itemStylesMap;
-          if (dbSettings.globalStyles) savedGlobal = dbSettings.globalStyles;
+          if (dbSettings.itemStylesMap) {
+            savedItemStyles = dbSettings.itemStylesMap;
+            localStorage.setItem('exam_canva_item_styles', JSON.stringify(dbSettings.itemStylesMap));
+          }
+          if (dbSettings.globalStyles) {
+            savedGlobal = dbSettings.globalStyles;
+            localStorage.setItem('exam_canva_global_styles', JSON.stringify(dbSettings.globalStyles));
+          }
         }
       } catch (e) {}
 

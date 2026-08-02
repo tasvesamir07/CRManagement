@@ -174,4 +174,28 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
         );
         expect(finalDelivery.rows.every(d => d.platform_status === 'sent')).toBe(true);
     });
+
+    it('should exclude attachments for channels marked in metadata.excluded_attachment_platform_ids', async () => {
+        const announcement = await announcementService.createAnnouncement({
+            title: 'Announcement with Excluded Attachment Channel',
+            content: 'Hello World',
+            category: 'notice',
+            course_id: courseId,
+            created_by: userId,
+            platform_ids: [platformWhatsappId, platformTelegramId],
+            metadata: {
+                excluded_attachment_platform_ids: [platformWhatsappId]
+            }
+        });
+
+        whatsappService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'wa-1' });
+        telegramService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'tg-1' });
+
+        await announcementService.sendAnnouncement(announcement.id);
+
+        // WhatsApp should be called with empty attachments array [] because platformWhatsappId is excluded
+        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith('wa-chat-123', expect.any(String), []);
+        // Telegram should be called with attachments array [] (since no file_ids attached to announcement)
+        expect(telegramService.sendMessageToGroup).toHaveBeenCalledWith('-10012345', expect.any(String), []);
+    });
 });

@@ -4,12 +4,11 @@ const logger = require('../../config/logger');
 
 async function compressImage(file, originalName) {
     const sharp = require('sharp');
-    const imageQuality = parseInt(process.env.IMAGE_QUALITY || '80');
-    const pipeline = sharp(file.path).rotate().webp({ quality: imageQuality });
+    const pipeline = sharp(file.path).rotate().png({ compressionLevel: 8 });
     const compressedBuffer = await pipeline.toBuffer();
     fs.writeFileSync(file.path, compressedBuffer);
     const newSize = compressedBuffer.length;
-    logger.info({ originalName, newSize }, 'Image compressed');
+    logger.info({ originalName, newSize }, 'Image compressed to PNG');
     return newSize;
 }
 

@@ -30,7 +30,7 @@ const AnnouncementForm: React.FC = () => {
     courses, platforms, loadingData, templates, selectedTemplate,
     broadcastMode, setBroadcastMode, fileCaption, setFileCaption, customText, setCustomText,
     notices, setNotices, closingText, setClosingText,
-    selectedPlatforms, alreadySentPlatforms, waStatus,
+    selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,
@@ -661,7 +661,16 @@ const AnnouncementForm: React.FC = () => {
             dragActive={dragActive} onDrag={handleDrag} onDrop={handleDrop} onFileChange={handleFileChange} onRemove={removeAttachment}
             onChooseFromLibrary={handleOpenLibrary} />
 
-          <PlatformSelector platforms={platforms} selectedPlatforms={selectedPlatforms} onToggle={handlePlatformToggle} waStatus={waStatus} alreadySentPlatforms={alreadySentPlatforms} />
+          <PlatformSelector 
+            platforms={platforms} 
+            selectedPlatforms={selectedPlatforms} 
+            onToggle={handlePlatformToggle} 
+            waStatus={waStatus} 
+            alreadySentPlatforms={alreadySentPlatforms} 
+            hasAttachments={uploadedFiles.length > 0}
+            excludedAttachmentPlatforms={excludedAttachmentPlatforms}
+            onToggleAttachment={handlePlatformToggleAttachment}
+          />
 
           <div className="pt-4 border-t border-hairline-cool space-y-4">
             {showSchedulePicker && (

@@ -270,7 +270,26 @@ router.get('/settings', authMiddleware, async (req, res) => {
 router.post('/settings', authMiddleware, async (req, res) => {
     try {
         const { settings } = req.body;
-        const serialized = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
+        const incoming = typeof settings === 'string' ? JSON.parse(settings || '{}') : (settings || {});
+        
+        const existingRes = await db.query("SELECT value FROM system_settings WHERE key = $1", ['exam_routine_settings']);
+        let existing = {};
+        if (existingRes.rows && existingRes.rows.length > 0 && existingRes.rows[0].value) {
+            try {
+                existing = typeof existingRes.rows[0].value === 'string' 
+                    ? JSON.parse(existingRes.rows[0].value) 
+                    : existingRes.rows[0].value;
+            } catch (e) {}
+        }
+        
+        const mergedSettings = {
+            ...existing,
+            ...incoming,
+            itemStylesMap: { ...(existing.itemStylesMap || {}), ...(incoming.itemStylesMap || {}) },
+            globalStyles: { ...(existing.globalStyles || {}), ...(incoming.globalStyles || {}) }
+        };
+        const serialized = JSON.stringify(mergedSettings);
+
         await db.query(
             `INSERT INTO system_settings (key, value)
              VALUES ($1, $2)
@@ -278,7 +297,7 @@ router.post('/settings', authMiddleware, async (req, res) => {
              DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
             ['exam_routine_settings', serialized]
         );
-        return res.json({ success: true, settings: typeof settings === 'string' ? JSON.parse(settings) : settings });
+        return res.json({ success: true, settings: mergedSettings });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

@@ -137,6 +137,19 @@ async function sendAnnouncement(id, _hostUrl = '') {
         attachmentFiles.push(...downloaded.filter(item => item.path !== null));
     }
 
+    // Parse metadata for channel-level attachment exclusion
+    let metadataObj = {};
+    if (announcement.metadata) {
+        try {
+            metadataObj = typeof announcement.metadata === 'string' ? JSON.parse(announcement.metadata) : announcement.metadata;
+        } catch (e) {
+            metadataObj = {};
+        }
+    }
+    const excludedAttachmentPlatformIds = Array.isArray(metadataObj.excluded_attachment_platform_ids)
+        ? metadataObj.excluded_attachment_platform_ids.map(id => Number(id))
+        : [];
+
     // 3. Fetch targeted platforms
     const platformsResult = await db.query(
         'SELECT ap.*, p.platform_name, p.platform_type, p.chat_id, p.is_active \
@@ -190,15 +203,18 @@ async function sendAnnouncement(id, _hostUrl = '') {
             );
             broadcastAnnouncementStatus(id, 'sending', null, currentDelivery.rows);
 
+            const isExcludedFromAttachments = excludedAttachmentPlatformIds.includes(Number(p.platform_id));
+            const platformAttachments = isExcludedFromAttachments ? [] : attachmentFiles;
+
             if (p.platform_type === 'whatsapp') {
                 const message = formatWhatsApp(announcement, course);
-                await whatsappService.sendMessageToGroup(p.chat_id, message, attachmentFiles);
+                await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             } else if (p.platform_type === 'telegram') {
                 const message = formatTelegram(announcement, course);
-                await telegramService.sendMessageToGroup(p.chat_id, message, attachmentFiles);
+                await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             } else if (p.platform_type === 'messenger') {
                 const message = formatMessenger(announcement, course);
-                await messengerService.sendMessageToGroup(p.chat_id, message, attachmentFiles);
+                await messengerService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             }
 
             // Update on success

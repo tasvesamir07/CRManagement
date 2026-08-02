@@ -14,8 +14,12 @@ function getMimeType(filePathOrExt) {
         case '.jpg':
         case '.jpeg':
             return 'image/jpeg';
+        case '.webp':
+            return 'image/webp';
         case '.gif':
             return 'image/gif';
+        case '.svg':
+            return 'image/svg+xml';
         case '.pdf':
             return 'application/pdf';
         case '.doc':

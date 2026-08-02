@@ -1,4 +1,4 @@
-import { CheckSquare, Square, CheckCircle } from 'lucide-react';
+import { CheckSquare, Square, CheckCircle, Paperclip, FileText } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import type { Platform } from './types';
 
@@ -8,9 +8,21 @@ interface PlatformSelectorProps {
   onToggle: (id: number | 'clear') => void;
   waStatus: string;
   alreadySentPlatforms: number[];
+  hasAttachments?: boolean;
+  excludedAttachmentPlatforms?: number[];
+  onToggleAttachment?: (id: number) => void;
 }
 
-export default function PlatformSelector({ platforms, selectedPlatforms, onToggle, waStatus, alreadySentPlatforms = [] }: PlatformSelectorProps) {
+export default function PlatformSelector({
+  platforms,
+  selectedPlatforms,
+  onToggle,
+  waStatus,
+  alreadySentPlatforms = [],
+  hasAttachments = false,
+  excludedAttachmentPlatforms = [],
+  onToggleAttachment
+}: PlatformSelectorProps) {
   if (platforms.length === 0) {
     return (
       <div className="text-center py-6 text-ink-mute text-sm">
@@ -66,6 +78,7 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
         const engineUnavailable = p.service_available === false || p.is_active === false;
         const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
         const isUnavailable = engineUnavailable || needsPairing || alreadySent;
+        const isAttachmentExcluded = excludedAttachmentPlatforms.includes(p.id);
 
         let badgeText = '';
         let badgeClass = '';
@@ -119,9 +132,39 @@ export default function PlatformSelector({ platforms, selectedPlatforms, onToggl
                 <p className="text-[10px] text-ink-mute font-mono truncate">{p.chat_id}</p>
               </div>
             </div>
-            {badgeText && (
-              <span className={`text-[10px] font-medium ${badgeClass} shrink-0`}>{badgeText}</span>
-            )}
+
+            <div className="flex items-center gap-2 shrink-0">
+              {isSelected && hasAttachments && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleAttachment?.(p.id);
+                  }}
+                  title={isAttachmentExcluded ? "Click to include attachments for this channel" : "Click to send text-only without attachments"}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded border flex items-center gap-1 cursor-pointer transition-colors ${
+                    isAttachmentExcluded
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  }`}
+                >
+                  {isAttachmentExcluded ? (
+                    <>
+                      <FileText className="w-3 h-3 text-amber-500" />
+                      <span>Text Only</span>
+                    </>
+                  ) : (
+                    <>
+                      <Paperclip className="w-3 h-3 text-emerald-500" />
+                      <span>With File</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {badgeText && (
+                <span className={`text-[10px] font-medium ${badgeClass} shrink-0`}>{badgeText}</span>
+              )}
+            </div>
           </div>
         );
       })}

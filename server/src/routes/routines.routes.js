@@ -194,7 +194,22 @@ router.get('/settings', authMiddleware, async (req, res) => {
 router.post('/settings', authMiddleware, async (req, res) => {
     try {
         const { settings } = req.body;
-        const serialized = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
+        const incoming = typeof settings === 'string' ? JSON.parse(settings || '{}') : (settings || {});
+        
+        // Fetch existing stored settings to prevent overwriting keys
+        const existingRes = await db.query("SELECT value FROM system_settings WHERE key = $1", ['class_routine_settings']);
+        let existing = {};
+        if (existingRes.rows && existingRes.rows.length > 0 && existingRes.rows[0].value) {
+            try {
+                existing = typeof existingRes.rows[0].value === 'string' 
+                    ? JSON.parse(existingRes.rows[0].value) 
+                    : existingRes.rows[0].value;
+            } catch (e) {}
+        }
+        
+        const mergedSettings = { ...existing, ...incoming };
+        const serialized = JSON.stringify(mergedSettings);
+
         await db.query(
             `INSERT INTO system_settings (key, value)
              VALUES ($1, $2)
@@ -202,7 +217,7 @@ router.post('/settings', authMiddleware, async (req, res) => {
              DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
             ['class_routine_settings', serialized]
         );
-        return res.json({ success: true, settings: typeof settings === 'string' ? JSON.parse(settings) : settings });
+        return res.json({ success: true, settings: mergedSettings });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

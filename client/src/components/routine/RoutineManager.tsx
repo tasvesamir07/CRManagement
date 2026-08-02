@@ -65,8 +65,14 @@ const RoutineManager = () => {
         if (settingsData.sectionGroup) setSectionGroup(settingsData.sectionGroup);
         if (settingsData.batchCode) setBatchCode(settingsData.batchCode);
         if (settingsData.effectiveDate) setEffectiveDate(settingsData.effectiveDate);
-        if (settingsData.customDays) setCustomDays(settingsData.customDays);
-        if (settingsData.customSlots) setCustomSlots(settingsData.customSlots);
+        if (Array.isArray(settingsData.customDays) && settingsData.customDays.length > 0) {
+          setCustomDays(settingsData.customDays);
+          localStorage.setItem('routine_custom_days', JSON.stringify(settingsData.customDays));
+        }
+        if (Array.isArray(settingsData.customSlots) && settingsData.customSlots.length > 0) {
+          setCustomSlots(settingsData.customSlots);
+          localStorage.setItem('routine_custom_slots', JSON.stringify(settingsData.customSlots));
+        }
       }
     } catch (e) {
       console.error('Failed to fetch class routines:', e);

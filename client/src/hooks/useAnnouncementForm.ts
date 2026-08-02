@@ -125,6 +125,8 @@ export default function useAnnouncementForm() {
   const [closingText, setClosingText] = useState(() => getInitialValue('closingText', 'Please be prepared and attend on time. Good luck! 🍀📖'));
   const [selectedPlatforms, setSelectedPlatforms] = useState<any[]>(() => 
 getInitialValue('selectedPlatforms', []));
+  const [excludedAttachmentPlatforms, setExcludedAttachmentPlatforms] = useState<number[]>(() =>
+getInitialValue('excludedAttachmentPlatforms', []));
   const [alreadySentPlatforms, setAlreadySentPlatforms] = useState<any[]>([]);
   const [waStatus, setWaStatus] = useState('DISCONNECTED');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>(() => 
@@ -375,7 +377,7 @@ getInitialValue('uploadedFiles', []));
       file_id: uploadedFiles[0] ? uploadedFiles[0].id : null,
       file_ids: uploadedFiles.map((f: any) => f.id),
       platform_ids: selectedPlatforms,
-      metadata: { notices, broadcastMode, customText, fileCaption, closingText }
+      metadata: { notices, broadcastMode, customText, fileCaption, closingText, excluded_attachment_platform_ids: excludedAttachmentPlatforms }
     };
   };
 
@@ -394,6 +396,12 @@ getInitialValue('uploadedFiles', []));
       localStorage.setItem('preferred_platforms', JSON.stringify(next));
       return next;
     });
+  };
+
+  const handlePlatformToggleAttachment = (id: number) => {
+    setExcludedAttachmentPlatforms(prev =>
+      prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]
+    );
   };
 
   const processUploads = async (fileList: any) => {
@@ -575,6 +583,9 @@ getInitialValue('uploadedFiles', []));
       if (meta.customText !== undefined) setCustomText(meta.customText);
       if (meta.fileCaption !== undefined) setFileCaption(meta.fileCaption);
       if (meta.closingText !== undefined) setClosingText(meta.closingText);
+      if (meta.excluded_attachment_platform_ids && Array.isArray(meta.excluded_attachment_platform_ids)) {
+        setExcludedAttachmentPlatforms(meta.excluded_attachment_platform_ids.map((x: any) => Number(x)));
+      }
       if (meta.notices && Array.isArray(meta.notices)) {
         const noticesToSet = isClone
           ? meta.notices.map((n: any, idx: number) => ({ ...n, id: Date.now() + idx }))
@@ -727,7 +738,7 @@ getInitialValue('uploadedFiles', []));
     courses, platforms, loadingData, templates, selectedTemplate,
     broadcastMode, setBroadcastMode, fileCaption, setFileCaption, customText, setCustomText,
     notices, setNotices, closingText, setClosingText,
-    selectedPlatforms, alreadySentPlatforms, waStatus,
+    selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,
