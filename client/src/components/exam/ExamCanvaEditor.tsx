@@ -1318,9 +1318,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
       navigate('/announcement/new', {
         state: {
-          preFillTitle: `${headerTitle} - ${headerSubtitle}`,
-          preFillBody,
-          preFillCategory: 'notice',
+          broadcastMode: 'share_file',
           preAttachedFiles: [uploadedFileRecord]
         }
       });

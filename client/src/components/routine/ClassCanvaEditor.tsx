@@ -926,9 +926,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
       navigate('/announcement/new', {
         state: {
-          preFillTitle: `Updated Class Routine - ${semesterTitle}`,
-          preFillBody,
-          preFillCategory: 'notice',
+          broadcastMode: 'share_file',
           preAttachedFiles: [uploadedFileRecord]
         }
       });

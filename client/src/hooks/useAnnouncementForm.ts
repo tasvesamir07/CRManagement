@@ -617,7 +617,8 @@ getInitialValue('uploadedFiles', []));
       let stateChanged = false;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotices(prev => { const u = [...prev]; if (u.length === 0) u.push(createNewNoticeObj()); if (location.state.preFillTitle) { u[0].title = location.state.preFillTitle; u[0].titlePreset = 'Custom'; stateChanged = true; } if (location.state.preFillCategory) { u[0].category = location.state.preFillCategory; stateChanged = true; } return u; });
-      if (location.state.preFillBody) { setCustomText(location.state.preFillBody); setBroadcastMode('custom'); stateChanged = true; }
+      if (location.state.broadcastMode) { setBroadcastMode(location.state.broadcastMode); stateChanged = true; }
+      else if (location.state.preFillBody) { setCustomText(location.state.preFillBody); setBroadcastMode('custom'); stateChanged = true; }
       if (location.state.preAttachedFiles) { setUploadedFiles((prev: any[]) => { const existingIds = new Set(prev.map((f: any) => f.id)); const uniqueNew = location.state.preAttachedFiles.filter((f: any) => !existingIds.has(f.id)); return [...prev, ...uniqueNew]; }); stateChanged = true; }
       if (location.state.selectedFiles) { setUploadedFiles((prev: any[]) => { const existingIds = new Set(prev.map((f: any) => f.id)); const uniqueNew = location.state.selectedFiles.filter((f: any) => !existingIds.has(f.id)); return [...prev, ...uniqueNew]; }); toast.success(`${location.state.selectedFiles.length} file(s) attached!`); stateChanged = true; }
       if (location.state.preAttachedFiles) toast.success(`${location.state.preAttachedFiles.length} file(s) attached!`);
