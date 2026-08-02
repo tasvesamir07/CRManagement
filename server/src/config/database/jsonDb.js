@@ -14,11 +14,18 @@ const JSON_DB_SCHEMA = {
 };
 
 function initJsonDb() {
-    if (!fs.existsSync(jsonDbPath)) {
-        fs.writeFileSync(jsonDbPath, JSON.stringify({ ...JSON_DB_SCHEMA }, null, 2));
-    } else {
-        const data = JSON.parse(fs.readFileSync(jsonDbPath, 'utf8'));
-        let needsWrite = false;
+    let data;
+    try {
+        if (fs.existsSync(jsonDbPath)) {
+            const raw = fs.readFileSync(jsonDbPath, 'utf8');
+            data = raw.trim() ? JSON.parse(raw) : { ...JSON_DB_SCHEMA };
+        } else {
+            data = { ...JSON_DB_SCHEMA };
+        }
+    } catch (e) {
+        data = { ...JSON_DB_SCHEMA };
+    }
+    let needsWrite = false;
         for (const key of Object.keys(JSON_DB_SCHEMA)) {
             if (!(key in data)) {
                 data[key] = [];
@@ -44,7 +51,6 @@ function initJsonDb() {
                 releaseLock();
             }
         }
-    }
 }
 
 function readJsonDb() {

@@ -1261,6 +1261,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         style: {
           transform: 'none',
           width: '550px',
+        },
+        filter: (node: HTMLElement) => {
+          if (node.classList) {
+            if (node.classList.contains('no-export') || node.classList.contains('group/handle')) {
+              return false;
+            }
+          }
+          return true;
         }
       });
       

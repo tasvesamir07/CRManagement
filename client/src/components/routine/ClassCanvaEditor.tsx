@@ -870,6 +870,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         style: {
           transform: 'none',
           width: '750px'
+        },
+        filter: (node: HTMLElement) => {
+          if (node.classList) {
+            if (node.classList.contains('no-export') || node.classList.contains('group/handle')) {
+              return false;
+            }
+          }
+          return true;
         }
       });
       canvasRef.current.style.transform = origTransform;

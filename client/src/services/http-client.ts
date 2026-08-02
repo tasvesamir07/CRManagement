@@ -8,7 +8,7 @@ if (!API_URL.endsWith('/api')) {
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
-    timeout: 30000
+    timeout: 120000
 });
 
 api.interceptors.request.use(

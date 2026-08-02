@@ -99,16 +99,14 @@ async function sendAnnouncement(id, _hostUrl = '') {
     if (files.length > 0) {
         const downloadPromises = files.map(async (f) => {
             let localFilePath = null;
-            if (!process.env.SUPABASE_URL) {
-                localFilePath = path.join(fileService.uploadsDir, f.storage_path);
-                if (!fs.existsSync(localFilePath)) {
-                    throw new Error(`Attachment file "${f.original_name}" was not found on local disk. (Fallback mode)`);
-                }
-            } else {
+            const diskPath = path.join(fileService.uploadsDir, f.storage_path);
+            if (fs.existsSync(diskPath)) {
+                localFilePath = diskPath;
+            } else if (process.env.SUPABASE_URL) {
                 try {
                     const { url } = await fileService.getFileUrl(f.id);
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 30000);
+                    const timeout = setTimeout(() => controller.abort(), 60000);
                     const response = await fetch(url, { signal: controller.signal });
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status} ${response.statusText}`);
@@ -127,6 +125,8 @@ async function sendAnnouncement(id, _hostUrl = '') {
                 } catch (e) {
                     throw new Error(`Failed to download attachment "${f.original_name}" from Supabase: ${e.message}`);
                 }
+            } else {
+                throw new Error(`Attachment file "${f.original_name}" was not found on local disk. (Fallback mode)`);
             }
             return {
                 path: localFilePath,
