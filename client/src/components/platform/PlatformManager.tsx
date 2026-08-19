@@ -224,7 +224,7 @@ const PlatformManager = () => {
     try {
       let finalChatId = pChatId.trim();
       if (pType === 'telegram' && pTopicId.trim()) finalChatId = `${finalChatId}/${pTopicId.trim()}`;
-      const platformData = { platform_name: pName, platform_type: pType, chat_id: finalChatId, description: pDesc, course_id: pCourseId };
+      const platformData = { platform_name: pName, platform_type: pType, chat_id: finalChatId, description: pDesc, course_id: pCourseId ? Number(pCourseId) : null };
       if (editId) {
         const updated = await platformsAPI.update(editId, platformData);
         setPlatforms(prev => prev.map(p => p.id === editId ? { ...p, ...updated } : p));
