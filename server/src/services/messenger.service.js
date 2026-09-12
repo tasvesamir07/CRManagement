@@ -1,52 +1,156 @@
 const { createMessengerBot } = require("@dongdev/fca-unofficial");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const db = require("../config/database");
 const logger = require("../config/logger");
 
 let isMockMode = false;
 let botInstance = null;
 
+// AppState (Facebook session cookies) is stored ENCRYPTED at rest. The backup
+// file lives inside server/Fca_Database/ (gitignored). NEVER commit it.
+const APPSTATE_PATH = path.join(__dirname, "../../Fca_Database/.appstate.enc");
 
-const APPSTATE_PATH = path.join(__dirname, '../../../appstate.json');
+// ------------- Encryption helpers (AES-256-GCM) -------------
+
+function getEncryptionKey() {
+    const raw = process.env.MESSENGER_APPSTATE_ENC_KEY || process.env.JWT_SECRET;
+    if (!raw) {
+        throw new Error("Messenger appState encryption key missing. Set MESSENGER_APPSTATE_ENC_KEY (or fall back to JWT_SECRET).");
+    }
+    return crypto.createHash("sha256").update(`messenger-appstate:v1:${raw}`).digest();
+}
+
+function encryptAppState(appState) {
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const plain = Buffer.from(JSON.stringify(appState), "utf8");
+    const enc = Buffer.concat([cipher.update(plain), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return `enc:v1:${iv.toString("base64")}:${tag.toString("base64")}:${enc.toString("base64")}`;
+}
+
+function decryptAppState(data) {
+    if (typeof data === "object") return data;
+    if (typeof data !== "string") return null;
+    if (!data.startsWith("enc:v1:")) {
+        // Legacy plaintext JSON (pre-encryption) - accept but re-encrypt on next save
+        try { return JSON.parse(data); } catch { return null; }
+    }
+    const parts = data.split(":");
+    if (parts.length !== 5) return null;
+    const [, , ivB64, tagB64, encB64] = parts;
+    try {
+        const key = getEncryptionKey();
+        const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(ivB64, "base64"));
+        decipher.setAuthTag(Buffer.from(tagB64, "base64"));
+        const plain = Buffer.concat([decipher.update(Buffer.from(encB64, "base64")), decipher.final()]);
+        return JSON.parse(plain.toString("utf8"));
+    } catch (err) {
+        logger.error({ err: err.message }, "Failed to decrypt stored appState (encryption key changed?)");
+        return null;
+    }
+}
+
+function readAppStateFile() {
+    if (!fs.existsSync(APPSTATE_PATH)) return null;
+    try {
+        const raw = fs.readFileSync(APPSTATE_PATH, "utf8");
+        const decrypted = decryptAppState(raw);
+        if (decrypted) return decrypted;
+    } catch (err) {
+        logger.error({ err: err.message }, "Failed to read appState backup file");
+    }
+    return null;
+}
+
+function writeAppStateFile(appState) {
+    try {
+        fs.mkdirSync(path.dirname(APPSTATE_PATH), { recursive: true });
+        fs.writeFileSync(APPSTATE_PATH, encryptAppState(appState), "utf8");
+    } catch (fileErr) {
+        logger.error({ err: fileErr }, "Failed to write appState backup file (non-fatal)");
+    }
+}
+
+// ------------- AppState load/save -------------
 
 async function loadAppState() {
     try {
         const res = await db.query("SELECT value FROM system_settings WHERE key = $1", ['messenger_appstate']);
         if (res.rows && res.rows.length > 0) {
-            return JSON.parse(res.rows[0].value);
+            const parsed = decryptAppState(res.rows[0].value);
+            if (parsed) return parsed;
+            logger.warn("Stored appState could not be decrypted. Falling back to file backup.");
         }
     } catch (err) {
         logger.error({ err }, "Failed to load appState from DB");
     }
+    const fromFile = readAppStateFile();
+    if (fromFile) return fromFile;
     return null;
 }
 
 async function saveAppState(appState) {
     if (!appState) return;
     isMockMode = false;
+    let encrypted;
     try {
-        const serialized = JSON.stringify(appState);
-        // Save to DB
+        encrypted = encryptAppState(appState);
+    } catch (err) {
+        logger.error({ err: err.message }, "Failed to encrypt appState. Not persisting.");
+        return;
+    }
+    try {
         await db.query(
             `INSERT INTO system_settings (key, value) 
              VALUES ($1, $2) 
              ON CONFLICT (key) 
              DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-            ['messenger_appstate', serialized]
+            ['messenger_appstate', encrypted]
         );
-        logger.info("Messenger appState successfully persisted to database.");
+        logger.info("Messenger appState encrypted and persisted to database.");
 
-        // Local file backup
-        try {
-            fs.writeFileSync(APPSTATE_PATH, serialized, 'utf8');
-        } catch (fileErr) {
-            // Ignore file write error
-        }
+        writeAppStateFile(appState);
     } catch (err) {
         logger.error({ err }, "Failed to save appState to DB");
     }
 }
+
+// ------------- Rate limiting (spread broadcasts to avoid FB flagging) -------------
+
+let dailySendCount = 0;
+let lastSendTime = 0;
+setInterval(() => { dailySendCount = 0; }, 86400000).unref?.();
+
+function getDailyCap() {
+    const cap = parseInt(process.env.MESSENGER_DAILY_CAP || '400', 10);
+    return Number.isFinite(cap) && cap > 0 ? cap : 400;
+}
+
+function getMinIntervalMs() {
+    const ms = parseInt(process.env.MESSENGER_MIN_INTERVAL_MS || '1500', 10);
+    return Number.isFinite(ms) && ms > 0 ? ms : 1500;
+}
+
+async function acquireSendSlot() {
+    if (dailySendCount >= getDailyCap()) {
+        throw new Error(`Messenger daily send cap (${getDailyCap()}) reached. Raise MESSENGER_DAILY_CAP or try again tomorrow.`);
+    }
+    dailySendCount++;
+    const interval = getMinIntervalMs();
+    const jitter = Math.floor(Math.random() * (interval * 0.5));
+    const wait = Math.max(0, lastSendTime + interval + jitter - Date.now());
+    lastSendTime = Date.now() + Math.max(0, wait);
+    if (wait > 0) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+}
+
+// ------------- Connection management -------------
+
 async function checkConnection() {
     try {
         logger.info("Running proactive Messenger connection check...");
@@ -60,7 +164,7 @@ async function checkConnection() {
         }
 
         const bot = await getBot();
-        
+
         const isMqttConnected = !!(bot.ctx && bot.ctx.mqttClient && bot.ctx.mqttClient.connected);
         logger.info({ isMqttConnected }, 'Messenger connection check info');
 
@@ -87,6 +191,29 @@ async function checkConnection() {
     }
 }
 
+function startWatchdog() {
+    const intervalMs = parseInt(process.env.MESSENGER_WATCHDOG_MS || '120000', 10);
+    const timer = setInterval(async () => {
+        try {
+            if (!botInstance) return;
+            const connected = !!(botInstance.ctx && botInstance.ctx.mqttClient && botInstance.ctx.mqttClient.connected);
+            if (!connected) {
+                logger.warn('Messenger MQTT heartbeat lost. Re-initializing bot...');
+                resetBot();
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                try {
+                    await getBot();
+                } catch (loginErr) {
+                    logger.error({ err: loginErr.message }, 'Messenger watchdog re-login failed');
+                }
+            }
+        } catch (err) {
+            logger.error({ err }, 'Messenger watchdog error');
+        }
+    }, intervalMs);
+    if (typeof timer.unref === 'function') timer.unref();
+}
+
 async function initMessenger() {
     try {
         await db.waitForInit();
@@ -106,19 +233,17 @@ async function initMessenger() {
         }
 
         if (!appStateData && fs.existsSync(APPSTATE_PATH)) {
-            logger.info('Facebook appstate.json file detected. Initializing...');
-            try {
-                appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+            logger.info('Facebook appstate backup file detected. Initializing...');
+            appStateData = readAppStateFile();
+            if (appStateData) {
                 await saveAppState(appStateData);
-            } catch (err) {
-                logger.error({ err }, 'Failed to parse appstate.json file');
             }
         }
 
         if (appStateData) {
             isMockMode = false;
             logger.info('Messenger Bot service is ready for broadcasting.');
-            
+
             setTimeout(async () => {
                 try {
                     await checkConnection();
@@ -126,18 +251,12 @@ async function initMessenger() {
                     logger.error({ err }, 'Initial Messenger connection check failed');
                 }
             }, 5000);
+
+            startWatchdog();
         } else {
             logger.warn('No Messenger appState found in DB/env/file. Running in Mock Mode.');
             isMockMode = true;
         }
-
-        setInterval(async () => {
-            try {
-                await checkConnection();
-            } catch (err) {
-                logger.error({ err }, 'Scheduled Messenger connection check error');
-            }
-        }, 6 * 60 * 60 * 1000);
     } catch (err) {
         logger.error({ err }, 'Failed to initialize Messenger. Running in Mock Mode.');
         isMockMode = true;
@@ -162,7 +281,6 @@ function resetBot() {
         }
     }
     botInstance = null;
-    botReady = false;
     loginPromise = null;
 }
 
@@ -176,9 +294,9 @@ async function getBot() {
             let appStateData = await loadAppState();
 
             if (!appStateData) {
-                // Fallback to local file or env
-                if (fs.existsSync(APPSTATE_PATH)) {
-                    appStateData = JSON.parse(fs.readFileSync(APPSTATE_PATH, 'utf8'));
+                const fromFile = readAppStateFile();
+                if (fromFile) {
+                    appStateData = fromFile;
                 } else if (process.env.MESSENGER_APPSTATE) {
                     appStateData = JSON.parse(process.env.MESSENGER_APPSTATE);
                 }
@@ -193,9 +311,7 @@ async function getBot() {
                 { listenEvents: true, autoListen: true, autoReconnect: true, online: false }
             );
             botInstance = instance;
-            botReady = true;
 
-            // Check MQTT client connection in background (non-blocking)
             (async () => {
                 let attempts = 0;
                 while (attempts < 40) { // 40 * 500ms = 20s
@@ -210,7 +326,6 @@ async function getBot() {
                 logger.debug("Messenger MQTT background connection check completed.");
             })();
 
-            // Save fresh login appState (may contain refreshed/new cookies)
             try {
                 const freshAppState = instance.api.getAppState();
                 if (freshAppState) {
@@ -220,7 +335,6 @@ async function getBot() {
                 logger.error({ err: saveErr }, 'Failed to save refreshed appState on login');
             }
 
-            // Attach runtime error listener to reset on connection drop
             instance.on("error", (err) => {
                 logger.error({ err }, 'Messenger bot runtime error');
                 resetBot();
@@ -259,6 +373,9 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         throw new Error('Messenger service is currently disconnected or running in Mock Mode. Please check your appstate connection.');
     }
 
+    // Spread sends: jittered pacing + daily cap to avoid Facebook automation flags
+    await acquireSendSlot();
+
     try {
         const bot = await getBot();
 
@@ -272,7 +389,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             }
         }
 
-        // Helper to send a single message with promise wrapper
         const sendMsgPromise = (payload) => {
             return new Promise((resolve, reject) => {
                 logger.debug({ chatId, payload: JSON.stringify(payload) }, 'FCA sendMessage called');
@@ -292,7 +408,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         let lastResult = null;
         let attachmentTuples = [];
 
-        // 1. Upload files first to get the FBIDs with correct extensions
         if (files.length > 0) {
             const uploadInputs = [];
             for (const f of files) {
@@ -308,13 +423,11 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 const uploadedIds = await bot.api.uploadAttachment(uploadInputs);
                 logger.debug({ uploadedIds }, 'Successfully uploaded attachments');
 
-                // Map results to [filename, fbid] tuples
                 const unorderedTuples = uploadedIds.map(file => {
                     const key = Object.keys(file).find(k => k !== 'filename' && k !== 'filetype' && k !== 'thumbnail_src');
                     return [file.filename || 'file', String(file[key])];
                 });
 
-                // Reorder attachmentTuples to match the exact order of the original files array (handling potential duplicates)
                 attachmentTuples = [];
                 const remainingTuples = [...unorderedTuples];
                 for (const f of files) {
@@ -324,14 +437,12 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                         remainingTuples.splice(index, 1);
                     }
                 }
-                // Append any remaining/fallback tuples that couldn't be matched by name
                 if (remainingTuples.length > 0) {
                     attachmentTuples.push(...remainingTuples);
                 }
             }
         }
 
-        // 2. Send text and attachments separately: text first, then files in parallel
         if (message && message.trim()) {
             lastResult = await sendMsgPromise({ body: message });
         }
@@ -342,7 +453,6 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             }
         }
 
-        // 3. Save refreshed appState to persistent storage
         try {
             const freshAppState = bot.api.getAppState();
             if (freshAppState) {

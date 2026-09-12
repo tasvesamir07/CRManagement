@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { makeWASocket, DisconnectReason, useMultiFileAuthState, Browsers, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
@@ -6,8 +7,14 @@ const path = require('path');
 const fs = require('fs');
 
 const PORT = process.env.PORT || 3003;
-const SECRET = process.env.WHATSAPP_RELAY_SECRET || 'change-me-in-production';
-const AUTH_FOLDER = path.join(__dirname, '.baileys_auth');
+const SECRET = process.env.WHATSAPP_RELAY_SECRET;
+if (!SECRET || SECRET === 'change-me-in-production' || SECRET.length < 16) {
+    console.error('[Relay] FATAL: WHATSAPP_RELAY_SECRET is missing or too weak.');
+    console.error('[Relay] Set a strong secret (>= 16 chars) via the WHATSAPP_RELAY_SECRET environment variable.');
+    console.error('[Relay] The server passes this value as the x-relay-secret header on every request.');
+    process.exit(1);
+}
+const AUTH_FOLDER = process.env.RELAY_AUTH_FOLDER || path.join(__dirname, '.baileys_auth');
 
 const logger = pino({ level: 'silent' });
 const app = express();

@@ -59,7 +59,7 @@ export default function TipTapEditor({ value, onChange, placeholder = 'Write you
   // Sync value from parent if it changes outside (e.g. presets)
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '<p></p>', false);
+      editor.commands.setContent(value || '<p></p>', { emitUpdate: false });
     }
   }, [value, editor]);
 

@@ -31,6 +31,7 @@ const AnnouncementForm: React.FC = () => {
     broadcastMode, setBroadcastMode, fileCaption, setFileCaption, customText, setCustomText,
     notices, setNotices, closingText, setClosingText,
     selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
+    mentionAllPlatforms, handlePlatformToggleMention,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,
@@ -670,6 +671,8 @@ const AnnouncementForm: React.FC = () => {
             hasAttachments={uploadedFiles.length > 0}
             excludedAttachmentPlatforms={excludedAttachmentPlatforms}
             onToggleAttachment={handlePlatformToggleAttachment}
+            mentionAllPlatforms={mentionAllPlatforms}
+            onToggleMention={handlePlatformToggleMention}
           />
 
           <div className="pt-4 border-t border-hairline-cool space-y-4">

@@ -1,4 +1,5 @@
 -- CR Announcement Dashboard - Database Schema
+-- This is the reference schema, kept in sync with server/scripts/migrate.js.
 -- Run this in Supabase SQL Editor (https://supabase.com/dashboard/project/zmqoqvubfskdukehnqos/sql/new)
 
 -- 1. Users
@@ -44,11 +45,11 @@ CREATE TABLE IF NOT EXISTS routines (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Platforms (WhatsApp / Telegram channels)
+-- 4. Platforms (WhatsApp / Telegram / Messenger channels)
 CREATE TABLE IF NOT EXISTS platforms (
     id SERIAL PRIMARY KEY,
     platform_name TEXT NOT NULL,
-    platform_type TEXT NOT NULL CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger')),
+    platform_type TEXT NOT NULL,
     chat_id TEXT NOT NULL,
     description TEXT,
     created_by INTEGER,
@@ -57,6 +58,9 @@ CREATE TABLE IF NOT EXISTS platforms (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_platform_type_check;
+ALTER TABLE platforms ADD CONSTRAINT platforms_platform_type_check CHECK (platform_type IN ('whatsapp', 'telegram', 'messenger'));
 
 -- 5. Folders (organize files by course)
 CREATE TABLE IF NOT EXISTS folders (
@@ -81,7 +85,7 @@ CREATE TABLE IF NOT EXISTS files (
     is_deleted BOOLEAN DEFAULT false
 );
 
--- 6. Announcements
+-- 7. Announcements
 CREATE TABLE IF NOT EXISTS announcements (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -101,6 +105,9 @@ CREATE TABLE IF NOT EXISTS announcements (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_file_id_fkey;
+ALTER TABLE announcements ADD CONSTRAINT announcements_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE SET NULL;
+
 -- 8. Announcement-Platform mapping (delivery status per platform)
 CREATE TABLE IF NOT EXISTS announcement_platforms (
     announcement_id INTEGER REFERENCES announcements(id) ON DELETE CASCADE,
@@ -116,6 +123,7 @@ CREATE TABLE IF NOT EXISTS course_members (
     user_id INTEGER REFERENCES users(id),
     course_id INTEGER REFERENCES courses(id),
     role TEXT DEFAULT 'cr',
+    lead BOOLEAN DEFAULT false,
     assigned_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (user_id, course_id)
 );
@@ -174,20 +182,107 @@ CREATE TABLE IF NOT EXISTS whatsapp_creds (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 15. System settings (e.g. messenger appState, config)
+-- 15. System settings (e.g. encrypted messenger appState, config)
 CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 16. Students
+CREATE TABLE IF NOT EXISTS students (
+    id SERIAL PRIMARY KEY,
+    student_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    batch TEXT,
+    section TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 17. Student-Course enrollment
+CREATE TABLE IF NOT EXISTS student_courses (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(student_id, course_id)
+);
+
+-- 18. Exam routines
+CREATE TABLE IF NOT EXISTS exam_routines (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    exam_type TEXT NOT NULL CHECK (exam_type IN ('mid', 'final', 'quiz', 'makeup')),
+    exam_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    room_number TEXT,
+    section TEXT DEFAULT '',
+    instructions TEXT,
+    canva_template_id TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 19. Attendance
+CREATE TABLE IF NOT EXISTS attendance (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+    exam_routine_id INTEGER REFERENCES exam_routines(id) ON DELETE SET NULL,
+    date DATE NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('present', 'absent')),
+    marked_by INTEGER REFERENCES users(id),
+    marked_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT,
+    UNIQUE(student_id, course_id, date, exam_routine_id)
+);
+
+-- 20. Canva templates
+CREATE TABLE IF NOT EXISTS canva_templates (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    template_type TEXT,
+    canva_template_id TEXT NOT NULL,
+    canva_design_id TEXT,
+    dataset JSONB DEFAULT '[]',
+    is_active BOOLEAN DEFAULT true,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 21. Canva OAuth states
+CREATE TABLE IF NOT EXISTS canva_oauth_states (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    state TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+-- Compatibility alterations / indexes
+ALTER TABLE platforms ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS default_platform_ids INTEGER[] DEFAULT '{}';
+ALTER TABLE course_members ADD COLUMN IF NOT EXISTS lead BOOLEAN DEFAULT false;
+ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE canva_templates ADD COLUMN IF NOT EXISTS dataset JSONB DEFAULT '[]';
+ALTER TABLE canva_templates ALTER COLUMN template_type DROP NOT NULL;
+ALTER TABLE canva_templates DROP CONSTRAINT IF EXISTS canva_templates_template_type_check;
+
+CREATE INDEX IF NOT EXISTS idx_platforms_course_id ON platforms(course_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_course_id ON announcements(course_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_status ON announcements(status);
+CREATE INDEX IF NOT EXISTS idx_announcement_platforms_announcement_id ON announcement_platforms(announcement_id);
+CREATE INDEX IF NOT EXISTS idx_routines_course_id ON routines(course_id);
+CREATE INDEX IF NOT EXISTS idx_exam_routines_exam_date ON exam_routines(exam_date);
 
 -- ============================================================
--- Seed: Default admin user
--- Password: admin123 (bcrypt hash)
--- Run once, then login with username "admin" / password "admin123"
--- IMPORTANT: Change password after first login
+-- NOTE: The default 'admin' user is seeded by server/scripts/migrate.js
+-- with a random (or ADMIN_INITIAL_PASSWORD) password. NEVER ship a well-known
+-- bcrypt hash here.
 -- ============================================================
-INSERT INTO users (username, email, password_hash, display_name, role)
-SELECT 'admin', 'admin@example.com', '$2a$10$Ec6.k0B6RzW2CpqLNnYUY..iB7QIra0GASh6ykoMiwNs2qZedrDMu', 'Administrator', 'admin'
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');

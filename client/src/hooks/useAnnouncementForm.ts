@@ -127,6 +127,8 @@ export default function useAnnouncementForm() {
 getInitialValue('selectedPlatforms', []));
   const [excludedAttachmentPlatforms, setExcludedAttachmentPlatforms] = useState<number[]>(() =>
 getInitialValue('excludedAttachmentPlatforms', []));
+  const [mentionAllPlatforms, setMentionAllPlatforms] = useState<number[]>(() =>
+getInitialValue('mentionAllPlatforms', []));
   const [alreadySentPlatforms, setAlreadySentPlatforms] = useState<any[]>([]);
   const [waStatus, setWaStatus] = useState('DISCONNECTED');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>(() => 
@@ -377,7 +379,7 @@ getInitialValue('uploadedFiles', []));
       file_id: uploadedFiles[0] ? uploadedFiles[0].id : null,
       file_ids: uploadedFiles.map((f: any) => f.id),
       platform_ids: selectedPlatforms,
-      metadata: { notices, broadcastMode, customText, fileCaption, closingText, excluded_attachment_platform_ids: excludedAttachmentPlatforms }
+      metadata: { notices, broadcastMode, customText, fileCaption, closingText, excluded_attachment_platform_ids: excludedAttachmentPlatforms, mention_all_platform_ids: mentionAllPlatforms }
     };
   };
 
@@ -400,6 +402,12 @@ getInitialValue('uploadedFiles', []));
 
   const handlePlatformToggleAttachment = (id: number) => {
     setExcludedAttachmentPlatforms(prev =>
+      prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handlePlatformToggleMention = (id: number) => {
+    setMentionAllPlatforms(prev =>
       prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]
     );
   };
@@ -543,7 +551,7 @@ getInitialValue('uploadedFiles', []));
   useEffect(() => {
     clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
-      const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText };
+      const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText, excludedAttachmentPlatforms, mentionAllPlatforms };
       sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
     }, 500);
     return () => clearTimeout(draftTimer.current);
@@ -585,6 +593,9 @@ getInitialValue('uploadedFiles', []));
       if (meta.closingText !== undefined) setClosingText(meta.closingText);
       if (meta.excluded_attachment_platform_ids && Array.isArray(meta.excluded_attachment_platform_ids)) {
         setExcludedAttachmentPlatforms(meta.excluded_attachment_platform_ids.map((x: any) => Number(x)));
+      }
+      if (meta.mention_all_platform_ids && Array.isArray(meta.mention_all_platform_ids)) {
+        setMentionAllPlatforms(meta.mention_all_platform_ids.map((x: any) => Number(x)));
       }
       if (meta.notices && Array.isArray(meta.notices)) {
         const noticesToSet = isClone
@@ -740,6 +751,7 @@ getInitialValue('uploadedFiles', []));
     broadcastMode, setBroadcastMode, fileCaption, setFileCaption, customText, setCustomText,
     notices, setNotices, closingText, setClosingText,
     selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
+    mentionAllPlatforms, handlePlatformToggleMention,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,

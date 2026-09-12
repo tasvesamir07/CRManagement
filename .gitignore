@@ -11,6 +11,14 @@ node_modules/
 db.json
 db.lock
 uploads/
+
+# Facebook/Messenger session credentials (NEVER commit - contains your FB cookies)
+appstate.json
+**/appstate.json
+**/*.appstate.enc
+Fca_Database/
+server/Fca_Database/
+server/.appstate*
 dist/
 client/dist/
 client/android/

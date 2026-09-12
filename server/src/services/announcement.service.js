@@ -150,6 +150,17 @@ async function sendAnnouncement(id, _hostUrl = '') {
         ? metadataObj.excluded_attachment_platform_ids.map(id => Number(id))
         : [];
 
+    // Platforms that should prepend an @everyone (Messenger) / @all (WhatsApp) mention
+    const mentionAllPlatformIds = Array.isArray(metadataObj.mention_all_platform_ids)
+        ? metadataObj.mention_all_platform_ids.map(id => Number(id))
+        : [];
+
+    // Human-readable mention token per platform type (Telegram has no @all mention)
+    const MENTION_TOKENS = {
+        whatsapp: '@all',
+        messenger: '@everyone'
+    };
+
     // 3. Fetch targeted platforms
     const platformsResult = await db.query(
         'SELECT ap.*, p.platform_name, p.platform_type, p.chat_id, p.is_active \
@@ -207,13 +218,19 @@ async function sendAnnouncement(id, _hostUrl = '') {
             const platformAttachments = isExcludedFromAttachments ? [] : attachmentFiles;
 
             if (p.platform_type === 'whatsapp') {
-                const message = formatWhatsApp(announcement, course);
+                let message = formatWhatsApp(announcement, course);
+                if (mentionAllPlatformIds.includes(Number(p.platform_id))) {
+                    message = `${MENTION_TOKENS.whatsapp}\n\n${message}`;
+                }
                 await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             } else if (p.platform_type === 'telegram') {
                 const message = formatTelegram(announcement, course);
                 await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             } else if (p.platform_type === 'messenger') {
-                const message = formatMessenger(announcement, course);
+                let message = formatMessenger(announcement, course);
+                if (mentionAllPlatformIds.includes(Number(p.platform_id))) {
+                    message = `${MENTION_TOKENS.messenger}\n\n${message}`;
+                }
                 await messengerService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             }
 

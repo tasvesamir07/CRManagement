@@ -265,12 +265,39 @@ async function migrate() {
             ALTER TABLE canva_templates DROP CONSTRAINT IF EXISTS canva_templates_template_type_check;
         `);
 
-        // Seed default admin user if not exists (password: admin123)
-        await client.query(`
-            INSERT INTO users (username, email, password_hash, display_name, role)
-            SELECT 'admin', 'admin@example.com', '$2a$10$Ec6.k0B6RzW2CpqLNnYUY..iB7QIra0GASh6ykoMiwNs2qZedrDMu', 'Administrator', 'admin'
-            WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
-        `);
+        // Seed default admin user if not exists.
+        // Password comes from ADMIN_INITIAL_PASSWORD env (min 12 chars) or a
+        // one-time random password printed to the console. Never a well-known default.
+        {
+            const existingAdmin = await client.query("SELECT 1 FROM users WHERE username = 'admin'");
+            if (existingAdmin.rows.length === 0) {
+                const bcrypt = require('bcryptjs');
+                const crypto = require('crypto');
+                const envPass = process.env.ADMIN_INITIAL_PASSWORD;
+                const useEnvPass = !!envPass && envPass.length >= 12;
+                const password = useEnvPass ? envPass : crypto.randomBytes(9).toString('base64url');
+                const hash = await bcrypt.hash(password, 10);
+                await client.query(
+                    `INSERT INTO users (username, email, password_hash, display_name, role)
+                     VALUES ('admin', 'admin@example.com', $1, 'Administrator', 'admin')
+                     ON CONFLICT (username) DO NOTHING`,
+                    [hash]
+                );
+                if (useEnvPass) {
+                    console.log('Default admin created using ADMIN_INITIAL_PASSWORD.');
+                } else {
+                    console.log('');
+                    console.log('==============================================================');
+                    console.log('  ADMIN ACCOUNT CREATED WITH RANDOM PASSWORD');
+                    console.log('  username: admin');
+                    console.log(`  password: ${password}`);
+                    console.log('  Set ADMIN_INITIAL_PASSWORD (>= 12 chars) to control this.');
+                    console.log('  CHANGE THIS PASSWORD AFTER FIRST LOGIN!');
+                    console.log('==============================================================');
+                    console.log('');
+                }
+            }
+        }
 
         console.log('Migration completed successfully.');
     } catch (err) {

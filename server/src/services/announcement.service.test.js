@@ -175,6 +175,35 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
         expect(finalDelivery.rows.every(d => d.platform_status === 'sent')).toBe(true);
     });
 
+    it('should prepend @all / @everyone mention token when the channel is in metadata.mention_all_platform_ids', async () => {
+        const announcement = await announcementService.createAnnouncement({
+            title: 'Announcement with Mentions',
+            content: 'Hello Everyone',
+            category: 'notice',
+            course_id: courseId,
+            created_by: userId,
+            platform_ids: [platformWhatsappId, platformTelegramId],
+            metadata: {
+                mention_all_platform_ids: [platformWhatsappId]
+            }
+        });
+
+        whatsappService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'wa-1' });
+        telegramService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'tg-1' });
+
+        await announcementService.sendAnnouncement(announcement.id);
+
+        // WhatsApp channel flagged for @all mention should receive the @all prefix
+        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith(
+            'wa-chat-123',
+            expect.stringMatching(/^@all\n\nHello Everyone/),
+            []
+        );
+
+        // Telegram has no @all mention - message must be unchanged
+        expect(telegramService.sendMessageToGroup).toHaveBeenCalledWith('-10012345', 'Hello Everyone', []);
+    });
+
     it('should exclude attachments for channels marked in metadata.excluded_attachment_platform_ids', async () => {
         const announcement = await announcementService.createAnnouncement({
             title: 'Announcement with Excluded Attachment Channel',

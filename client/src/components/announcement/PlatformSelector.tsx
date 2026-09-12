@@ -1,4 +1,4 @@
-import { CheckSquare, Square, CheckCircle, Paperclip, FileText } from 'lucide-react';
+import { CheckSquare, Square, CheckCircle, Paperclip, FileText, AtSign } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import type { Platform } from './types';
 
@@ -11,6 +11,8 @@ interface PlatformSelectorProps {
   hasAttachments?: boolean;
   excludedAttachmentPlatforms?: number[];
   onToggleAttachment?: (id: number) => void;
+  mentionAllPlatforms?: number[];
+  onToggleMention?: (id: number) => void;
 }
 
 export default function PlatformSelector({
@@ -21,7 +23,9 @@ export default function PlatformSelector({
   alreadySentPlatforms = [],
   hasAttachments = false,
   excludedAttachmentPlatforms = [],
-  onToggleAttachment
+  onToggleAttachment,
+  mentionAllPlatforms = [],
+  onToggleMention
 }: PlatformSelectorProps) {
   if (platforms.length === 0) {
     return (
@@ -79,6 +83,9 @@ export default function PlatformSelector({
         const needsPairing = !engineUnavailable && p.platform_type === 'whatsapp' && waStatus !== 'CONNECTED';
         const isUnavailable = engineUnavailable || needsPairing || alreadySent;
         const isAttachmentExcluded = excludedAttachmentPlatforms.includes(p.id);
+        const supportsMention = p.platform_type === 'whatsapp' || p.platform_type === 'messenger';
+        const isMentionAll = mentionAllPlatforms.includes(p.id);
+        const mentionToken = p.platform_type === 'whatsapp' ? '@all' : '@everyone';
 
         let badgeText = '';
         let badgeClass = '';
@@ -134,6 +141,26 @@ export default function PlatformSelector({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {isSelected && supportsMention && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMention?.(p.id);
+                  }}
+                  title={isMentionAll
+                    ? `Click to remove the ${mentionToken} mention`
+                    : `Click to prepend ${mentionToken} so everyone in the group gets notified`}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded border flex items-center gap-1 cursor-pointer transition-colors ${
+                    isMentionAll
+                      ? 'bg-primary/15 text-primary border-primary/30 hover:bg-primary/25'
+                      : 'bg-white/5 text-ink-mute border-hairline hover:bg-canvas-soft'
+                  }`}
+                >
+                  <AtSign className={`w-3 h-3 ${isMentionAll ? 'text-primary' : ''}`} />
+                  <span>{mentionToken}</span>
+                </button>
+              )}
               {isSelected && hasAttachments && (
                 <button
                   type="button"
