@@ -535,7 +535,10 @@ if (isRelayMode) {
                 }
             }
 
-            const mentionOptions = mentions.length > 0 ? { mentions } : {};
+            const mentionOptions = {
+                ...(mentions.length > 0 ? { mentions } : {}),
+                ...(shouldMentionAll ? { mentionAll: true } : {})
+            };
 
             let sentMsg;
             if (files.length > 0 && fs.existsSync(files[0].path)) {

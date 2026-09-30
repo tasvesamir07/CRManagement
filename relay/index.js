@@ -135,7 +135,7 @@ app.post('/pair', auth, async (req, res) => {
 });
 
 app.post('/send-message', auth, async (req, res) => {
-    const { chatId, message, files } = req.body;
+    const { chatId, message, files, mentions: inputMentions, mentionAll: inputMentionAll } = req.body;
     if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
 
     if (!sock || connectionStatus !== 'CONNECTED') {
@@ -146,6 +146,32 @@ app.post('/send-message', auth, async (req, res) => {
         const targetId = chatId.includes('@') ? chatId : `${chatId}@g.us`;
         let sentMsg;
 
+        // Determine mentions and mentionAll
+        const isGroup = targetId.endsWith('@g.us');
+        const hasMentionToken = message && /@(all|everyone)\b/i.test(message);
+        const shouldMentionAll = Boolean(inputMentionAll || hasMentionToken);
+
+        let mentions = Array.isArray(inputMentions) ? inputMentions : [];
+        if (shouldMentionAll && isGroup && mentions.length === 0) {
+            try {
+                const groupMeta = await sock.groupMetadata(targetId);
+                if (groupMeta && Array.isArray(groupMeta.participants)) {
+                    mentions = groupMeta.participants.map(p => p.id).filter(Boolean);
+                    console.log(`[Relay] Found ${mentions.length} participants for mention in ${targetId}`);
+                }
+            } catch (err) {
+                console.error('[Relay] Failed to fetch group metadata for mentions:', err.message);
+            }
+        }
+
+        const mentionPayload = {};
+        if (mentions.length > 0) {
+            mentionPayload.mentions = mentions;
+        }
+        if (shouldMentionAll) {
+            mentionPayload.mentionAll = true;
+        }
+
         if (files && files.length > 0) {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
@@ -153,15 +179,19 @@ app.post('/send-message', auth, async (req, res) => {
                 if (!data) continue;
                 const mime = file.mimetype || '';
                 const caption = i === 0 ? message : undefined;
+                const fileMentionPayload = i === 0 ? mentionPayload : {};
                 const msgContent = mime.startsWith('image/')
-                    ? { image: data, caption: caption, mimetype: mime }
+                    ? { image: data, caption: caption, mimetype: mime, ...fileMentionPayload }
                     : mime.startsWith('video/')
-                    ? { video: data, caption: caption, mimetype: mime }
-                    : { document: data, mimetype: mime || 'application/octet-stream', fileName: file.name || 'file', caption: caption };
+                    ? { video: data, caption: caption, mimetype: mime, ...fileMentionPayload }
+                    : { document: data, mimetype: mime || 'application/octet-stream', fileName: file.name || 'file', caption: caption, ...fileMentionPayload };
                 sentMsg = await sock.sendMessage(targetId, msgContent);
             }
         } else {
-            sentMsg = await sock.sendMessage(targetId, { text: message });
+            sentMsg = await sock.sendMessage(targetId, {
+                text: message,
+                ...mentionPayload
+            });
         }
 
         res.json({ success: true, messageId: sentMsg?.key?.id || 'unknown' });
