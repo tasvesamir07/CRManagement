@@ -447,6 +447,13 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState<boolean>(false);
 
+  const openSidebarTab = (tab: 'theme' | 'headers' | 'grid' | 'cell') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setShowMobileSidebar(true);
+    }
+  };
+
   // 2D Canvas Pan & Drag State
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -1088,10 +1095,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className={`lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col overflow-y-auto lg:overflow-hidden ${
+      <div className={`border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col lg:col-span-4 lg:flex h-full lg:overflow-hidden ${
         showMobileSidebar 
-          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4' 
-          : 'hidden lg:flex h-auto lg:h-full'
+          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4 lg:static lg:p-0 lg:z-auto' 
+          : 'hidden lg:flex'
       }`}>
         
         <div className="p-3 sm:p-4 border-b border-hairline flex items-center justify-between bg-canvas flex-shrink-0">
@@ -1878,8 +1885,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActiveTab('headers');
-                  setShowMobileSidebar(true);
+                  openSidebarTab('headers');
                   if (!selectedTitleField) setSelectedTitleField('semesterTitle');
                 }}
                 style={{ 
@@ -2038,8 +2044,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedTitleField('semesterTitle');
-                    setActiveTab('headers');
-                    setShowMobileSidebar(true);
+                    openSidebarTab('headers');
                   }}
                 >
                   <h1 
@@ -2063,8 +2068,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       isSelected={selectedTitleField === 'semesterTitle'}
                       onSelect={() => {
                         setSelectedTitleField('semesterTitle');
-                        setActiveTab('headers');
-                        setShowMobileSidebar(true);
+                        openSidebarTab('headers');
                       }}
                     />
                   </h1>
@@ -2076,8 +2080,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedTitleField('sectionGroup');
-                    setActiveTab('headers');
-                    setShowMobileSidebar(true);
+                    openSidebarTab('headers');
                   }}
                 >
                   <h2 
@@ -2101,8 +2104,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       isSelected={selectedTitleField === 'sectionGroup'}
                       onSelect={() => {
                         setSelectedTitleField('sectionGroup');
-                        setActiveTab('headers');
-                        setShowMobileSidebar(true);
+                        openSidebarTab('headers');
                       }}
                     />
                   </h2>
@@ -2114,8 +2116,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedTitleField('batchCode');
-                    setActiveTab('headers');
-                    setShowMobileSidebar(true);
+                    openSidebarTab('headers');
                   }}
                 >
                   <div 
@@ -2139,8 +2140,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       isSelected={selectedTitleField === 'batchCode'}
                       onSelect={() => {
                         setSelectedTitleField('batchCode');
-                        setActiveTab('headers');
-                        setShowMobileSidebar(true);
+                        openSidebarTab('headers');
                       }}
                     />
                   </div>
@@ -2152,8 +2152,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedTitleField('effectiveDate');
-                    setActiveTab('headers');
-                    setShowMobileSidebar(true);
+                    openSidebarTab('headers');
                   }}
                 >
                   <div 
@@ -2177,8 +2176,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       isSelected={selectedTitleField === 'effectiveDate'}
                       onSelect={() => {
                         setSelectedTitleField('effectiveDate');
-                        setActiveTab('headers');
-                        setShowMobileSidebar(true);
+                        openSidebarTab('headers');
                       }}
                     />
                   </div>
@@ -2193,8 +2191,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                       <th 
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => {
-                          setActiveTab('cell');
-                          setShowMobileSidebar(true);
+                          openSidebarTab('cell');
                         }}
                         style={{ borderRight: `1px solid ${borderColor}`, borderBottom: `2px solid ${borderColor}`, color: dayHeaderTextColor, fontWeight: dayHeaderFontWeight || 700, fontSize: `${dayHeaderFontSize || 12}px` }}
                         className="py-3 px-2 text-center w-28 uppercase tracking-wide cursor-pointer hover:opacity-90"
@@ -2207,8 +2204,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                           key={day} 
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={() => {
-                            setActiveTab('cell');
-                            setShowMobileSidebar(true);
+                            openSidebarTab('cell');
                           }}
                           style={{ borderRight: `1px solid ${borderColor}`, borderBottom: `2px solid ${borderColor}`, color: dayHeaderTextColor, fontWeight: dayHeaderFontWeight || 700, fontSize: `${dayHeaderFontSize || 12}px` }}
                           className="py-3 px-2 text-center tracking-wide uppercase cursor-pointer hover:opacity-90"
@@ -2227,8 +2223,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                         <td 
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={() => {
-                            setActiveTab('cell');
-                            setShowMobileSidebar(true);
+                            openSidebarTab('cell');
                           }}
                           style={{ 
                             backgroundColor: timeColumnBg, 

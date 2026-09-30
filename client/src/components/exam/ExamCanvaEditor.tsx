@@ -1372,10 +1372,10 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
       
       {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className={`lg:col-span-4 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col overflow-y-auto lg:overflow-hidden ${
+      <div className={`border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col lg:col-span-4 lg:flex h-full lg:overflow-hidden ${
         showMobileSidebar 
-          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4' 
-          : 'hidden lg:flex h-auto lg:h-full'
+          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4 lg:static lg:p-0 lg:z-auto' 
+          : 'hidden lg:flex'
       }`}>
         
         <div className="p-3 sm:p-4 border-b border-hairline flex items-center justify-between bg-canvas flex-shrink-0">
