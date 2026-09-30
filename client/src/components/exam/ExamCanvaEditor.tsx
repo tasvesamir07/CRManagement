@@ -400,32 +400,46 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
     return isTextArea ? (
       <textarea
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         autoFocus
-        className="w-full bg-white border border-primary text-black focus:outline-none p-1 rounded font-sans text-xs resize-none text-inherit shadow-inner"
+        className="w-full bg-white border-2 border-primary text-black focus:outline-none p-1 rounded font-sans text-xs resize-none text-inherit shadow-inner"
         rows={3}
       />
     ) : (
       <input
         type="text"
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="w-full bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit"
+        className="w-full bg-transparent border-b-2 border-primary text-inherit focus:outline-none p-0.5 font-inherit text-inherit min-w-[60px]"
       />
     );
   }
 
   return (
     <div
-      onClick={() => !disabled && setEditing(true)}
+      onPointerDown={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+        }
+      }}
+      onClick={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+          setEditing(true);
+        }
+      }}
       className={`group/inline relative rounded px-1 -mx-1 border border-transparent transition-all ${
-        disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20'
+        disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20 hover:ring-1 hover:ring-primary/40'
       } ${className}`}
-      title={disabled ? undefined : 'Click to edit'}
+      title={disabled ? undefined : 'Click to edit text directly'}
     >
       {value || <span className="text-gray-400 italic font-normal text-xs">(Click to edit)</span>}
     </div>
@@ -692,7 +706,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"], a, td, th, [data-interactive="true"], [title*="Click to edit"], .group\\/inline')) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     setIsPanning(true);
@@ -702,15 +716,20 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
       panX: pan.x,
       panY: pan.y
     };
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isPanning || !panStartRef.current) return;
     const dx = e.clientX - panStartRef.current.pointerX;
     const dy = e.clientY - panStartRef.current.pointerY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      try {
+        if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
 
     setPan({
       x: panStartRef.current.panX + dx,
@@ -2400,6 +2419,12 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
               
               {/* Header Box */}
               <div 
+                onClick={() => {
+                  if (!isLocked) {
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
+                  }
+                }}
                 style={{ 
                   backgroundColor: cardBg,
                   borderRadius: cardRoundedness,
@@ -2474,7 +2499,16 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   return (
                     <div 
                       key={item.id}
-                      onClick={() => handleSelectCard(item.id)}
+                      onPointerDown={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('.group\\/handle, .group\\/h-handle')) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onClick={() => {
+                        handleSelectCard(item.id);
+                        setShowMobileSidebar(true);
+                      }}
                       style={{ 
                         backgroundColor: cardBg,
                         borderRadius: cardRoundedness,
@@ -2701,6 +2735,12 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
               {/* Footer Box */}
               <div 
+                onClick={() => {
+                  if (!isLocked) {
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
+                  }
+                }}
                 style={{ 
                   backgroundColor: cardBg,
                   borderRadius: cardRoundedness,

@@ -189,22 +189,34 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
       <input
         type="text"
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit text-center max-w-full"
+        className="bg-transparent border-b-2 border-primary text-inherit focus:outline-none p-0.5 font-inherit text-inherit text-center max-w-full min-w-[80px]"
       />
     );
   }
 
   return (
     <div
-      onClick={() => !disabled && setEditing(true)}
-      className={`relative inline-block rounded px-1 -mx-1 border border-transparent transition-all ${
-        disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20'
+      onPointerDown={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+        }
+      }}
+      onClick={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+          setEditing(true);
+        }
+      }}
+      className={`relative inline-block rounded px-1.5 py-0.5 -mx-1 border border-transparent transition-all ${
+        disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20 hover:ring-1 hover:ring-primary/40'
       } ${className}`}
-      title={disabled ? undefined : 'Click to edit'}
+      title={disabled ? undefined : 'Click to edit text directly'}
     >
       {value || <span className="text-gray-400 italic">(Click to edit)</span>}
     </div>
@@ -412,7 +424,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"], a, td, th, [data-interactive="true"], [title*="Click to edit"]')) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     setIsPanning(true);
@@ -422,15 +434,20 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       panX: pan.x,
       panY: pan.y
     };
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isPanning || !panStartRef.current) return;
     const dx = e.clientX - panStartRef.current.pointerX;
     const dy = e.clientY - panStartRef.current.pointerY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      try {
+        if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
 
     setPan({
       x: panStartRef.current.panX + dx,
@@ -716,6 +733,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const handleCellClick = (day: string, slot: Slot) => {
     setSelectedCell({ day, slot });
     setActiveTab('cell'); // Focus editor tab
+    setShowMobileSidebar(true);
   };
 
   // Save/Update class entry
@@ -1850,6 +1868,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                           return (
                             <td 
                               key={dIdx}
+                              onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => handleCellClick(day, slot)}
                               style={{ 
                                 backgroundColor: isSelected 
