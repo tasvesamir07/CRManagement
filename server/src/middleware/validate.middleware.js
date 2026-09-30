@@ -137,7 +137,7 @@ const schemas = {
             platform_type: z.enum(['whatsapp', 'telegram', 'messenger']),
             chat_id: z.string().min(1),
             description: z.string().max(500).optional(),
-            course_id: z.number().int().positive().nullable().optional(),
+            course_id: z.number().int().positive().optional(),
             is_active: z.boolean().optional()
         }),
         update: z.object({
