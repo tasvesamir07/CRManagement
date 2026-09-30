@@ -197,7 +197,8 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
         expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith(
             'wa-chat-123',
             expect.stringMatching(/^@all\n\nHello Everyone/),
-            []
+            [],
+            { mentionAll: true }
         );
 
         // Telegram has no @all mention - message must be unchanged
@@ -223,7 +224,7 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
         await announcementService.sendAnnouncement(announcement.id);
 
         // WhatsApp should be called with empty attachments array [] because platformWhatsappId is excluded
-        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith('wa-chat-123', expect.any(String), []);
+        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith('wa-chat-123', expect.any(String), [], { mentionAll: false });
         // Telegram should be called with attachments array [] (since no file_ids attached to announcement)
         expect(telegramService.sendMessageToGroup).toHaveBeenCalledWith('-10012345', expect.any(String), []);
     });

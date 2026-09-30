@@ -350,7 +350,7 @@ async function getBot() {
     return loginPromise;
 }
 
-async function sendMessageToGroup(chatId, message, filePath = null) {
+async function sendMessageToGroup(chatId, message, filePath = null, options = {}) {
     logger.info({ chatId }, 'Sending Messenger announcement to thread');
 
     let files = [];
@@ -405,6 +405,39 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
             });
         };
 
+        // Query thread participants for @everyone / @all mentions
+        let mentions = [];
+        const hasMentionToken = message && /@(everyone|all)\b/i.test(message);
+        if (options.mentionAll || hasMentionToken) {
+            try {
+                const threadInfo = await new Promise((resolve) => {
+                    bot.api.getThreadInfo(chatId, (err, info) => {
+                        if (err) {
+                            logger.warn({ chatId, err: err.message || err }, 'Failed to get Messenger thread info for mentions');
+                            resolve(null);
+                        } else {
+                            resolve(info);
+                        }
+                    });
+                });
+
+                if (threadInfo && Array.isArray(threadInfo.participantIDs) && threadInfo.participantIDs.length > 0) {
+                    const myId = bot.api.getCurrentUserID?.();
+                    const participantIDs = threadInfo.participantIDs.filter(id => String(id) !== String(myId));
+                    const match = message ? message.match(/@(everyone|all)\b/i) : null;
+                    const tag = match ? match[0] : '@everyone';
+                    mentions = participantIDs.map(id => ({
+                        tag,
+                        id: String(id),
+                        fromIndex: 0
+                    }));
+                    logger.info({ chatId, count: mentions.length, tag }, 'Attaching Messenger mentions for participants');
+                }
+            } catch (err) {
+                logger.warn({ chatId, err: err.message }, 'Failed building Messenger mentions');
+            }
+        }
+
         let lastResult = null;
         let attachmentTuples = [];
 
@@ -444,7 +477,10 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
         }
 
         if (message && message.trim()) {
-            lastResult = await sendMsgPromise({ body: message });
+            lastResult = await sendMsgPromise({
+                body: message,
+                ...(mentions.length > 0 ? { mentions } : {})
+            });
         }
         if (attachmentTuples.length > 0) {
             logger.debug({ count: attachmentTuples.length, chatId }, 'Sending attachments sequentially');

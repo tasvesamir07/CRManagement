@@ -219,19 +219,21 @@ async function sendAnnouncement(id, _hostUrl = '') {
 
             if (p.platform_type === 'whatsapp') {
                 let message = formatWhatsApp(announcement, course);
-                if (mentionAllPlatformIds.includes(Number(p.platform_id))) {
+                const shouldMentionAll = mentionAllPlatformIds.includes(Number(p.platform_id));
+                if (shouldMentionAll) {
                     message = `${MENTION_TOKENS.whatsapp}\n\n${message}`;
                 }
-                await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments);
+                await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments, { mentionAll: shouldMentionAll });
             } else if (p.platform_type === 'telegram') {
                 const message = formatTelegram(announcement, course);
                 await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments);
             } else if (p.platform_type === 'messenger') {
                 let message = formatMessenger(announcement, course);
-                if (mentionAllPlatformIds.includes(Number(p.platform_id))) {
+                const shouldMentionAll = mentionAllPlatformIds.includes(Number(p.platform_id));
+                if (shouldMentionAll) {
                     message = `${MENTION_TOKENS.messenger}\n\n${message}`;
                 }
-                await messengerService.sendMessageToGroup(p.chat_id, message, platformAttachments);
+                await messengerService.sendMessageToGroup(p.chat_id, message, platformAttachments, { mentionAll: shouldMentionAll });
             }
 
             // Update on success

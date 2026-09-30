@@ -78,7 +78,7 @@ if (isRelayMode) {
         return { code: data.code };
     };
 
-    const sendMessageToGroup = async (chatId, message, filePath = null) => {
+    const sendMessageToGroup = async (chatId, message, filePath = null, options = {}) => {
         if (isMockMode) {
             appLogger.debug({ chatId }, 'Mock WhatsApp send (relay)');
             return { success: true, messageId: 'mock_msg_id' };
@@ -94,10 +94,11 @@ if (isRelayMode) {
             return null;
         });
         const files = (await Promise.all(fileReads)).filter(Boolean);
+        const shouldMentionAll = Boolean(options.mentionAll || (message && /@(all|everyone)\b/i.test(message)));
         const data = await relayFetch('/send-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId, message, files })
+            body: JSON.stringify({ chatId, message, files, mentionAll: shouldMentionAll })
         });
         return data;
     };
@@ -490,7 +491,7 @@ if (isRelayMode) {
         }
     }
 
-    async function sendMessageToGroup(chatId, message, filePath = null) {
+    async function sendMessageToGroup(chatId, message, filePath = null, options = {}) {
         appLogger.info({ chatId }, 'Sending WhatsApp message to group');
 
         let files = [];
@@ -519,6 +520,23 @@ if (isRelayMode) {
                 targetId = `${chatId}@g.us`;
             }
 
+            // Fetch group participants for @all / @everyone mentions
+            let mentions = [];
+            const shouldMentionAll = Boolean(options.mentionAll || (message && /@(all|everyone)\b/i.test(message)));
+            if (shouldMentionAll && targetId.endsWith('@g.us')) {
+                try {
+                    const groupMeta = await sock.groupMetadata(targetId);
+                    if (groupMeta && Array.isArray(groupMeta.participants)) {
+                        mentions = groupMeta.participants.map(p => p.id).filter(Boolean);
+                        appLogger.info({ targetId, count: mentions.length }, 'Attaching WhatsApp group participant mentions');
+                    }
+                } catch (metaErr) {
+                    appLogger.warn({ targetId, err: metaErr.message }, 'Failed to fetch WhatsApp group participants for mention');
+                }
+            }
+
+            const mentionOptions = mentions.length > 0 ? { mentions } : {};
+
             let sentMsg;
             if (files.length > 0 && fs.existsSync(files[0].path)) {
                 const data = fs.readFileSync(files[0].path);
@@ -527,19 +545,22 @@ if (isRelayMode) {
                 if (mimeType.startsWith('image/')) {
                     sentMsg = await sock.sendMessage(targetId, {
                         image: data,
-                        caption: message
+                        caption: message,
+                        ...mentionOptions
                     });
                 } else if (mimeType.startsWith('video/')) {
                     sentMsg = await sock.sendMessage(targetId, {
                         video: data,
-                        caption: message
+                        caption: message,
+                        ...mentionOptions
                     });
                 } else {
                     sentMsg = await sock.sendMessage(targetId, {
                         document: data,
                         mimetype: mimeType,
                         fileName: files[0].originalName,
-                        caption: message
+                        caption: message,
+                        ...mentionOptions
                     });
                 }
 
@@ -562,7 +583,10 @@ if (isRelayMode) {
                 });
                 await Promise.all(remainderSends);
             } else {
-                sentMsg = await sock.sendMessage(targetId, { text: message });
+                sentMsg = await sock.sendMessage(targetId, {
+                    text: message,
+                    ...mentionOptions
+                });
             }
 
             const msgId = sentMsg?.key?.id || 'unknown';
