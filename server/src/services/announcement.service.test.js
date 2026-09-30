@@ -228,4 +228,37 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
         // Telegram should be called with attachments array [] (since no file_ids attached to announcement)
         expect(telegramService.sendMessageToGroup).toHaveBeenCalledWith('-10012345', expect.any(String), []);
     });
+
+    it('should forward pin options when channels are marked in metadata.pin_platform_ids', async () => {
+        const announcement = await announcementService.createAnnouncement({
+            title: 'Announcement with Pinned Channels',
+            content: 'Please pin this notice',
+            category: 'notice',
+            course_id: courseId,
+            created_by: userId,
+            platform_ids: [platformWhatsappId, platformTelegramId],
+            metadata: {
+                pin_platform_ids: [platformWhatsappId, platformTelegramId],
+                pin_duration: 604800
+            }
+        });
+
+        whatsappService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'wa-pin-1' });
+        telegramService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'tg-pin-1' });
+
+        await announcementService.sendAnnouncement(announcement.id);
+
+        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith(
+            'wa-chat-123',
+            expect.any(String),
+            [],
+            { mentionAll: false, pin: true, pinDuration: 604800 }
+        );
+        expect(telegramService.sendMessageToGroup).toHaveBeenCalledWith(
+            '-10012345',
+            expect.any(String),
+            [],
+            { pin: true }
+        );
+    });
 });

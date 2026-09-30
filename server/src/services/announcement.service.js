@@ -155,6 +155,12 @@ async function sendAnnouncement(id, _hostUrl = '') {
         ? metadataObj.mention_all_platform_ids.map(id => Number(id))
         : [];
 
+    // Platforms that should have the message pinned (WhatsApp & Telegram)
+    const pinPlatformIds = Array.isArray(metadataObj.pin_platform_ids)
+        ? metadataObj.pin_platform_ids.map(id => Number(id))
+        : [];
+    const pinDuration = Number(metadataObj.pin_duration) || 604800; // 7 days default
+
     // Human-readable mention token per platform type (Telegram has no @all mention)
     const MENTION_TOKENS = {
         whatsapp: '@all',
@@ -220,13 +226,26 @@ async function sendAnnouncement(id, _hostUrl = '') {
             if (p.platform_type === 'whatsapp') {
                 let message = formatWhatsApp(announcement, course);
                 const shouldMentionAll = mentionAllPlatformIds.includes(Number(p.platform_id));
+                const shouldPin = Boolean(
+                    metadataObj.pin_whatsapp === true ||
+                    pinPlatformIds.includes(Number(p.platform_id))
+                );
                 if (shouldMentionAll) {
                     message = `${MENTION_TOKENS.whatsapp}\n\n${message}`;
                 }
-                await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments, { mentionAll: shouldMentionAll });
+                const waOptions = {
+                    mentionAll: shouldMentionAll,
+                    ...(shouldPin ? { pin: true, pinDuration } : {})
+                };
+                await whatsappService.sendMessageToGroup(p.chat_id, message, platformAttachments, waOptions);
             } else if (p.platform_type === 'telegram') {
                 const message = formatTelegram(announcement, course);
-                await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments);
+                const shouldPin = pinPlatformIds.includes(Number(p.platform_id));
+                if (shouldPin) {
+                    await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments, { pin: true });
+                } else {
+                    await telegramService.sendMessageToGroup(p.chat_id, message, platformAttachments);
+                }
             } else if (p.platform_type === 'messenger') {
                 let message = formatMessenger(announcement, course);
                 const shouldMentionAll = mentionAllPlatformIds.includes(Number(p.platform_id));

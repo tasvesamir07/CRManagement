@@ -95,10 +95,19 @@ if (isRelayMode) {
         });
         const files = (await Promise.all(fileReads)).filter(Boolean);
         const shouldMentionAll = Boolean(options.mentionAll || (message && /@(all|everyone)\b/i.test(message)));
+        const shouldPin = Boolean(options.pin);
+        const pinDuration = Number(options.pinDuration) || 604800;
         const data = await relayFetch('/send-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId, message, files, mentionAll: shouldMentionAll })
+            body: JSON.stringify({
+                chatId,
+                message,
+                files,
+                mentionAll: shouldMentionAll,
+                pin: shouldPin,
+                pinDuration
+            })
         });
         return data;
     };
@@ -541,6 +550,7 @@ if (isRelayMode) {
             };
 
             let sentMsg;
+            let primaryMsg;
             if (files.length > 0 && fs.existsSync(files[0].path)) {
                 const data = fs.readFileSync(files[0].path);
                 const mimeType = getMimeType(files[0].path);
@@ -566,6 +576,7 @@ if (isRelayMode) {
                         ...mentionOptions
                     });
                 }
+                primaryMsg = sentMsg;
 
                 // Send remaining files in parallel (user chose speed over order)
                 const remainderSends = files.slice(1).map(async (fi) => {
@@ -590,6 +601,23 @@ if (isRelayMode) {
                     text: message,
                     ...mentionOptions
                 });
+                primaryMsg = sentMsg;
+            }
+
+            const msgToPin = primaryMsg || sentMsg;
+            if (options.pin && msgToPin?.key) {
+                try {
+                    await sock.sendMessage(targetId, {
+                        pin: {
+                            type: 1,
+                            time: Number(options.pinDuration) || 604800,
+                            key: msgToPin.key
+                        }
+                    });
+                    appLogger.info({ targetId, msgId: msgToPin.key.id }, 'Pinned WhatsApp message successfully');
+                } catch (pinErr) {
+                    appLogger.warn({ targetId, err: pinErr.message }, 'Failed to pin WhatsApp message (check group permissions)');
+                }
             }
 
             const msgId = sentMsg?.key?.id || 'unknown';

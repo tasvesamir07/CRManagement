@@ -1,4 +1,4 @@
-import { CheckSquare, Square, CheckCircle, Paperclip, FileText, AtSign } from 'lucide-react';
+import { CheckSquare, Square, CheckCircle, Paperclip, FileText, AtSign, Pin } from 'lucide-react';
 import { FaWhatsapp, FaTelegram, FaFacebookMessenger } from 'react-icons/fa6';
 import type { Platform } from './types';
 
@@ -13,6 +13,8 @@ interface PlatformSelectorProps {
   onToggleAttachment?: (id: number) => void;
   mentionAllPlatforms?: number[];
   onToggleMention?: (id: number) => void;
+  pinPlatforms?: number[];
+  onTogglePin?: (id: number) => void;
 }
 
 export default function PlatformSelector({
@@ -25,7 +27,9 @@ export default function PlatformSelector({
   excludedAttachmentPlatforms = [],
   onToggleAttachment,
   mentionAllPlatforms = [],
-  onToggleMention
+  onToggleMention,
+  pinPlatforms = [],
+  onTogglePin
 }: PlatformSelectorProps) {
   if (platforms.length === 0) {
     return (
@@ -72,9 +76,37 @@ export default function PlatformSelector({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="text-xs font-medium text-ink-mute uppercase tracking-wider">Target Channels</label>
-        <button type="button" onClick={toggleAll} className="text-xs text-primary hover:underline cursor-pointer">
-          {allSelected ? 'Deselect All' : 'Select All'}
-        </button>
+        <div className="flex items-center gap-3">
+          {displayPlatforms.some(p => (p.platform_type === 'whatsapp' || p.platform_type === 'telegram') && selectedPlatforms.includes(p.id)) && (
+            <button
+              type="button"
+              onClick={() => {
+                const pinnableSelected = displayPlatforms.filter(p => (p.platform_type === 'whatsapp' || p.platform_type === 'telegram') && selectedPlatforms.includes(p.id));
+                const allPinnablePinned = pinnableSelected.length > 0 && pinnableSelected.every(p => pinPlatforms.includes(p.id));
+                pinnableSelected.forEach(p => {
+                  if (allPinnablePinned && pinPlatforms.includes(p.id)) {
+                    onTogglePin?.(p.id);
+                  } else if (!allPinnablePinned && !pinPlatforms.includes(p.id)) {
+                    onTogglePin?.(p.id);
+                  }
+                });
+              }}
+              className="text-xs text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <Pin className="w-3 h-3" />
+              <span>
+                {displayPlatforms
+                  .filter(p => (p.platform_type === 'whatsapp' || p.platform_type === 'telegram') && selectedPlatforms.includes(p.id))
+                  .every(p => pinPlatforms.includes(p.id))
+                  ? 'Unpin All'
+                  : 'Pin All (7d)'}
+              </span>
+            </button>
+          )}
+          <button type="button" onClick={toggleAll} className="text-xs text-primary hover:underline cursor-pointer">
+            {allSelected ? 'Deselect All' : 'Select All'}
+          </button>
+        </div>
       </div>
       {displayPlatforms.map(p => {
         const alreadySent = false;
@@ -86,6 +118,8 @@ export default function PlatformSelector({
         const supportsMention = p.platform_type === 'whatsapp' || p.platform_type === 'messenger';
         const isMentionAll = mentionAllPlatforms.includes(p.id);
         const mentionToken = p.platform_type === 'whatsapp' ? '@all' : '@everyone';
+        const supportsPin = p.platform_type === 'whatsapp' || p.platform_type === 'telegram';
+        const isPinned = pinPlatforms.includes(p.id);
 
         let badgeText = '';
         let badgeClass = '';
@@ -161,6 +195,28 @@ export default function PlatformSelector({
                   <span>{mentionToken}</span>
                 </button>
               )}
+              {isSelected && supportsPin && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePin?.(p.id);
+                  }}
+                  title={isPinned
+                    ? 'Click to remove pin for this channel'
+                    : p.platform_type === 'whatsapp'
+                      ? 'Click to pin notice to top of WhatsApp group (7 days)'
+                      : 'Click to pin notice in Telegram channel'}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded border flex items-center gap-1 cursor-pointer transition-colors ${
+                    isPinned
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 shadow-sm'
+                      : 'bg-white/5 text-ink-mute border-hairline hover:bg-canvas-soft'
+                  }`}
+                >
+                  <Pin className={`w-3 h-3 ${isPinned ? 'text-amber-500 fill-amber-500/30' : ''}`} />
+                  <span>{isPinned ? (p.platform_type === 'whatsapp' ? 'Pin (7d)' : 'Pinned') : 'Pin'}</span>
+                </button>
+              )}
               {isSelected && hasAttachments && (
                 <button
                   type="button"
@@ -195,6 +251,12 @@ export default function PlatformSelector({
           </div>
         );
       })}
+      {selectedPlatforms.some(id => platforms.find(p => p.id === id && p.platform_type === 'whatsapp')) && (
+        <div className="text-[11px] text-ink-mute flex items-center gap-1.5 pt-1">
+          <Pin className="w-3 h-3 text-amber-500 shrink-0" />
+          <span>Pinned notices stay at top of WhatsApp groups for 7 days. (Messenger automated pins are not supported by Meta).</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -135,7 +135,7 @@ app.post('/pair', auth, async (req, res) => {
 });
 
 app.post('/send-message', auth, async (req, res) => {
-    const { chatId, message, files, mentions: inputMentions, mentionAll: inputMentionAll } = req.body;
+    const { chatId, message, files, mentions: inputMentions, mentionAll: inputMentionAll, pin: shouldPin, pinDuration } = req.body;
     if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
 
     if (!sock || connectionStatus !== 'CONNECTED') {
@@ -145,6 +145,7 @@ app.post('/send-message', auth, async (req, res) => {
     try {
         const targetId = chatId.includes('@') ? chatId : `${chatId}@g.us`;
         let sentMsg;
+        let primaryMsg;
 
         // Determine mentions and mentionAll
         const isGroup = targetId.endsWith('@g.us');
@@ -186,12 +187,32 @@ app.post('/send-message', auth, async (req, res) => {
                     ? { video: data, caption: caption, mimetype: mime, ...fileMentionPayload }
                     : { document: data, mimetype: mime || 'application/octet-stream', fileName: file.name || 'file', caption: caption, ...fileMentionPayload };
                 sentMsg = await sock.sendMessage(targetId, msgContent);
+                if (i === 0) {
+                    primaryMsg = sentMsg;
+                }
             }
         } else {
             sentMsg = await sock.sendMessage(targetId, {
                 text: message,
                 ...mentionPayload
             });
+            primaryMsg = sentMsg;
+        }
+
+        const msgToPin = primaryMsg || sentMsg;
+        if (shouldPin && msgToPin?.key) {
+            try {
+                await sock.sendMessage(targetId, {
+                    pin: {
+                        type: 1,
+                        time: Number(pinDuration) || 604800,
+                        key: msgToPin.key
+                    }
+                });
+                console.log(`[Relay] Pinned WhatsApp message ${msgToPin.key.id} in ${targetId} for ${Number(pinDuration) || 604800}s`);
+            } catch (pinErr) {
+                console.warn(`[Relay] Failed to pin WhatsApp message in ${targetId}:`, pinErr.message);
+            }
         }
 
         res.json({ success: true, messageId: sentMsg?.key?.id || 'unknown' });

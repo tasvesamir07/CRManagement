@@ -23,7 +23,7 @@ function initTelegram() {
     }
 }
 
-async function sendMessageToGroup(chatId, message, filePath = null) {
+async function sendMessageToGroup(chatId, message, filePath = null, options = {}) {
     logger.info({ chatId }, 'Sending Telegram message');
 
     let finalChatId = chatId;
@@ -157,6 +157,15 @@ async function sendMessageToGroup(chatId, message, filePath = null) {
                 parse_mode: 'Markdown',
                 message_thread_id: threadId
             });
+        }
+
+        if (options && options.pin && sentMsg?.message_id) {
+            try {
+                await bot.pinChatMessage(finalChatId, sentMsg.message_id);
+                logger.info({ chatId: finalChatId, messageId: sentMsg.message_id }, 'Pinned Telegram message successfully');
+            } catch (pinErr) {
+                logger.warn({ chatId: finalChatId, err: pinErr.message }, 'Failed to pin Telegram message (bot may lack pin rights)');
+            }
         }
 
         return { success: true, messageId: sentMsg?.message_id || 'tg-msg-id' };
