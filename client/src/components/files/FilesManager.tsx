@@ -5,7 +5,7 @@ import {
   Search, Download, Trash2, Upload, File, Image, FileText,
   FileArchive, ChevronLeft, ChevronRight, Send,
   UploadCloud, Folder, FolderPlus, ArrowLeft, FolderClosed,
-  Eye, FolderOpen
+  Eye, FolderOpen, Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useUpload } from '../../context/UploadContext';
@@ -86,6 +86,9 @@ const FilesManager = () => {
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, totalPages: 1, total: 0, limit: 50 });
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isSharingBatch, setIsSharingBatch] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -317,7 +320,10 @@ const FilesManager = () => {
 
   const handleShareFiles = (ids: string[]) => {
     if (!ids || ids.length === 0) return;
-    navigate(`/announcement/new?file_ids=${ids.join(',')}`);
+    setIsSharingBatch(true);
+    setTimeout(() => {
+      navigate(`/announcement/new?file_ids=${ids.join(',')}`);
+    }, 150);
   };
 
   useEffect(() => {
@@ -472,13 +478,15 @@ const FilesManager = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedFileIds.size === 0) return;
+    if (selectedFileIds.size === 0 || isBulkDeleting) return;
     if (!(await confirm(`Are you sure you want to permanently delete the ${selectedFileIds.size} selected file(s)?`, { title: 'Delete Multiple Files', variant: 'danger', confirmLabel: 'Delete All' }))) return;
 
+    setIsBulkDeleting(true);
     const idsToDelete = [...selectedFileIds];
     let successCount = 0;
     let failCount = 0;
     const total = idsToDelete.length;
+    setBulkDeleteProgress({ current: 0, total });
 
     // Create a loading toast
     const toastId = toast.loading(`Deleting files... 0/${total} (0%)`);
@@ -489,34 +497,39 @@ const FilesManager = () => {
       return next;
     });
 
-    for (let i = 0; i < total; i++) {
-      const id = idsToDelete[i];
-      try {
-        await filesAPI.delete(id);
-        successCount++;
-        setFiles(prev => prev.filter(f => f.id !== id));
-      } catch (err) {
-        failCount++;
+    try {
+      for (let i = 0; i < total; i++) {
+        const id = idsToDelete[i];
+        try {
+          await filesAPI.delete(id);
+          successCount++;
+          setFiles(prev => prev.filter(f => f.id !== id));
+        } catch (err) {
+          failCount++;
+        }
+        // Update progress toast
+        const progress = Math.round(((i + 1) / total) * 100);
+        setBulkDeleteProgress({ current: i + 1, total });
+        toast.loading(`Deleting files... ${i + 1}/${total} (${progress}%)`, { id: toastId });
       }
-      // Update progress toast
-      const progress = Math.round(((i + 1) / total) * 100);
-      toast.loading(`Deleting files... ${i + 1}/${total} (${progress}%)`, { id: toastId });
+
+      if (failCount === 0) {
+        toast.success(`Successfully deleted all ${successCount} file(s)`, { id: toastId });
+      } else {
+        toast.success(`Deleted ${successCount} file(s), failed to delete ${failCount} file(s)`, { id: toastId });
+      }
+
+      setSelectedFileIds(new Set());
+      fetchStorageUsage();
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteProgress(null);
+      setDeleting(prev => {
+        const next = new Set(prev);
+        idsToDelete.forEach(id => next.delete(id));
+        return next;
+      });
     }
-
-    if (failCount === 0) {
-      toast.success(`Successfully deleted all ${successCount} file(s)`, { id: toastId });
-    } else {
-      toast.success(`Deleted ${successCount} file(s), failed to delete ${failCount} file(s)`, { id: toastId });
-    }
-
-    setSelectedFileIds(new Set());
-    fetchStorageUsage();
-
-    setDeleting(prev => {
-      const next = new Set(prev);
-      idsToDelete.forEach(id => next.delete(id));
-      return next;
-    });
   };
 
   const handleShareFolder = async (folderId: string) => {
@@ -571,43 +584,61 @@ const FilesManager = () => {
             />
           </div>
           {selectedFileIds.size > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200">
               <button
+                disabled={isBulkDeleting}
                 onClick={() => handleShareFiles([...selectedFileIds])}
-                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5 mr-1.5" />
+                {isSharingBatch ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5 mr-1.5" />
+                )}
                 Share Selected ({selectedFileIds.size})
               </button>
               <button
+                disabled={isBulkDeleting}
                 onClick={() => setShowMoveModal(true)}
-                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-sm shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-lg shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
               >
-                <Folder className="w-3.5 h-3.5 mr-1.5" />
+                <Folder className="w-3.5 h-3.5 mr-1.5 text-primary" />
                 Move Selected ({selectedFileIds.size})
               </button>
               <button
+                disabled={isBulkDeleting}
                 onClick={() => setShowCompressModal(true)}
-                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-sm shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-lg shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
               >
-                <FileArchive className="w-3.5 h-3.5 mr-1.5" />
+                <FileArchive className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
                 Compress Selected ({selectedFileIds.size})
               </button>
               <button
+                disabled={isBulkDeleting}
                 onClick={handleBulkDelete}
-                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-red-600 hover:bg-red-700 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className={`flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer ${isBulkDeleting ? 'animate-pulse' : ''}`}
               >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                Delete Selected ({selectedFileIds.size})
+                {isBulkDeleting ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {isBulkDeleting
+                  ? `Deleting (${bulkDeleteProgress ? `${bulkDeleteProgress.current}/${bulkDeleteProgress.total}` : '...'})`
+                  : `Delete Selected (${selectedFileIds.size})`}
               </button>
             </div>
           )}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-sm shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep focus:outline-none transition-colors duration-150 cursor-pointer"
+            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep active:scale-95 hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5 mr-1.5" />
-            Upload File
+            {uploads.some((u: any) => u.status === 'uploading') ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {uploads.some((u: any) => u.status === 'uploading') ? 'Uploading...' : 'Upload File'}
           </button>
           <input
             ref={fileInputRef}

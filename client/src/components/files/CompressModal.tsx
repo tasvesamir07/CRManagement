@@ -57,8 +57,18 @@ export default function CompressModal({ show, onClose, selectedFileIds, currentF
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button disabled={compressing} onClick={() => { setCompressArchiveName('archive.zip'); onClose(); }} className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft rounded transition-colors border border-hairline cursor-pointer">Cancel</button>
-            <button disabled={compressing || !compressArchiveName.trim()} onClick={handleCompress} className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep rounded shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+            <button
+              disabled={compressing}
+              onClick={() => { setCompressArchiveName('archive.zip'); onClose(); }}
+              className="px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas-soft active:scale-95 rounded-lg transition-all duration-150 border border-hairline cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={compressing || !compressArchiveName.trim()}
+              onClick={handleCompress}
+              className="px-4 py-2 text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep active:scale-95 rounded-lg shadow-sm hover:shadow-md transition-all duration-150 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:transform-none"
+            >
               {compressing ? <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>Compressing...</> : 'Compress'}
             </button>
           </div>

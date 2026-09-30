@@ -161,9 +161,18 @@ interface InlineInputProps {
   onChange: (val: string) => void;
   className?: string;
   disabled?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
-const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = '', disabled = false }) => {
+const InlineInput: React.FC<InlineInputProps> = ({ 
+  value, 
+  onChange, 
+  className = '', 
+  disabled = false,
+  isSelected = false,
+  onSelect
+}) => {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState(value);
 
@@ -189,29 +198,44 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
       <input
         type="text"
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="bg-transparent border-b border-primary text-inherit focus:outline-none p-0 font-inherit text-inherit text-center max-w-full"
+        className="bg-transparent border-b-2 border-primary text-inherit focus:outline-none p-0.5 font-inherit text-inherit text-center max-w-full min-w-[80px]"
       />
     );
   }
 
   return (
     <div
-      onClick={() => !disabled && setEditing(true)}
-      className={`relative inline-block rounded px-1 -mx-1 border border-transparent transition-all ${
-        disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20'
+      onPointerDown={(e) => {
+        if (!disabled) e.stopPropagation();
+      }}
+      onClick={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+          if (onSelect) onSelect();
+          setEditing(true);
+        }
+      }}
+      className={`relative inline-block rounded px-2 py-0.5 -mx-1 border transition-all ${
+        disabled 
+          ? '' 
+          : isSelected
+            ? 'ring-2 ring-primary ring-offset-1 bg-primary/10 border-primary/40 cursor-pointer shadow-sm'
+            : 'border-transparent cursor-pointer hover:bg-primary/10 hover:border-primary/20 hover:ring-1 hover:ring-primary/40'
       } ${className}`}
-      title={disabled ? undefined : 'Click to edit'}
+      title={disabled ? undefined : 'Click to edit and customize text formatting'}
     >
       {value || <span className="text-gray-400 italic">(Click to edit)</span>}
     </div>
   );
 };
 
-// Field formatting toolbar component (Bold, Italic, Weight, Align, Font Size)
+// Field formatting toolbar component (Bold, Italic, Weight, Align, Font Size, Color)
 interface FieldFormattingToolbarProps {
   label: string;
   bold: boolean;
@@ -219,6 +243,7 @@ interface FieldFormattingToolbarProps {
   align?: 'left' | 'center' | 'right';
   fontSize?: number;
   fontWeight?: number;
+  color?: string;
   defaultFontSize: number;
   defaultFontWeight?: number;
   onToggleBold: () => void;
@@ -226,6 +251,7 @@ interface FieldFormattingToolbarProps {
   onChangeAlign?: (align: 'left' | 'center' | 'right') => void;
   onChangeFontSize?: (size: number) => void;
   onChangeFontWeight?: (weight: number) => void;
+  onChangeColor?: (color: string) => void;
 }
 
 const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
@@ -235,6 +261,7 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
   align = 'left',
   fontSize,
   fontWeight,
+  color,
   defaultFontSize,
   defaultFontWeight = 700,
   onToggleBold,
@@ -242,6 +269,7 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
   onChangeAlign,
   onChangeFontSize,
   onChangeFontWeight,
+  onChangeColor,
 }) => {
   const isBoldActive = bold !== false && (fontWeight ? fontWeight >= 700 : true);
   const currentWeight = bold === false ? 400 : (fontWeight || (bold ? 700 : 400));
@@ -356,12 +384,27 @@ const FieldFormattingToolbar: React.FC<FieldFormattingToolbarProps> = ({
               <input
                 type="number"
                 min={8}
-                max={48}
+                max={64}
                 value={fontSize || defaultFontSize}
                 onChange={(e) => onChangeFontSize(parseInt(e.target.value, 10) || defaultFontSize)}
                 className="w-9 h-4 text-[9px] font-mono text-center bg-white border border-hairline rounded text-ink focus:outline-none focus:border-primary p-0"
               />
             </div>
+          </>
+        )}
+
+        {onChangeColor && (
+          <>
+            <div className="w-px h-3 bg-gray-300 mx-0.5" />
+            <label className="flex items-center gap-1 cursor-pointer p-0.5 rounded hover:bg-canvas-soft" title="Text Color">
+              <span className="text-[8px] font-bold text-gray-400">COLOR</span>
+              <input
+                type="color"
+                value={color || '#111827'}
+                onChange={(e) => onChangeColor(e.target.value)}
+                className="w-4 h-4 rounded cursor-pointer border-0 p-0 bg-transparent"
+              />
+            </label>
           </>
         )}
       </div>
@@ -412,7 +455,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"], a, td, th, [data-interactive="true"], [title*="Click to edit"], .canva-interactive, [data-field]')) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     setIsPanning(true);
@@ -422,15 +465,20 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       panX: pan.x,
       panY: pan.y
     };
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isPanning || !panStartRef.current) return;
     const dx = e.clientX - panStartRef.current.pointerX;
     const dy = e.clientY - panStartRef.current.pointerY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      try {
+        if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
 
     setPan({
       x: panStartRef.current.panX + dx,
@@ -456,29 +504,36 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   // Text Styling States
   const [globalFontWeight, setGlobalFontWeight] = useState<number>(700);
 
+  // Field Selection & Per-field formatting states
+  const [selectedTitleField, setSelectedTitleField] = useState<'semesterTitle' | 'sectionGroup' | 'batchCode' | 'effectiveDate' | null>(null);
+
   const [semesterTitleBold, setSemesterTitleBold] = useState(true);
   const [semesterTitleItalic, setSemesterTitleItalic] = useState(false);
   const [semesterTitleFontWeight, setSemesterTitleFontWeight] = useState<number>(800);
   const [semesterTitleFontSize, setSemesterTitleFontSize] = useState<number>(22);
   const [semesterTitleAlign, setSemesterTitleAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [semesterTitleColor, setSemesterTitleColor] = useState<string>('#111827');
 
   const [sectionGroupBold, setSectionGroupBold] = useState(true);
   const [sectionGroupItalic, setSectionGroupItalic] = useState(false);
   const [sectionGroupFontWeight, setSectionGroupFontWeight] = useState<number>(700);
   const [sectionGroupFontSize, setSectionGroupFontSize] = useState<number>(14);
   const [sectionGroupAlign, setSectionGroupAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [sectionGroupColor, setSectionGroupColor] = useState<string>('#374151');
 
   const [batchCodeBold, setBatchCodeBold] = useState(true);
   const [batchCodeItalic, setBatchCodeItalic] = useState(false);
   const [batchCodeFontWeight, setBatchCodeFontWeight] = useState<number>(700);
   const [batchCodeFontSize, setBatchCodeFontSize] = useState<number>(13);
   const [batchCodeAlign, setBatchCodeAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [batchCodeColor, setBatchCodeColor] = useState<string>('#4B5563');
 
   const [effectiveDateBold, setEffectiveDateBold] = useState(false);
   const [effectiveDateItalic, setEffectiveDateItalic] = useState(true);
   const [effectiveDateFontWeight, setEffectiveDateFontWeight] = useState<number>(500);
   const [effectiveDateFontSize, setEffectiveDateFontSize] = useState<number>(11);
   const [effectiveDateAlign, setEffectiveDateAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [effectiveDateColor, setEffectiveDateColor] = useState<string>('#6B7280');
 
   // Cell & Grid formatting states
   const [courseCodeFontWeight, setCourseCodeFontWeight] = useState<number>(700);
@@ -549,10 +604,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         customDays, customSlots,
         selectedFont,
         globalFontWeight,
-        semesterTitleFontWeight, semesterTitleFontSize, semesterTitleAlign, semesterTitleBold, semesterTitleItalic,
-        sectionGroupFontWeight, sectionGroupFontSize, sectionGroupAlign, sectionGroupBold, sectionGroupItalic,
-        batchCodeFontWeight, batchCodeFontSize, batchCodeAlign, batchCodeBold, batchCodeItalic,
-        effectiveDateFontWeight, effectiveDateFontSize, effectiveDateAlign, effectiveDateBold, effectiveDateItalic,
+        semesterTitleFontWeight, semesterTitleFontSize, semesterTitleAlign, semesterTitleBold, semesterTitleItalic, semesterTitleColor,
+        sectionGroupFontWeight, sectionGroupFontSize, sectionGroupAlign, sectionGroupBold, sectionGroupItalic, sectionGroupColor,
+        batchCodeFontWeight, batchCodeFontSize, batchCodeAlign, batchCodeBold, batchCodeItalic, batchCodeColor,
+        effectiveDateFontWeight, effectiveDateFontSize, effectiveDateAlign, effectiveDateBold, effectiveDateItalic, effectiveDateColor,
         courseCodeFontWeight, courseCodeFontSize,
         teacherCodeFontWeight, teacherCodeFontSize,
         roomNumberFontWeight, roomNumberFontSize,
@@ -622,24 +677,28 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         if (data.semesterTitleAlign !== undefined) setSemesterTitleAlign(data.semesterTitleAlign);
         if (data.semesterTitleBold !== undefined) setSemesterTitleBold(data.semesterTitleBold);
         if (data.semesterTitleItalic !== undefined) setSemesterTitleItalic(data.semesterTitleItalic);
+        if (data.semesterTitleColor) setSemesterTitleColor(data.semesterTitleColor);
 
         if (data.sectionGroupFontWeight !== undefined) setSectionGroupFontWeight(data.sectionGroupFontWeight);
         if (data.sectionGroupFontSize !== undefined) setSectionGroupFontSize(data.sectionGroupFontSize);
         if (data.sectionGroupAlign !== undefined) setSectionGroupAlign(data.sectionGroupAlign);
         if (data.sectionGroupBold !== undefined) setSectionGroupBold(data.sectionGroupBold);
         if (data.sectionGroupItalic !== undefined) setSectionGroupItalic(data.sectionGroupItalic);
+        if (data.sectionGroupColor) setSectionGroupColor(data.sectionGroupColor);
 
         if (data.batchCodeFontWeight !== undefined) setBatchCodeFontWeight(data.batchCodeFontWeight);
         if (data.batchCodeFontSize !== undefined) setBatchCodeFontSize(data.batchCodeFontSize);
         if (data.batchCodeAlign !== undefined) setBatchCodeAlign(data.batchCodeAlign);
         if (data.batchCodeBold !== undefined) setBatchCodeBold(data.batchCodeBold);
         if (data.batchCodeItalic !== undefined) setBatchCodeItalic(data.batchCodeItalic);
+        if (data.batchCodeColor) setBatchCodeColor(data.batchCodeColor);
 
         if (data.effectiveDateFontWeight !== undefined) setEffectiveDateFontWeight(data.effectiveDateFontWeight);
         if (data.effectiveDateFontSize !== undefined) setEffectiveDateFontSize(data.effectiveDateFontSize);
         if (data.effectiveDateAlign !== undefined) setEffectiveDateAlign(data.effectiveDateAlign);
         if (data.effectiveDateBold !== undefined) setEffectiveDateBold(data.effectiveDateBold);
         if (data.effectiveDateItalic !== undefined) setEffectiveDateItalic(data.effectiveDateItalic);
+        if (data.effectiveDateColor) setEffectiveDateColor(data.effectiveDateColor);
 
         if (data.courseCodeFontWeight !== undefined) setCourseCodeFontWeight(data.courseCodeFontWeight);
         if (data.courseCodeFontSize !== undefined) setCourseCodeFontSize(data.courseCodeFontSize);
@@ -946,6 +1005,85 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     }
   };
 
+  const activeTitleConfig = (() => {
+    switch (selectedTitleField) {
+      case 'semesterTitle':
+        return {
+          label: 'Semester Title',
+          value: semesterTitle,
+          setValue: setSemesterTitle,
+          fontSize: semesterTitleFontSize || 22,
+          setFontSize: setSemesterTitleFontSize,
+          bold: semesterTitleBold !== false,
+          setBold: () => setSemesterTitleBold(semesterTitleBold === false ? true : false),
+          italic: semesterTitleItalic,
+          setItalic: () => setSemesterTitleItalic(!semesterTitleItalic),
+          align: semesterTitleAlign || headerAlign,
+          setAlign: setSemesterTitleAlign,
+          weight: semesterTitleFontWeight || 800,
+          setWeight: setSemesterTitleFontWeight,
+          color: semesterTitleColor || '#111827',
+          setColor: setSemesterTitleColor
+        };
+      case 'sectionGroup':
+        return {
+          label: 'Sections',
+          value: sectionGroup,
+          setValue: setSectionGroup,
+          fontSize: sectionGroupFontSize || 14,
+          setFontSize: setSectionGroupFontSize,
+          bold: sectionGroupBold !== false,
+          setBold: () => setSectionGroupBold(sectionGroupBold === false ? true : false),
+          italic: sectionGroupItalic,
+          setItalic: () => setSectionGroupItalic(!sectionGroupItalic),
+          align: sectionGroupAlign || headerAlign,
+          setAlign: setSectionGroupAlign,
+          weight: sectionGroupFontWeight || 700,
+          setWeight: setSectionGroupFontWeight,
+          color: sectionGroupColor || '#374151',
+          setColor: setSectionGroupColor
+        };
+      case 'batchCode':
+        return {
+          label: 'Batch Code',
+          value: batchCode,
+          setValue: setBatchCode,
+          fontSize: batchCodeFontSize || 13,
+          setFontSize: setBatchCodeFontSize,
+          bold: batchCodeBold !== false,
+          setBold: () => setBatchCodeBold(batchCodeBold === false ? true : false),
+          italic: batchCodeItalic,
+          setItalic: () => setBatchCodeItalic(!batchCodeItalic),
+          align: batchCodeAlign || headerAlign,
+          setAlign: setBatchCodeAlign,
+          weight: batchCodeFontWeight || 700,
+          setWeight: setBatchCodeFontWeight,
+          color: batchCodeColor || '#4B5563',
+          setColor: setBatchCodeColor
+        };
+      case 'effectiveDate':
+        return {
+          label: 'Effective Date',
+          value: effectiveDate,
+          setValue: setEffectiveDate,
+          fontSize: effectiveDateFontSize || 11,
+          setFontSize: setEffectiveDateFontSize,
+          bold: effectiveDateBold !== false,
+          setBold: () => setEffectiveDateBold(effectiveDateBold === false ? true : false),
+          italic: effectiveDateItalic,
+          setItalic: () => setEffectiveDateItalic(!effectiveDateItalic),
+          align: effectiveDateAlign || headerAlign,
+          setAlign: setEffectiveDateAlign,
+          weight: effectiveDateFontWeight || 500,
+          setWeight: setEffectiveDateFontWeight,
+          color: effectiveDateColor || '#6B7280',
+          setColor: setEffectiveDateColor
+        };
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
       
@@ -1193,7 +1331,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
           {activeTab === 'headers' && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="space-y-3 bg-canvas border border-hairline rounded-md p-3.5">
-                <div>
+                <div className={`p-2 rounded-lg transition-all ${selectedTitleField === 'semesterTitle' ? 'bg-primary/5 ring-1 ring-primary/40' : ''}`}>
                   <FieldFormattingToolbar
                     label="Semester Title"
                     bold={semesterTitleBold}
@@ -1201,12 +1339,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     align={semesterTitleAlign}
                     fontSize={semesterTitleFontSize}
                     fontWeight={semesterTitleFontWeight}
+                    color={semesterTitleColor}
                     defaultFontSize={22}
                     onToggleBold={() => setSemesterTitleBold(semesterTitleBold === false ? true : false)}
                     onToggleItalic={() => setSemesterTitleItalic(!semesterTitleItalic)}
                     onChangeAlign={(align) => setSemesterTitleAlign(align)}
                     onChangeFontSize={(size) => setSemesterTitleFontSize(size)}
                     onChangeFontWeight={(weight) => setSemesterTitleFontWeight(weight)}
+                    onChangeColor={(col) => setSemesterTitleColor(col)}
                   />
                   <input 
                     type="text" 
@@ -1215,7 +1355,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-medium"
                   />
                 </div>
-                <div>
+                <div className={`p-2 rounded-lg transition-all ${selectedTitleField === 'sectionGroup' ? 'bg-primary/5 ring-1 ring-primary/40' : ''}`}>
                   <FieldFormattingToolbar
                     label="Sections"
                     bold={sectionGroupBold}
@@ -1223,12 +1363,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     align={sectionGroupAlign}
                     fontSize={sectionGroupFontSize}
                     fontWeight={sectionGroupFontWeight}
+                    color={sectionGroupColor}
                     defaultFontSize={14}
                     onToggleBold={() => setSectionGroupBold(sectionGroupBold === false ? true : false)}
                     onToggleItalic={() => setSectionGroupItalic(!sectionGroupItalic)}
                     onChangeAlign={(align) => setSectionGroupAlign(align)}
                     onChangeFontSize={(size) => setSectionGroupFontSize(size)}
                     onChangeFontWeight={(weight) => setSectionGroupFontWeight(weight)}
+                    onChangeColor={(col) => setSectionGroupColor(col)}
                   />
                   <input 
                     type="text" 
@@ -1237,7 +1379,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none"
                   />
                 </div>
-                <div>
+                <div className={`p-2 rounded-lg transition-all ${selectedTitleField === 'batchCode' ? 'bg-primary/5 ring-1 ring-primary/40' : ''}`}>
                   <FieldFormattingToolbar
                     label="Batch Code"
                     bold={batchCodeBold}
@@ -1245,12 +1387,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     align={batchCodeAlign}
                     fontSize={batchCodeFontSize}
                     fontWeight={batchCodeFontWeight}
+                    color={batchCodeColor}
                     defaultFontSize={13}
                     onToggleBold={() => setBatchCodeBold(batchCodeBold === false ? true : false)}
                     onToggleItalic={() => setBatchCodeItalic(!batchCodeItalic)}
                     onChangeAlign={(align) => setBatchCodeAlign(align)}
                     onChangeFontSize={(size) => setBatchCodeFontSize(size)}
                     onChangeFontWeight={(weight) => setBatchCodeFontWeight(weight)}
+                    onChangeColor={(col) => setBatchCodeColor(col)}
                   />
                   <input 
                     type="text" 
@@ -1259,7 +1403,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     className="w-full h-9 px-2 text-xs border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-bold"
                   />
                 </div>
-                <div>
+                <div className={`p-2 rounded-lg transition-all ${selectedTitleField === 'effectiveDate' ? 'bg-primary/5 ring-1 ring-primary/40' : ''}`}>
                   <FieldFormattingToolbar
                     label="Effective Date"
                     bold={effectiveDateBold}
@@ -1267,12 +1411,14 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                     align={effectiveDateAlign}
                     fontSize={effectiveDateFontSize}
                     fontWeight={effectiveDateFontWeight}
+                    color={effectiveDateColor}
                     defaultFontSize={11}
                     onToggleBold={() => setEffectiveDateBold(effectiveDateBold === false ? true : false)}
                     onToggleItalic={() => setEffectiveDateItalic(!effectiveDateItalic)}
                     onChangeAlign={(align) => setEffectiveDateAlign(align)}
                     onChangeFontSize={(size) => setEffectiveDateFontSize(size)}
                     onChangeFontWeight={(weight) => setEffectiveDateFontWeight(weight)}
+                    onChangeColor={(col) => setEffectiveDateColor(col)}
                   />
                   <input 
                     type="text" 
@@ -1728,72 +1874,314 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
               
               {/* Header Box */}
               <div 
+                data-interactive="true"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab('headers');
+                  setShowMobileSidebar(true);
+                  if (!selectedTitleField) setSelectedTitleField('semesterTitle');
+                }}
                 style={{ 
                   backgroundColor: cellBg,
                   borderColor: borderColor,
                   textAlign: headerAlign
                 }}
-                className="p-5 border transition-all duration-300 shadow-sm rounded-sm"
+                className={`p-5 border transition-all duration-300 shadow-sm rounded-sm relative group/header cursor-pointer ${
+                  selectedTitleField ? 'ring-1 ring-primary/40' : 'hover:border-primary/40'
+                }`}
               >
-                <h1 
-                  style={{
-                    fontWeight: semesterTitleBold === false ? 400 : (semesterTitleFontWeight || 800),
-                    fontStyle: semesterTitleItalic ? 'italic' : 'normal',
-                    textAlign: semesterTitleAlign || headerAlign,
-                    fontSize: `${semesterTitleFontSize || 22}px`
-                  }}
-                  className="tracking-tight leading-tight uppercase text-gray-900"
-                >
-                  <InlineInput 
-                    value={semesterTitle} 
-                    onChange={setSemesterTitle} 
-                    disabled={isLocked}
-                  />
-                </h1>
-                <h2 
-                  style={{
-                    fontWeight: sectionGroupBold === false ? 400 : (sectionGroupFontWeight || 700),
-                    fontStyle: sectionGroupItalic ? 'italic' : 'normal',
-                    textAlign: sectionGroupAlign || headerAlign,
-                    fontSize: `${sectionGroupFontSize || 14}px`
-                  }}
-                  className="tracking-widest uppercase mt-1 text-gray-700 opacity-90"
-                >
-                  <InlineInput 
-                    value={sectionGroup} 
-                    onChange={setSectionGroup} 
-                    disabled={isLocked}
-                  />
-                </h2>
+                {/* On-Canvas Floating Quick Formatting Toolbar (Canva Style) */}
+                {activeTitleConfig && !isLocked && (
+                  <div 
+                    className="no-export absolute -top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-slate-900/95 text-white p-1.5 px-3 rounded-xl shadow-2xl border border-slate-700/80 backdrop-blur-md flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 select-none max-w-[95%] overflow-x-auto"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    data-interactive="true"
+                  >
+                    {/* Field Label Badge */}
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-primary text-white rounded-md shrink-0">
+                      {activeTitleConfig.label}
+                    </span>
+
+                    <div className="h-5 w-px bg-slate-700 mx-0.5 shrink-0" />
+
+                    {/* Font Size (+ / - / value) */}
+                    <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0" title="Font Size">
+                      <button
+                        type="button"
+                        onClick={() => activeTitleConfig.setFontSize(Math.max(8, activeTitleConfig.fontSize - 1))}
+                        className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded cursor-pointer text-xs font-bold"
+                        title="Decrease size"
+                      >
+                        -
+                      </button>
+                      <span className="text-xs font-mono font-semibold px-1 text-white min-w-[32px] text-center">
+                        {activeTitleConfig.fontSize}px
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => activeTitleConfig.setFontSize(Math.min(72, activeTitleConfig.fontSize + 1))}
+                        className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded cursor-pointer text-xs font-bold"
+                        title="Increase size"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Font Weight */}
+                    <select
+                      value={activeTitleConfig.weight}
+                      onChange={(e) => activeTitleConfig.setWeight(parseInt(e.target.value, 10))}
+                      className="h-6 text-xs bg-slate-800 text-white border border-slate-700 rounded-lg px-1.5 focus:outline-none focus:border-primary cursor-pointer shrink-0 font-medium"
+                      title="Font Weight"
+                    >
+                      <option value={300}>300 Light</option>
+                      <option value={400}>400 Normal</option>
+                      <option value={500}>500 Medium</option>
+                      <option value={600}>600 SemiBold</option>
+                      <option value={700}>700 Bold</option>
+                      <option value={800}>800 ExtraBold</option>
+                      <option value={900}>900 Black</option>
+                    </select>
+
+                    {/* Bold & Italic */}
+                    <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0">
+                      <button
+                        type="button"
+                        onClick={activeTitleConfig.setBold}
+                        className={`p-1 rounded cursor-pointer transition-colors ${
+                          activeTitleConfig.bold ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Bold"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={activeTitleConfig.setItalic}
+                        className={`p-1 rounded cursor-pointer transition-colors ${
+                          activeTitleConfig.italic ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Italic"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Alignment */}
+                    <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => activeTitleConfig.setAlign('left')}
+                        className={`p-1 rounded cursor-pointer transition-colors ${
+                          activeTitleConfig.align === 'left' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Align Left"
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => activeTitleConfig.setAlign('center')}
+                        className={`p-1 rounded cursor-pointer transition-colors ${
+                          activeTitleConfig.align === 'center' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Align Center"
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => activeTitleConfig.setAlign('right')}
+                        className={`p-1 rounded cursor-pointer transition-colors ${
+                          activeTitleConfig.align === 'right' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Align Right"
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Color Picker */}
+                    <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 shrink-0" title="Text Color">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <span 
+                          className="w-4 h-4 rounded-full border border-white/40 shadow-sm shrink-0"
+                          style={{ backgroundColor: activeTitleConfig.color }}
+                        />
+                        <span className="text-[10px] font-mono text-slate-300 uppercase">{activeTitleConfig.color}</span>
+                        <input
+                          type="color"
+                          value={activeTitleConfig.color}
+                          onChange={(e) => activeTitleConfig.setColor(e.target.value)}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Close button */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTitleField(null)}
+                      className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer shrink-0 ml-0.5"
+                      title="Close toolbar"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
                 <div 
-                  style={{
-                    fontWeight: batchCodeBold === false ? 400 : (batchCodeFontWeight || 700),
-                    fontStyle: batchCodeItalic ? 'italic' : 'normal',
-                    textAlign: batchCodeAlign || headerAlign,
-                    fontSize: `${batchCodeFontSize || 13}px`
+                  className="relative inline-block max-w-full my-0.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTitleField('semesterTitle');
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
                   }}
-                  className="text-gray-600 mt-1 uppercase"
                 >
-                  <InlineInput 
-                    value={batchCode} 
-                    onChange={setBatchCode} 
-                    disabled={isLocked}
-                  />
+                  <h1 
+                    style={{
+                      fontWeight: semesterTitleBold === false ? 400 : (semesterTitleFontWeight || 800),
+                      fontStyle: semesterTitleItalic ? 'italic' : 'normal',
+                      textAlign: semesterTitleAlign || headerAlign,
+                      fontSize: `${semesterTitleFontSize || 22}px`,
+                      color: semesterTitleColor || '#111827'
+                    }}
+                    className={`tracking-tight leading-tight uppercase transition-all duration-150 rounded px-1.5 py-0.5 ${
+                      selectedTitleField === 'semesterTitle'
+                        ? 'ring-2 ring-primary ring-offset-2 bg-primary/10'
+                        : 'hover:bg-primary/5 hover:ring-1 hover:ring-primary/30'
+                    }`}
+                  >
+                    <InlineInput 
+                      value={semesterTitle} 
+                      onChange={setSemesterTitle} 
+                      disabled={isLocked}
+                      isSelected={selectedTitleField === 'semesterTitle'}
+                      onSelect={() => {
+                        setSelectedTitleField('semesterTitle');
+                        setActiveTab('headers');
+                        setShowMobileSidebar(true);
+                      }}
+                    />
+                  </h1>
                 </div>
+
                 <div 
-                  style={{
-                    fontWeight: effectiveDateBold === false ? 400 : (effectiveDateFontWeight || 500),
-                    fontStyle: effectiveDateItalic ? 'italic' : 'normal',
-                    textAlign: effectiveDateAlign || headerAlign,
-                    fontSize: `${effectiveDateFontSize || 11}px`
+                  className="relative inline-block max-w-full my-0.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTitleField('sectionGroup');
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
                   }}
-                  className="text-gray-500 mt-0.5"
                 >
-                  <InlineInput 
-                    value={effectiveDate} 
-                    onChange={setEffectiveDate} 
-                    disabled={isLocked}
-                  />
+                  <h2 
+                    style={{
+                      fontWeight: sectionGroupBold === false ? 400 : (sectionGroupFontWeight || 700),
+                      fontStyle: sectionGroupItalic ? 'italic' : 'normal',
+                      textAlign: sectionGroupAlign || headerAlign,
+                      fontSize: `${sectionGroupFontSize || 14}px`,
+                      color: sectionGroupColor || '#374151'
+                    }}
+                    className={`tracking-widest uppercase mt-1 transition-all duration-150 rounded px-1.5 py-0.5 ${
+                      selectedTitleField === 'sectionGroup'
+                        ? 'ring-2 ring-primary ring-offset-2 bg-primary/10'
+                        : 'hover:bg-primary/5 hover:ring-1 hover:ring-primary/30'
+                    }`}
+                  >
+                    <InlineInput 
+                      value={sectionGroup} 
+                      onChange={setSectionGroup} 
+                      disabled={isLocked}
+                      isSelected={selectedTitleField === 'sectionGroup'}
+                      onSelect={() => {
+                        setSelectedTitleField('sectionGroup');
+                        setActiveTab('headers');
+                        setShowMobileSidebar(true);
+                      }}
+                    />
+                  </h2>
+                </div>
+
+                <div 
+                  className="relative inline-block max-w-full my-0.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTitleField('batchCode');
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
+                  }}
+                >
+                  <div 
+                    style={{
+                      fontWeight: batchCodeBold === false ? 400 : (batchCodeFontWeight || 700),
+                      fontStyle: batchCodeItalic ? 'italic' : 'normal',
+                      textAlign: batchCodeAlign || headerAlign,
+                      fontSize: `${batchCodeFontSize || 13}px`,
+                      color: batchCodeColor || '#4B5563'
+                    }}
+                    className={`mt-1 uppercase transition-all duration-150 rounded px-1.5 py-0.5 ${
+                      selectedTitleField === 'batchCode'
+                        ? 'ring-2 ring-primary ring-offset-2 bg-primary/10'
+                        : 'hover:bg-primary/5 hover:ring-1 hover:ring-primary/30'
+                    }`}
+                  >
+                    <InlineInput 
+                      value={batchCode} 
+                      onChange={setBatchCode} 
+                      disabled={isLocked}
+                      isSelected={selectedTitleField === 'batchCode'}
+                      onSelect={() => {
+                        setSelectedTitleField('batchCode');
+                        setActiveTab('headers');
+                        setShowMobileSidebar(true);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div 
+                  className="relative inline-block max-w-full my-0.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTitleField('effectiveDate');
+                    setActiveTab('headers');
+                    setShowMobileSidebar(true);
+                  }}
+                >
+                  <div 
+                    style={{
+                      fontWeight: effectiveDateBold === false ? 400 : (effectiveDateFontWeight || 500),
+                      fontStyle: effectiveDateItalic ? 'italic' : 'normal',
+                      textAlign: effectiveDateAlign || headerAlign,
+                      fontSize: `${effectiveDateFontSize || 11}px`,
+                      color: effectiveDateColor || '#6B7280'
+                    }}
+                    className={`mt-0.5 transition-all duration-150 rounded px-1.5 py-0.5 ${
+                      selectedTitleField === 'effectiveDate'
+                        ? 'ring-2 ring-primary ring-offset-2 bg-primary/10'
+                        : 'hover:bg-primary/5 hover:ring-1 hover:ring-primary/30'
+                    }`}
+                  >
+                    <InlineInput 
+                      value={effectiveDate} 
+                      onChange={setEffectiveDate} 
+                      disabled={isLocked}
+                      isSelected={selectedTitleField === 'effectiveDate'}
+                      onSelect={() => {
+                        setSelectedTitleField('effectiveDate');
+                        setActiveTab('headers');
+                        setShowMobileSidebar(true);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1803,16 +2191,28 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   <thead>
                     <tr style={{ backgroundColor: dayHeaderBg, color: dayHeaderTextColor }}>
                       <th 
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => {
+                          setActiveTab('cell');
+                          setShowMobileSidebar(true);
+                        }}
                         style={{ borderRight: `1px solid ${borderColor}`, borderBottom: `2px solid ${borderColor}`, color: dayHeaderTextColor, fontWeight: dayHeaderFontWeight || 700, fontSize: `${dayHeaderFontSize || 12}px` }}
-                        className="py-3 px-2 text-center w-28 uppercase tracking-wide"
+                        className="py-3 px-2 text-center w-28 uppercase tracking-wide cursor-pointer hover:opacity-90"
+                        title="Click to customize Day Header typography in Cell tab"
                       >
                         ↓Time / Day →
                       </th>
                       {customDays.map((day: string) => (
                         <th 
                           key={day} 
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => {
+                            setActiveTab('cell');
+                            setShowMobileSidebar(true);
+                          }}
                           style={{ borderRight: `1px solid ${borderColor}`, borderBottom: `2px solid ${borderColor}`, color: dayHeaderTextColor, fontWeight: dayHeaderFontWeight || 700, fontSize: `${dayHeaderFontSize || 12}px` }}
-                          className="py-3 px-2 text-center tracking-wide uppercase"
+                          className="py-3 px-2 text-center tracking-wide uppercase cursor-pointer hover:opacity-90"
+                          title="Click to customize Day Header typography in Cell tab"
                         >
                           {day}
                         </th>
@@ -1825,6 +2225,11 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                         
                         {/* Time Slot column */}
                         <td 
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => {
+                            setActiveTab('cell');
+                            setShowMobileSidebar(true);
+                          }}
                           style={{ 
                             backgroundColor: timeColumnBg, 
                             color: timeTextColor,
@@ -1832,7 +2237,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                             fontWeight: timeColumnFontWeight || 600,
                             fontSize: `${timeColumnFontSize || 10}px`
                           }}
-                          className="py-2 px-1 text-center w-28 font-mono leading-tight"
+                          className="py-2 px-1 text-center w-28 font-mono leading-tight cursor-pointer hover:opacity-90"
+                          title="Click to customize Time Slot typography in Cell tab"
                         >
                           {formatTimeRange(slot.start, slot.end)}
                         </td>
@@ -1850,6 +2256,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                           return (
                             <td 
                               key={dIdx}
+                              onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => handleCellClick(day, slot)}
                               style={{ 
                                 backgroundColor: isSelected 

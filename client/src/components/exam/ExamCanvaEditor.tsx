@@ -400,6 +400,8 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
     return isTextArea ? (
       <textarea
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         autoFocus
@@ -410,6 +412,8 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
       <input
         type="text"
         value={localVal}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={e => setLocalVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
@@ -421,7 +425,15 @@ const InlineInput: React.FC<InlineInputProps> = ({ value, onChange, className = 
 
   return (
     <div
-      onClick={() => !disabled && setEditing(true)}
+      onPointerDown={(e) => {
+        if (!disabled) e.stopPropagation();
+      }}
+      onClick={(e) => {
+        if (!disabled) {
+          e.stopPropagation();
+          setEditing(true);
+        }
+      }}
       className={`group/inline relative rounded px-1 -mx-1 border border-transparent transition-all ${
         disabled ? '' : 'cursor-pointer hover:bg-primary/10 hover:border-primary/20'
       } ${className}`}
@@ -475,17 +487,21 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     if (!time12) return '09:00';
     const cleaned = time12.trim();
     try {
-      const parts = cleaned.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-      if (parts) {
-        let hours = parseInt(parts[1], 10);
-        const minutes = parts[2];
-        const ampm = parts[3].toUpperCase();
+      const match24 = cleaned.match(/^([01]\d|2[0-3]):([0-5]\d)/);
+      if (match24) {
+        return `${match24[1]}:${match24[2]}`;
+      }
+      const match12 = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (match12) {
+        let hours = parseInt(match12[1], 10);
+        const minutes = match12[2];
+        const ampm = match12[3].toUpperCase();
         if (ampm === 'PM' && hours < 12) hours += 12;
         if (ampm === 'AM' && hours === 12) hours = 0;
         return `${hours.toString().padStart(2, '0')}:${minutes}`;
       }
     } catch {}
-    return cleaned;
+    return '09:00';
   };
 
   const handleSaveRoutineData = async () => {
@@ -507,10 +523,17 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         const rawCode = (item.courseCode || '').trim();
         const cleanCode = rawCode.split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         
-        const matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode)
+        let matchedCourse = courses.find(c => c.course_id.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanCode)
                            || courses.find(c => rawCode.toLowerCase().includes(c.course_id.toLowerCase()))
                            || courses.find(c => c.course_name.toLowerCase().includes(item.courseName.toLowerCase()))
                            || courses[0];
+        
+        if (!matchedCourse && courses.length > 0) {
+          matchedCourse = courses[0];
+        }
+        if (!matchedCourse) {
+          throw new Error('Please create at least one course in the Courses tab before saving exam routines.');
+        }
         
         let examType = 'mid';
         if (headerTitle.toLowerCase().includes('final')) examType = 'final';
@@ -525,7 +548,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         const parsedSection = parts.length > 1 ? parts.slice(1).join(' ') : '';
         
         const payload = {
-          course_id: matchedCourse ? matchedCourse.id : null,
+          course_id: matchedCourse.id,
           exam_type: examType,
           exam_date: parsedDate,
           start_time: parsedTime,
@@ -615,7 +638,9 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         await onRefresh();
       }
     } catch (err: any) {
-      toast.error('Failed to save routine data: ' + (err.response?.data?.error || err.message));
+      const details = err.response?.data?.details;
+      const detailMsg = Array.isArray(details) ? details.map((d: any) => `${d.path?.join('.') || 'field'}: ${d.message}`).join(', ') : '';
+      toast.error('Failed to save routine data: ' + (detailMsg || err.response?.data?.error || err.message));
     } finally {
       setSavingData(false);
     }
@@ -692,36 +717,41 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, button, select, textarea, [contenteditable="true"], a')) return;
+    if (target.closest('input, button, select, textarea, [contenteditable="true"], a, [data-interactive="true"], [title*="Click to edit"], .canva-interactive, [data-field]')) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    setIsPanning(true);
     panStartRef.current = {
       pointerX: e.clientX,
       pointerY: e.clientY,
       panX: pan.x,
       panY: pan.y
     };
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanning || !panStartRef.current) return;
+    if (!panStartRef.current) return;
     const dx = e.clientX - panStartRef.current.pointerX;
     const dy = e.clientY - panStartRef.current.pointerY;
 
-    setPan({
-      x: panStartRef.current.panX + dx,
-      y: panStartRef.current.panY + dy
-    });
+    if (!isPanning && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      setIsPanning(true);
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch (_) {}
+    }
+
+    if (isPanning) {
+      setPan({
+        x: panStartRef.current.panX + dx,
+        y: panStartRef.current.panY + dy
+      });
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    panStartRef.current = null;
     if (isPanning) {
       setIsPanning(false);
-      panStartRef.current = null;
       try {
         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
       } catch (_) {}
