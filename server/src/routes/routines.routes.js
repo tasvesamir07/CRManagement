@@ -223,4 +223,145 @@ router.post('/settings', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /routines/{id}:
+ *   delete:
+ *     tags: [Routines]
+ *     summary: Delete a routine entry
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Routine ID
+ *     responses:
+ *       200:
+ *         description: Routine deleted successfully
+ *       404:
+ *         description: Routine not found
+ */
+router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
+    try {
+        await routineService.deleteRoutine(req.params.id);
+        return res.json({ message: 'Routine entry deleted successfully' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /routines/{id}/move:
+ *   post:
+ *     tags: [Routines]
+ *     summary: Move routine to another folder/grid
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Routine ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Routine moved successfully
+ *       400:
+ *         description: Target folder ID required
+ *       500:
+ *         description: Failed to move routine
+ */
+router.post('/:id/move', authMiddleware, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        if (targetFolderId === undefined || targetFolderId === null) {
+            return res.status(400).json({ error: 'targetFolderId is required' });
+        }
+        const routine = await routineService.moveRoutine(req.params.id, targetFolderId);
+        return res.json(routine);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /routines/{id}/copy:
+ *   post:
+ *     tags: [Routines]
+ *     summary: Copy routine to another folder/grid
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Routine ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Routine copied successfully
+ *       400:
+ *         description: Target folder ID required or routine not found
+ *       500:
+ *         description: Failed to copy routine
+ */
+router.post('/:id/copy', authMiddleware, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        if (targetFolderId === undefined || targetFolderId === null) {
+            return res.status(400).json({ error: 'targetFolderId is required' });
+        }
+        const routine = await routineService.copyRoutine(req.params.id, targetFolderId);
+        return res.status(201).json(routine);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /routines/folders:
+ *   get:
+ *     tags: [Routines]
+ *     summary: List all folders for routine selection
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of folders
+ */
+router.get('/folders', authMiddleware, async (req, res) => {
+    try {
+        const folders = await routineService.listFolders(req.user.id);
+        return res.json(folders);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

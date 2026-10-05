@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Folder, FolderClosed, X, Loader2, Check } from 'lucide-react';
-import { coursesAPI } from '../../services/api';
+import { routinesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,15 +12,15 @@ interface FolderItem {
   created_at?: string;
 }
 
-interface MoveCourseModalProps {
+interface MoveRoutineModalProps {
   show: boolean;
   onClose: () => void;
   operation: 'move' | 'copy';
-  courseId: number;
+  routineId: number;
   onCompleted?: () => void;
 }
 
-export default function MoveCourseModal({ show, onClose, operation, courseId, onCompleted }: MoveCourseModalProps) {
+export default function MoveRoutineModal({ show, onClose, operation, routineId, onCompleted }: MoveRoutineModalProps) {
   const navigate = useNavigate();
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function MoveCourseModal({ show, onClose, operation, courseId, on
   const loadFolders = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await coursesAPI.listFolders();
+      const result = await routinesAPI.listFolders();
       setFolders(result);
     } catch (err) {
       console.error('Failed to load folders:', err);
@@ -40,34 +40,34 @@ export default function MoveCourseModal({ show, onClose, operation, courseId, on
   }, []);
 
   useEffect(() => {
-    if (show && courseId > 0) {
+    if (show && routineId > 0) {
       loadFolders();
       setTargetFolderId(null);
     }
-  }, [show, courseId, loadFolders]);
+  }, [show, routineId, loadFolders]);
 
   const handleOperation = async () => {
     setMoving(true);
     try {
       if (operation === 'move') {
-        await coursesAPI.moveCourse(courseId, targetFolderId ?? '');
-        toast.success('Course moved successfully');
+        await routinesAPI.moveRoutine(routineId, targetFolderId ?? '');
+        toast.success('Routine moved successfully');
       } else {
-        await coursesAPI.copyCourse(courseId, targetFolderId ?? '');
-        toast.success('Course copied successfully');
+        await routinesAPI.copyRoutine(routineId, targetFolderId ?? '');
+        toast.success('Routine copied successfully');
       }
       onCompleted?.();
       onClose();
     } catch (err) {
-      toast.error('Failed to ' + operation + ' course');
-      console.error('Course ' + operation + ' error:', err);
+      toast.error('Failed to ' + operation + ' routine');
+      console.error('Routine ' + operation + ' error:', err);
     } finally {
       setMoving(false);
       setTargetFolderId(null);
     }
   };
 
-  if (!show || courseId <= 0) return null;
+  if (!show || routineId <= 0) return null;
 
   return createPortal(
     <div
@@ -84,7 +84,7 @@ export default function MoveCourseModal({ show, onClose, operation, courseId, on
               <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Folder className="w-5 h-5" />
               </span>
-              {operation === 'move' ? 'Move Course' : 'Copy Course'}
+              {operation === 'move' ? 'Move Routine' : 'Copy Routine'}
             </h3>
             <button
               onClick={onClose}
@@ -96,7 +96,7 @@ export default function MoveCourseModal({ show, onClose, operation, courseId, on
           </div>
 
           <p className="text-sm text-ink-mute font-sans">
-            Select target destination for the course:
+            Select target destination for the routine:
           </p>
 
           <div className="max-h-60 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline">
@@ -154,7 +154,7 @@ export default function MoveCourseModal({ show, onClose, operation, courseId, on
               className="px-4 py-2 text-xs font-bold text-on-primary bg-primary hover:bg-primary-deep active:scale-95 rounded-lg transition-all duration-150 shadow-md shadow-primary/20 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               {moving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {operation === 'move' ? 'Move Course' : 'Copy Course'}
+              {operation === 'move' ? 'Move Routine' : 'Copy Routine'}
             </button>
           </div>
         </div>

@@ -24,5 +24,17 @@ export const routinesAPI = {
   saveSettings: async (settings: any) => {
     const res = await api.post('/routines/settings', { settings });
     return res.data;
+  },
+  moveRoutine: async (routineId: number | string, targetFolderId: string) => {
+    const res = await api.post(`/routines/${routineId}/move`, { targetFolderId });
+    return res.data;
+  },
+  copyRoutine: async (routineId: number | string, targetFolderId: string) => {
+    const res = await api.post(`/routines/${routineId}/copy`, { targetFolderId });
+    return res.data;
+  },
+  listFolders: async (options?: { signal?: AbortSignal }) => {
+    const res = await api.get('/routines/folders', { signal: options?.signal });
+    return res.data;
   }
 };

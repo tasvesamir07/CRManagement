@@ -4,7 +4,7 @@ import { routinesAPI, filesAPI } from '../../services/api';
 import TipTapEditor from '../announcement/TipTapEditor';
 import { htmlToWhatsappMarkdown } from '../../lib/htmlParser';
 import { 
-  Palette, Download, Share2, Plus, Trash2, Copy, 
+  Palette, Download, Share2, Plus, Trash2, Copy, Move, ArrowRightLeft,
   Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight, ChevronDown, Bold, Italic, FileText
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -642,6 +642,17 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const [formRoomNumber, setFormRoomNumber] = useState('');
   const [savingCell, setSavingCell] = useState(false);
 
+  // Copy / Move routine states
+  const [routineClipboard, setRoutineClipboard] = useState<{
+    routine: Routine;
+    operation: 'copy' | 'move';
+    sourceDay: string;
+    sourceSlot: Slot;
+  } | null>(null);
+  const [targetMoveDay, setTargetMoveDay] = useState<string>('');
+  const [targetMoveSlotStart, setTargetMoveSlotStart] = useState<string>('');
+  const [processingMoveCopy, setProcessingMoveCopy] = useState<boolean>(false);
+
   // Grid layout add form states
   const [newDayName, setNewDayName] = useState('');
   const [newSlotStart, setNewSlotStart] = useState('08:30');
@@ -770,6 +781,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         setFormCourseId(activeRoutine.course_id.toString());
         setFormSection(activeRoutine.section || '');
         setFormRoomNumber(activeRoutine.room_number || '');
+        setTargetMoveDay(selectedCell.day);
+        setTargetMoveSlotStart(selectedCell.slot.start);
       } else {
         setFormCourseId(courses[0]?.id?.toString() || '');
         setFormSection('');
@@ -778,8 +791,138 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     }
   }, [selectedCell, routines]);
 
-  // Handle cell click selection
-  const handleCellClick = (day: string, slot: Slot) => {
+  // Start canvas interactive copy/move
+  const startCanvasCopy = (routine: Routine, day: string, slot: Slot) => {
+    setRoutineClipboard({
+      routine,
+      operation: 'copy',
+      sourceDay: day,
+      sourceSlot: slot
+    });
+    toast.success(`Click any slot in the routine grid to copy ${routine.c_id}`, {
+      icon: '📋',
+      duration: 4000
+    });
+  };
+
+  const startCanvasMove = (routine: Routine, day: string, slot: Slot) => {
+    setRoutineClipboard({
+      routine,
+      operation: 'move',
+      sourceDay: day,
+      sourceSlot: slot
+    });
+    toast.success(`Click any slot in the routine grid to move ${routine.c_id}`, {
+      icon: '↔️',
+      duration: 4000
+    });
+  };
+
+  // Direct Sidebar Copy / Move execution
+  const handleExecuteMoveDirect = async (routine: Routine, sourceDay: string, sourceSlot: Slot) => {
+    const destDay = targetMoveDay || (customDays.find(d => d.toLowerCase() !== sourceDay.toLowerCase()) || customDays[0]);
+    const destSlotStart = targetMoveSlotStart || (customSlots.find(s => s.start !== sourceSlot.start)?.start || customSlots[0]?.start);
+    const destSlot = customSlots.find(s => s.start === destSlotStart) || customSlots[0];
+
+    if (destDay.toLowerCase() === sourceDay.toLowerCase() && destSlot.start === sourceSlot.start) {
+      toast.error('Destination slot is the same as the current slot. Please select a different slot.');
+      return;
+    }
+
+    setProcessingMoveCopy(true);
+    try {
+      const cleanSection = formSection.trim() === '.' ? '' : formSection.trim();
+      const payload = {
+        course_id: routine.course_id,
+        day_of_week: destDay.toLowerCase(),
+        start_time: destSlot.start,
+        end_time: destSlot.end,
+        room_number: formRoomNumber.trim() || routine.room_number || '',
+        section: cleanSection || routine.section || ''
+      };
+      await routinesAPI.update(routine.id, payload);
+      toast.success(`Moved ${routine.c_id} to ${destDay} (${destSlot.start} – ${destSlot.end})`);
+      setRoutineClipboard(null);
+      await onRefresh();
+      setSelectedCell({ day: destDay, slot: destSlot });
+      setActiveTab('cell');
+    } catch (err: any) {
+      toast.error('Failed to move course: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setProcessingMoveCopy(false);
+    }
+  };
+
+  const handleExecuteCopyDirect = async (routine: Routine) => {
+    const destDay = targetMoveDay || customDays[0];
+    const destSlotStart = targetMoveSlotStart || customSlots[0]?.start;
+    const destSlot = customSlots.find(s => s.start === destSlotStart) || customSlots[0];
+
+    setProcessingMoveCopy(true);
+    try {
+      const cleanSection = formSection.trim() === '.' ? '' : formSection.trim();
+      const payload = {
+        course_id: routine.course_id,
+        day_of_week: destDay.toLowerCase(),
+        start_time: destSlot.start,
+        end_time: destSlot.end,
+        room_number: formRoomNumber.trim() || routine.room_number || '',
+        section: cleanSection || routine.section || ''
+      };
+      await routinesAPI.create(payload);
+      toast.success(`Copied ${routine.c_id} to ${destDay} (${destSlot.start} – ${destSlot.end})`);
+      setRoutineClipboard(null);
+      await onRefresh();
+      setSelectedCell({ day: destDay, slot: destSlot });
+      setActiveTab('cell');
+    } catch (err: any) {
+      toast.error('Failed to copy course: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setProcessingMoveCopy(false);
+    }
+  };
+
+  // Handle cell click selection or copy/move placement
+  const handleCellClick = async (day: string, slot: Slot) => {
+    if (routineClipboard) {
+      if (routineClipboard.sourceDay.toLowerCase() === day.toLowerCase() && 
+          routineClipboard.sourceSlot.start === slot.start) {
+        toast('Selected the same slot. Pick a different slot or click Cancel.', { icon: 'ℹ️' });
+        return;
+      }
+
+      setProcessingMoveCopy(true);
+      try {
+        const payload = {
+          course_id: routineClipboard.routine.course_id,
+          day_of_week: day.toLowerCase(),
+          start_time: slot.start,
+          end_time: slot.end,
+          room_number: routineClipboard.routine.room_number || '',
+          section: routineClipboard.routine.section || ''
+        };
+
+        if (routineClipboard.operation === 'copy') {
+          await routinesAPI.create(payload);
+          toast.success(`Copied ${routineClipboard.routine.c_id} to ${day} (${slot.start} – ${slot.end})`);
+        } else {
+          await routinesAPI.update(routineClipboard.routine.id, payload);
+          toast.success(`Moved ${routineClipboard.routine.c_id} to ${day} (${slot.start} – ${slot.end})`);
+        }
+
+        setRoutineClipboard(null);
+        await onRefresh();
+        setSelectedCell({ day, slot });
+        setActiveTab('cell');
+        return;
+      } catch (err: any) {
+        toast.error(`Failed to ${routineClipboard.operation} course: ` + (err.response?.data?.error || err.message));
+        return;
+      } finally {
+        setProcessingMoveCopy(false);
+      }
+    }
+
     setSelectedCell({ day, slot });
     setActiveTab('cell'); // Focus editor tab
   };
@@ -1012,84 +1155,6 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     }
   };
 
-  const activeTitleConfig = (() => {
-    switch (selectedTitleField) {
-      case 'semesterTitle':
-        return {
-          label: 'Semester Title',
-          value: semesterTitle,
-          setValue: setSemesterTitle,
-          fontSize: semesterTitleFontSize || 22,
-          setFontSize: setSemesterTitleFontSize,
-          bold: semesterTitleBold !== false,
-          setBold: () => setSemesterTitleBold(semesterTitleBold === false ? true : false),
-          italic: semesterTitleItalic,
-          setItalic: () => setSemesterTitleItalic(!semesterTitleItalic),
-          align: semesterTitleAlign || headerAlign,
-          setAlign: setSemesterTitleAlign,
-          weight: semesterTitleFontWeight || 800,
-          setWeight: setSemesterTitleFontWeight,
-          color: semesterTitleColor || '#111827',
-          setColor: setSemesterTitleColor
-        };
-      case 'sectionGroup':
-        return {
-          label: 'Sections',
-          value: sectionGroup,
-          setValue: setSectionGroup,
-          fontSize: sectionGroupFontSize || 14,
-          setFontSize: setSectionGroupFontSize,
-          bold: sectionGroupBold !== false,
-          setBold: () => setSectionGroupBold(sectionGroupBold === false ? true : false),
-          italic: sectionGroupItalic,
-          setItalic: () => setSectionGroupItalic(!sectionGroupItalic),
-          align: sectionGroupAlign || headerAlign,
-          setAlign: setSectionGroupAlign,
-          weight: sectionGroupFontWeight || 700,
-          setWeight: setSectionGroupFontWeight,
-          color: sectionGroupColor || '#374151',
-          setColor: setSectionGroupColor
-        };
-      case 'batchCode':
-        return {
-          label: 'Batch Code',
-          value: batchCode,
-          setValue: setBatchCode,
-          fontSize: batchCodeFontSize || 13,
-          setFontSize: setBatchCodeFontSize,
-          bold: batchCodeBold !== false,
-          setBold: () => setBatchCodeBold(batchCodeBold === false ? true : false),
-          italic: batchCodeItalic,
-          setItalic: () => setBatchCodeItalic(!batchCodeItalic),
-          align: batchCodeAlign || headerAlign,
-          setAlign: setBatchCodeAlign,
-          weight: batchCodeFontWeight || 700,
-          setWeight: setBatchCodeFontWeight,
-          color: batchCodeColor || '#4B5563',
-          setColor: setBatchCodeColor
-        };
-      case 'effectiveDate':
-        return {
-          label: 'Effective Date',
-          value: effectiveDate,
-          setValue: setEffectiveDate,
-          fontSize: effectiveDateFontSize || 11,
-          setFontSize: setEffectiveDateFontSize,
-          bold: effectiveDateBold !== false,
-          setBold: () => setEffectiveDateBold(effectiveDateBold === false ? true : false),
-          italic: effectiveDateItalic,
-          setItalic: () => setEffectiveDateItalic(!effectiveDateItalic),
-          align: effectiveDateAlign || headerAlign,
-          setAlign: setEffectiveDateAlign,
-          weight: effectiveDateFontWeight || 500,
-          setWeight: setEffectiveDateFontWeight,
-          color: effectiveDateColor || '#6B7280',
-          setColor: setEffectiveDateColor
-        };
-      default:
-        return null;
-    }
-  })();
 
   return (
     <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
@@ -1653,6 +1718,89 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                         </button>
                       )}
                     </div>
+
+                    {/* Copy / Move Course Controls in Sidebar */}
+                    {getCellRoutines(selectedCell.day, selectedCell.slot).length > 0 && (
+                      <div className="pt-3 border-t border-hairline space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+                            <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
+                            Transfer or Duplicate Class
+                          </span>
+                        </div>
+
+                        {/* Quick Canvas Mode Buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startCanvasCopy(getCellRoutines(selectedCell.day, selectedCell.slot)[0], selectedCell.day, selectedCell.slot)}
+                            className="flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-bold rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all cursor-pointer shadow-xs"
+                            title="Copy course to another slot by clicking the grid"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy on Grid
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startCanvasMove(getCellRoutines(selectedCell.day, selectedCell.slot)[0], selectedCell.day, selectedCell.slot)}
+                            className="flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-bold rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer shadow-xs"
+                            title="Move course to another slot by clicking the grid"
+                          >
+                            <Move className="w-3.5 h-3.5" />
+                            Move on Grid
+                          </button>
+                        </div>
+
+                        {/* Direct Slot Target Picker */}
+                        <div className="p-2.5 bg-canvas-soft rounded-lg border border-hairline space-y-2 text-xs">
+                          <span className="text-[10px] font-bold text-ink-mute uppercase tracking-wide">Or choose destination slot directly:</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Day</label>
+                              <select
+                                value={targetMoveDay || selectedCell.day}
+                                onChange={(e) => setTargetMoveDay(e.target.value)}
+                                className="w-full h-8 px-2 text-xs bg-canvas border border-hairline rounded text-ink focus:border-primary focus:outline-none"
+                              >
+                                {customDays.map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] uppercase font-bold text-gray-500 mb-0.5">Time Slot</label>
+                              <select
+                                value={targetMoveSlotStart || selectedCell.slot.start}
+                                onChange={(e) => setTargetMoveSlotStart(e.target.value)}
+                                className="w-full h-8 px-2 text-xs bg-canvas border border-hairline rounded text-ink focus:border-primary focus:outline-none font-mono"
+                              >
+                                {customSlots.map(s => (
+                                  <option key={s.start} value={s.start}>{s.start} – {s.end}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              disabled={processingMoveCopy}
+                              onClick={() => handleExecuteMoveDirect(getCellRoutines(selectedCell.day, selectedCell.slot)[0], selectedCell.day, selectedCell.slot)}
+                              className="flex-1 py-1.5 px-2 text-xs font-bold rounded bg-amber-500 hover:bg-amber-600 text-white cursor-pointer transition-colors shadow-xs disabled:opacity-50 flex items-center justify-center gap-1"
+                            >
+                              <Move className="w-3 h-3" /> Move Here
+                            </button>
+                            <button
+                              type="button"
+                              disabled={processingMoveCopy}
+                              onClick={() => handleExecuteCopyDirect(getCellRoutines(selectedCell.day, selectedCell.slot)[0])}
+                              className="flex-1 py-1.5 px-2 text-xs font-bold rounded bg-primary hover:bg-primary-deep text-white cursor-pointer transition-colors shadow-xs disabled:opacity-50 flex items-center justify-center gap-1"
+                            >
+                              <Copy className="w-3 h-3" /> Copy Here
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1856,6 +2004,32 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
           }}
           className={`flex-1 overflow-hidden flex items-center justify-center bg-[#f8fafc] select-none relative h-full min-h-[480px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
+          {/* Active Copy / Move Placement Helper Banner */}
+          {routineClipboard && (
+            <div 
+              className="no-export absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-slate-900/95 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-primary/50 backdrop-blur-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-150 select-none max-w-[95%]"
+              data-interactive="true"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-primary animate-ping shrink-0" />
+              <span className="text-xs font-medium">
+                {routineClipboard.operation === 'copy' ? '📋 Copying' : '↔️ Moving'}{' '}
+                <strong className="text-primary font-bold">{routineClipboard.routine.c_id}</strong>
+                {routineClipboard.routine.section ? ` (${routineClipboard.routine.section})` : ''} from{' '}
+                <span className="text-slate-300 font-mono text-[11px]">{routineClipboard.sourceDay} @ {routineClipboard.sourceSlot.start}</span>.
+                {' '}Click any slot below to place it!
+              </span>
+              <button
+                type="button"
+                onClick={() => setRoutineClipboard(null)}
+                className="ml-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer border border-slate-700 transition-colors shrink-0"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
           {/* 2D Panned & Scaled Poster Wrapper */}
           <div 
             style={{ 
@@ -1897,146 +2071,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   selectedTitleField ? 'ring-1 ring-primary/40' : 'hover:border-primary/40'
                 }`}
               >
-                {/* On-Canvas Floating Quick Formatting Toolbar (Canva Style) */}
-                {activeTitleConfig && !isLocked && (
-                  <div 
-                    className="no-export absolute -top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-slate-900/95 text-white p-1.5 px-3 rounded-xl shadow-2xl border border-slate-700/80 backdrop-blur-md flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 select-none max-w-[95%] overflow-x-auto"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                    data-interactive="true"
-                  >
-                    {/* Field Label Badge */}
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-primary text-white rounded-md shrink-0">
-                      {activeTitleConfig.label}
-                    </span>
 
-                    <div className="h-5 w-px bg-slate-700 mx-0.5 shrink-0" />
-
-                    {/* Font Size (+ / - / value) */}
-                    <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0" title="Font Size">
-                      <button
-                        type="button"
-                        onClick={() => activeTitleConfig.setFontSize(Math.max(8, activeTitleConfig.fontSize - 1))}
-                        className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded cursor-pointer text-xs font-bold"
-                        title="Decrease size"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-mono font-semibold px-1 text-white min-w-[32px] text-center">
-                        {activeTitleConfig.fontSize}px
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => activeTitleConfig.setFontSize(Math.min(72, activeTitleConfig.fontSize + 1))}
-                        className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded cursor-pointer text-xs font-bold"
-                        title="Increase size"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Font Weight */}
-                    <select
-                      value={activeTitleConfig.weight}
-                      onChange={(e) => activeTitleConfig.setWeight(parseInt(e.target.value, 10))}
-                      className="h-6 text-xs bg-slate-800 text-white border border-slate-700 rounded-lg px-1.5 focus:outline-none focus:border-primary cursor-pointer shrink-0 font-medium"
-                      title="Font Weight"
-                    >
-                      <option value={300}>300 Light</option>
-                      <option value={400}>400 Normal</option>
-                      <option value={500}>500 Medium</option>
-                      <option value={600}>600 SemiBold</option>
-                      <option value={700}>700 Bold</option>
-                      <option value={800}>800 ExtraBold</option>
-                      <option value={900}>900 Black</option>
-                    </select>
-
-                    {/* Bold & Italic */}
-                    <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0">
-                      <button
-                        type="button"
-                        onClick={activeTitleConfig.setBold}
-                        className={`p-1 rounded cursor-pointer transition-colors ${
-                          activeTitleConfig.bold ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Bold"
-                      >
-                        <Bold className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={activeTitleConfig.setItalic}
-                        className={`p-1 rounded cursor-pointer transition-colors ${
-                          activeTitleConfig.italic ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Italic"
-                      >
-                        <Italic className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Alignment */}
-                    <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => activeTitleConfig.setAlign('left')}
-                        className={`p-1 rounded cursor-pointer transition-colors ${
-                          activeTitleConfig.align === 'left' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Align Left"
-                      >
-                        <AlignLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => activeTitleConfig.setAlign('center')}
-                        className={`p-1 rounded cursor-pointer transition-colors ${
-                          activeTitleConfig.align === 'center' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Align Center"
-                      >
-                        <AlignCenter className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => activeTitleConfig.setAlign('right')}
-                        className={`p-1 rounded cursor-pointer transition-colors ${
-                          activeTitleConfig.align === 'right' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Align Right"
-                      >
-                        <AlignRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Color Picker */}
-                    <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 shrink-0" title="Text Color">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <span 
-                          className="w-4 h-4 rounded-full border border-white/40 shadow-sm shrink-0"
-                          style={{ backgroundColor: activeTitleConfig.color }}
-                        />
-                        <span className="text-[10px] font-mono text-slate-300 uppercase">{activeTitleConfig.color}</span>
-                        <input
-                          type="color"
-                          value={activeTitleConfig.color}
-                          onChange={(e) => activeTitleConfig.setColor(e.target.value)}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Close button */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTitleField(null)}
-                      className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer shrink-0 ml-0.5"
-                      title="Close toolbar"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
 
                 <div 
                   className="relative inline-block max-w-full my-0.5"
@@ -2270,9 +2305,58 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                                 textAlign: cellAlign
                               }}
                               className={`p-1.5 text-xs align-middle cursor-pointer transition-all relative group select-none min-w-[100px] h-20 ${
-                                isSelected ? 'shadow-inner' : 'hover:bg-slate-50'
+                                routineClipboard 
+                                  ? 'ring-2 ring-primary/60 ring-dashed hover:ring-primary hover:bg-primary/10' 
+                                  : isSelected 
+                                    ? 'shadow-inner' 
+                                    : 'hover:bg-slate-50'
                               }`}
                             >
+                              {/* Selected Cell Floating Quick Actions */}
+                              {isSelected && !isEmpty && !isLocked && !routineClipboard && (
+                                <div 
+                                  className="no-export absolute -top-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-slate-900/95 dark:bg-slate-900/95 text-white py-1 px-2 rounded-lg shadow-xl border border-slate-700/80 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap select-none"
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startCanvasCopy(cellClasses[0], day, slot);
+                                    }}
+                                    className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded hover:bg-primary text-slate-200 hover:text-white cursor-pointer transition-colors"
+                                    title="Copy course to another slot"
+                                  >
+                                    <Copy className="w-3 h-3" /> Copy
+                                  </button>
+                                  <div className="w-px h-3 bg-slate-700 mx-0.5" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startCanvasMove(cellClasses[0], day, slot);
+                                    }}
+                                    className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded hover:bg-amber-500 text-slate-200 hover:text-white cursor-pointer transition-colors"
+                                    title="Move course to another slot"
+                                  >
+                                    <Move className="w-3 h-3" /> Move
+                                  </button>
+                                  <div className="w-px h-3 bg-slate-700 mx-0.5" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCellEntry(cellClasses[0].id);
+                                    }}
+                                    className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded hover:bg-rose-600 text-slate-200 hover:text-white cursor-pointer transition-colors"
+                                    title="Delete class from routine"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-rose-400 hover:text-white" />
+                                  </button>
+                                </div>
+                              )}
+
                               {!isEmpty ? (
                                 <div className="space-y-1">
                                   {cellClasses.map((r: Routine) => {

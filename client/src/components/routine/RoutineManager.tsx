@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { routinesAPI, coursesAPI } from '../../services/api';
 import { STANDARD_SLOTS_24 } from './routineUtils';
 import ClassCanvaEditor from './ClassCanvaEditor';
+import MoveRoutineModal from './MoveRoutineModal';
 
 interface Course {
   id: number;
@@ -37,6 +38,11 @@ const RoutineManager = () => {
   const [sectionGroup, setSectionGroup] = useState('CS – A & H');
   const [batchCode, setBatchCode] = useState('SWE 41');
   const [effectiveDate, setEffectiveDate] = useState('Effective from 13, June 2026');
+
+  // Move/Copy Routine Modal States
+  const [showMoveRoutineModal, setShowMoveRoutineModal] = useState(false);
+  const [moveOperation, setMoveOperation] = useState<'move' | 'copy'>('move');
+  const [moveRoutineId, setMoveRoutineId] = useState<number | null>(null);
 
   // Load configured grid days and time slots
   const [customDays, setCustomDays] = useState<string[]>(() => {
@@ -104,6 +110,29 @@ const RoutineManager = () => {
     }
   };
 
+  const handleMoveRoutine = async (id: number, operation: 'move' | 'copy') => {
+    setMoveRoutineId(id);
+    setMoveOperation(operation);
+    setShowMoveRoutineModal(true);
+  };
+
+  const handleMoveRoutineConfirm = async () => {
+    if (!moveRoutineId) return;
+    try {
+      if (moveOperation === 'move') {
+        await routinesAPI.moveRoutine(moveRoutineId, '');
+        toast.success('Routine moved successfully');
+      } else {
+        await routinesAPI.copyRoutine(moveRoutineId, '');
+        toast.success('Routine copied successfully');
+      }
+      setShowMoveRoutineModal(false);
+      fetchData();
+    } catch (e: any) {
+      toast.error('Failed to ' + moveOperation + ' routine: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
   if (loading && routines.length === 0 && courses.length === 0) {
     return (
       <div className="glass-panel rounded-3xl p-12 text-center text-ink-mute text-sm border border-hairline shadow-lg">
@@ -115,6 +144,13 @@ const RoutineManager = () => {
 
   return (
     <div className="w-full -my-2 sm:-my-4 min-h-[calc(100vh-120px)] lg:h-[calc(100vh-100px)] overflow-y-auto lg:overflow-hidden">
+      <MoveRoutineModal
+        show={showMoveRoutineModal}
+        onClose={() => setShowMoveRoutineModal(false)}
+        operation={moveOperation}
+        routineId={moveRoutineId!}
+        onCompleted={() => { fetchData(); }}
+      />
       <ClassCanvaEditor 
         routines={routines}
         courses={courses}

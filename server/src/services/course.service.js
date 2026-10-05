@@ -226,7 +226,7 @@ async function copyCourse(courseId, targetFolderId) {
     const orig = original.rows[0];
 
     // Generate new course ID: original + -COPY suffix
-    const newCourseId = `${orig.course_id}-COPY`;
+    let newCourseId = `${orig.course_id}-COPY`;
 
     // Check if new ID already exists
     const exists = await db.query('SELECT id FROM courses WHERE course_id = $1 AND is_active = true', [newCourseId]);
