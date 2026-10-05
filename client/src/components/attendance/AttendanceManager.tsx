@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { attendanceAPI, coursesAPI } from '../../services/api';
-import { Download, X, AlertCircle, Save, Check, Trash2, Edit } from 'lucide-react';
+import { Download, X, AlertCircle, Save, Check, Trash2, Edit, Loader2 } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 import CustomSelect from '../ui/custom-select';
@@ -258,9 +258,9 @@ const AttendanceManager = () => {
 
       {activeTab === 'take' && (
         <>
-          <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl">
-            <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="w-full sm:w-64">
+          <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-white/20 dark:border-white/10 shadow-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-end gap-3 sm:gap-4">
+              <div className="w-full sm:flex-1 lg:w-64">
                 <label className="block text-xs font-bold text-ink-secondary uppercase tracking-wider mb-1.5">Course *</label>
                 <CustomSelect
                   value={selectedCourseId}
@@ -272,71 +272,152 @@ const AttendanceManager = () => {
                   ]}
                 />
               </div>
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:flex-1 lg:w-48">
                 <label className="block text-xs font-semibold text-ink-mute uppercase tracking-wider mb-1.5">Date *</label>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                  className="appearance-none block w-full h-9 px-3 py-1.5 border border-hairline rounded-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas" />
+                  className="appearance-none block w-full h-10 px-3 py-1.5 border border-hairline rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm text-ink bg-canvas" />
               </div>
-              <button onClick={fetchAttendance} disabled={!selectedCourseId || !date}
-                className="px-4 py-2 bg-primary text-on-primary rounded-sm text-sm font-medium hover:bg-primary-deep disabled:opacity-50 cursor-pointer h-9">
-                Load Students
+              <button onClick={fetchAttendance} disabled={!selectedCourseId || !date || loading}
+                className="w-full lg:w-auto px-5 py-2.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:bg-primary-deep disabled:opacity-50 cursor-pointer h-10 transition-all flex items-center justify-center">
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </span>
+                ) : 'Load Students'}
               </button>
             </div>
           </div>
 
-          {records.length > 0 && (
-            <div className="bg-canvas border border-hairline rounded-lg p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="flex gap-4 text-sm">
+          {loading && (
+            <div className="glass-panel rounded-3xl p-8 border border-white/20 dark:border-white/10 shadow-2xl text-center space-y-4">
+              <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 text-primary">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-ink">Loading Enrolled Students...</h3>
+                <p className="text-xs text-ink-mute">Preparing daily attendance sheet</p>
+              </div>
+              <div className="space-y-2 max-w-sm mx-auto pt-2">
+                <div className="shimmer-bg h-10 rounded-xl"></div>
+                <div className="shimmer-bg h-10 rounded-xl"></div>
+                <div className="shimmer-bg h-10 rounded-xl"></div>
+              </div>
+            </div>
+          )}
+
+          {!loading && records.length > 0 && (
+            <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-white/20 dark:border-white/10 shadow-2xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline/60 pb-4">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs sm:text-sm">
                   <span className="text-ink font-medium">Total: <span className="font-semibold">{records.length}</span></span>
-                  <span className="text-green-600 font-medium">Present: <span className="font-semibold">{presentCount}</span></span>
-                  <span className="text-accent-tomato font-medium">Absent: <span className="font-semibold">{absentCount}</span></span>
+                  <span className="text-emerald-500 font-medium">Present: <span className="font-semibold">{presentCount}</span></span>
+                  <span className="text-rose-500 font-medium">Absent: <span className="font-semibold">{absentCount}</span></span>
                   {unmarkedCount > 0 && <span className="text-ink-mute font-medium">Unmarked: <span className="font-semibold">{unmarkedCount}</span></span>}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button onClick={markAllPresent}
-                    className="flex items-center px-3 py-1.5 text-xs font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft cursor-pointer">
-                    <Check className="w-3.5 h-3.5 mr-1.5" /> Mark All Present
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 text-xs font-bold border border-hairline rounded-xl text-ink hover:bg-canvas-soft transition-all cursor-pointer">
+                    <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" /> Mark All Present
                   </button>
                   <button onClick={handleSave} disabled={saving}
-                    className="flex items-center px-3 py-1.5 text-xs font-medium bg-primary text-on-primary rounded-sm hover:bg-primary-deep disabled:opacity-50 cursor-pointer">
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 text-xs font-bold bg-primary text-on-primary rounded-xl hover:bg-primary-deep disabled:opacity-50 transition-all cursor-pointer shadow-sm">
                     <Save className="w-3.5 h-3.5 mr-1.5" /> {saving ? 'Saving...' : 'Save Attendance'}
                   </button>
                   <button onClick={handleDownloadPdf}
-                    className="flex items-center px-3 py-1.5 text-xs font-medium border border-hairline rounded-sm text-ink hover:bg-canvas-soft cursor-pointer">
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> Download PDF
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 text-xs font-bold border border-hairline rounded-xl text-ink hover:bg-canvas-soft transition-all cursor-pointer">
+                    <Download className="w-3.5 h-3.5 mr-1.5 text-indigo-400" /> Download PDF
                   </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+              {/* Mobile Card-Based Roll Call (Thumb-Friendly) */}
+              <div className="md:hidden space-y-3">
+                {records.map((r, i) => (
+                  <div key={r.id} className={`glass-card rounded-2xl p-4 border transition-all space-y-3 ${
+                    r.status === 'absent' ? 'border-rose-500/30 bg-rose-500/5' : r.status === 'present' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-hairline'
+                  }`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-[10px] font-mono text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline">#{i + 1}</span>
+                          <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">{r.student_id}</span>
+                          {r.section && (
+                            <span className="text-[10px] font-mono font-medium text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline">Sec {r.section}</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink truncate">{r.name}</div>
+                      </div>
+                      <div className="shrink-0">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          r.status === 'present'
+                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                            : r.status === 'absent'
+                            ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                            : 'bg-canvas-soft text-ink-mute border border-hairline'
+                        }`}>
+                          {r.status || 'Unmarked'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setRecords(prev => prev.map(rec => rec.id === r.id ? { ...rec, status: 'present' } : rec))}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          r.status === 'present'
+                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
+                            : 'glass-card text-ink hover:bg-emerald-500/10 hover:text-emerald-500'
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5" /> Present
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRecords(prev => prev.map(rec => rec.id === r.id ? { ...rec, status: 'absent' } : rec))}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          r.status === 'absent'
+                            ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-500/30'
+                            : 'glass-card text-ink hover:bg-rose-500/10 hover:text-rose-500'
+                        }`}
+                      >
+                        <X className="w-3.5 h-3.5" /> Absent
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto max-h-[520px] overflow-y-auto">
                 <table className="min-w-full divide-y divide-hairline">
                   <thead className="bg-canvas-soft sticky top-0">
                     <tr>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-mute uppercase w-10">SL</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-mute uppercase">Section</th>
-                      <th className="px-3 py-2.5 text-center text-xs font-semibold text-ink-mute uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase w-12">SL</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Section</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-hairline">
                     {records.map((r, i) => (
-                      <tr key={r.id} className={`hover:bg-canvas-soft transition-colors ${r.status === 'absent' ? 'bg-accent-tomato/5' : ''}`}>
-                        <td className="px-3 py-2 text-sm text-ink-mute">{i + 1}</td>
-                        <td className="px-3 py-2 text-sm font-mono text-ink">{r.student_id}</td>
-                        <td className="px-3 py-2 text-sm text-ink">{r.name}</td>
-                        <td className="px-3 py-2 text-sm text-ink-mute">{r.section || '-'}</td>
-                        <td className="px-3 py-2 text-center">
+                      <tr key={r.id} className={`hover:bg-canvas-soft transition-colors ${r.status === 'absent' ? 'bg-rose-500/5' : ''}`}>
+                        <td className="px-4 py-3 text-sm text-ink-mute">{i + 1}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-ink font-semibold">{r.student_id}</td>
+                        <td className="px-4 py-3 text-sm text-ink font-medium">{r.name}</td>
+                        <td className="px-4 py-3 text-sm text-ink-mute font-mono">{r.section || '-'}</td>
+                        <td className="px-4 py-3 text-center">
                           <button onClick={() => toggleStatus(r.id)}
-                            className={`px-3 py-1 rounded-sm text-xs font-medium border transition-colors cursor-pointer min-w-[70px] ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer min-w-[80px] ${
                               r.status === 'present'
-                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
                                 : r.status === 'absent'
-                                ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                                ? 'bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500/25'
                                 : 'bg-canvas-soft text-ink-mute border-hairline hover:bg-hairline-cool'
                             }`}>
-                            {r.status === 'present' ? 'Present' : r.status === 'absent' ? 'Absent' : 'Click to mark'}
+                            {r.status === 'present' ? 'Present' : r.status === 'absent' ? 'Absent' : 'Mark'}
                           </button>
                         </td>
                       </tr>
@@ -348,8 +429,8 @@ const AttendanceManager = () => {
           )}
 
           {selectedCourseId && date && records.length === 0 && !loading && (
-            <div className="bg-canvas border border-hairline rounded-lg p-12 text-center">
-              <p className="text-ink-mute text-sm">No enrolled students found for this course.</p>
+            <div className="glass-panel rounded-3xl p-12 text-center border border-hairline">
+              <p className="text-ink-mute text-sm font-semibold">No enrolled students found for this course.</p>
               <p className="text-ink-mute text-xs mt-1">Add students and enroll them in this course first.</p>
             </div>
           )}
@@ -359,95 +440,175 @@ const AttendanceManager = () => {
       {activeTab === 'saved' && (
         <div className="space-y-4">
           {loadingSheets ? (
-            <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center text-ink-mute text-sm">
+            <div className="glass-panel rounded-3xl p-12 text-center text-ink-mute text-sm border border-hairline shadow-lg">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               Loading saved records...
             </div>
           ) : savedSheets.length === 0 ? (
-            <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center">
-              <p className="text-ink-mute text-sm">No saved attendance sheets found.</p>
+            <div className="glass-panel rounded-3xl p-12 text-center border border-hairline shadow-lg">
+              <p className="text-ink-mute text-sm font-semibold">No saved attendance sheets found.</p>
+              <p className="text-ink-mute text-xs mt-1">Take class attendance and save it to review past sessions.</p>
             </div>
           ) : (
-            <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-x-auto">
-              <table className="min-w-full divide-y divide-hairline">
-                <thead className="bg-canvas-soft">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Course</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase">Total Students</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase text-green-600">Present</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase text-red-600">Absent</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase">Attendance Rate</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline">
-                  {savedSheets.map((s) => {
-                    const total = parseInt(s.total_students);
-                    const present = parseInt(s.present_count);
-                    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-                    
-                    let formattedDate = s.date;
-                    try {
-                      const dObj = new Date(s.date);
-                      if (!isNaN(dObj.getTime())) {
-                        formattedDate = dObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-                      }
-                    } catch {}
+            <div className="space-y-4">
+              {/* Mobile Card-Based Saved Sheets */}
+              <div className="md:hidden space-y-3">
+                {savedSheets.map((s) => {
+                  const total = parseInt(s.total_students);
+                  const present = parseInt(s.present_count);
+                  const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                  
+                  let formattedDate = s.date;
+                  try {
+                    const dObj = new Date(s.date);
+                    if (!isNaN(dObj.getTime())) {
+                      formattedDate = dObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                    }
+                  } catch {}
 
-                    return (
-                      <tr key={`${s.course_id}-${s.date}`} className="hover:bg-canvas-soft transition-colors">
-                        <td className="px-4 py-3 text-sm text-ink">{formattedDate}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="font-medium text-ink">{s.c_id}</div>
-                          <div className="text-xs text-ink-mute truncate max-w-[200px]">{s.course_name}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center text-ink">{total}</td>
-                        <td className="px-4 py-3 text-sm text-center text-green-600 font-medium">{present}</td>
-                        <td className="px-4 py-3 text-sm text-center text-red-600 font-medium">{s.absent_count}</td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            rate >= 80 ? 'bg-green-50 text-green-700' : rate >= 50 ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
-                          }`}>
-                            {rate}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedCourseId(s.course_id);
-                              let rawDate = s.date;
-                              try {
-                                rawDate = new Date(s.date).toISOString().split('T')[0];
-                              } catch {}
-                              setDate(rawDate);
-                              setActiveTab('take');
-                            }}
-                            className="inline-flex items-center px-2 py-1 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft cursor-pointer transition-colors"
-                            title="Edit"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDownloadSavedPdf(s.course_id, s.date)}
-                            className="inline-flex items-center px-2 py-1 border border-hairline rounded-sm text-xs font-medium text-ink hover:bg-canvas-soft cursor-pointer transition-colors"
-                            title="PDF"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSheet(s.course_id, s.date)}
-                            className="inline-flex items-center px-2 py-1 border border-transparent rounded-sm text-xs font-medium text-white bg-red-600 hover:bg-red-700 cursor-pointer transition-colors"
-                            title="Delete"
-                          >
-                            Delete
-                          </button>
-                        </td>
+                  return (
+                    <div key={`${s.course_id}-${s.date}`} className="glass-card rounded-2xl p-4 border border-hairline shadow-sm space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">{s.c_id}</span>
+                            <span className="text-xs font-mono text-ink-mute">{formattedDate}</span>
+                          </div>
+                          <div className="text-xs text-ink-mute truncate">{s.course_name}</div>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-bold ${
+                          rate >= 80 ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : rate >= 50 ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30' : 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                        }`}>
+                          {rate}% Rate
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs font-medium pt-1 border-t border-hairline/60">
+                        <span className="text-ink">Total: <strong className="font-bold">{total}</strong></span>
+                        <span className="text-emerald-500">Present: <strong className="font-bold">{present}</strong></span>
+                        <span className="text-rose-500">Absent: <strong className="font-bold">{s.absent_count}</strong></span>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setSelectedCourseId(s.course_id);
+                            let rawDate = s.date;
+                            try {
+                              rawDate = new Date(s.date).toISOString().split('T')[0];
+                            } catch {}
+                            setDate(rawDate);
+                            setActiveTab('take');
+                          }}
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-hairline rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft transition-all cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5 mr-1 text-primary" /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDownloadSavedPdf(s.course_id, s.date)}
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-hairline rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft transition-all cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1 text-indigo-400" /> PDF
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSheet(s.course_id, s.date)}
+                          className="p-2 border border-rose-500/20 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-all cursor-pointer"
+                          title="Delete Sheet"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block glass-panel rounded-3xl border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-hairline">
+                    <thead className="bg-canvas-soft">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Course</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase">Total Students</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase text-emerald-500">Present</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase text-rose-500">Absent</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-ink-mute uppercase">Attendance Rate</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-hairline">
+                      {savedSheets.map((s) => {
+                        const total = parseInt(s.total_students);
+                        const present = parseInt(s.present_count);
+                        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                        
+                        let formattedDate = s.date;
+                        try {
+                          const dObj = new Date(s.date);
+                          if (!isNaN(dObj.getTime())) {
+                            formattedDate = dObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                          }
+                        } catch {}
+
+                        return (
+                          <tr key={`${s.course_id}-${s.date}`} className="hover:bg-canvas-soft transition-colors">
+                            <td className="px-4 py-3 text-sm text-ink font-mono">{formattedDate}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="font-bold text-ink">{s.c_id}</div>
+                              <div className="text-xs text-ink-mute truncate max-w-[200px]">{s.course_name}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-center text-ink font-semibold">{total}</td>
+                            <td className="px-4 py-3 text-sm text-center text-emerald-500 font-bold">{present}</td>
+                            <td className="px-4 py-3 text-sm text-center text-rose-500 font-bold">{s.absent_count}</td>
+                            <td className="px-4 py-3 text-sm text-center">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                                rate >= 80 ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : rate >= 50 ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30' : 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                              }`}>
+                                {rate}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setSelectedCourseId(s.course_id);
+                                    let rawDate = s.date;
+                                    try {
+                                      rawDate = new Date(s.date).toISOString().split('T')[0];
+                                    } catch {}
+                                    setDate(rawDate);
+                                    setActiveTab('take');
+                                  }}
+                                  className="inline-flex items-center px-2.5 py-1.5 border border-hairline rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft cursor-pointer transition-colors"
+                                  title="Edit"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadSavedPdf(s.course_id, s.date)}
+                                  className="inline-flex items-center p-2 border border-hairline rounded-xl text-xs font-bold text-ink hover:bg-canvas-soft cursor-pointer transition-colors"
+                                  title="Download PDF"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-indigo-400" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSheet(s.course_id, s.date)}
+                                  className="inline-flex items-center p-2 border border-rose-500/20 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-colors cursor-pointer"
+                                  title="Delete Sheet"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </div>

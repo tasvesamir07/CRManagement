@@ -36,5 +36,17 @@ export const coursesAPI = {
   setDefaultPlatforms: async (courseId: number | string, platformIds: string[]) => {
     const res = await api.put(`/courses/${courseId}/default-platforms`, { platform_ids: platformIds });
     return res.data;
+  },
+  moveCourse: async (courseId: number | string, targetFolderId: string) => {
+    const res = await api.post(`/courses/${courseId}/move`, { targetFolderId });
+    return res.data;
+  },
+  copyCourse: async (courseId: number | string, targetFolderId: string) => {
+    const res = await api.post(`/courses/${courseId}/copy`, { targetFolderId });
+    return res.data;
+  },
+  listFolders: async (options?: { signal?: AbortSignal }) => {
+    const res = await api.get('/courses/folders', { signal: options?.signal });
+    return res.data;
   }
 };

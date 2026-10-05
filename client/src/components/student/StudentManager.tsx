@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { studentsAPI, coursesAPI } from '../../services/api';
-import { Plus, Trash2, X, AlertCircle, Upload, Search, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Plus, Trash2, X, AlertCircle, Upload, Search, Check, ChevronDown, Loader2, Edit2 } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 
@@ -24,8 +24,11 @@ interface Course {
 const StudentManager = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const hasLoadedRef = useRef(false);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [err, setErr] = useState('');
@@ -44,14 +47,25 @@ const StudentManager = () => {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchData = useCallback(async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      setLoading(true);
+      if (!hasLoadedRef.current) {
+        setInitialLoading(true);
+      } else {
+        setSearching(true);
+      }
       const [studentsData, coursesData] = await Promise.all([
-        studentsAPI.list({ search: search || undefined, signal: controller.signal }),
+        studentsAPI.list({ search: debouncedSearch || undefined, signal: controller.signal }),
         coursesAPI.list({ signal: controller.signal })
       ]);
       if (controller.signal.aborted) return;
@@ -62,9 +76,13 @@ const StudentManager = () => {
         console.error(e);
       }
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      if (!controller.signal.aborted) {
+        setInitialLoading(false);
+        setSearching(false);
+        hasLoadedRef.current = true;
+      }
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
   useEffect(() => { fetchData(); return () => abortRef.current?.abort(); }, [fetchData]);
 
@@ -437,54 +455,99 @@ const StudentManager = () => {
         <div className="relative max-w-xs w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ID or name..."
-            className="pl-9 pr-3 py-2 w-full border border-hairline rounded-sm text-sm bg-canvas text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+            className="pl-9 pr-9 py-2 w-full border border-hairline rounded-xl text-sm bg-canvas text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+          {searching && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
+          )}
         </div>
         <div className="text-xs text-ink-mute font-medium">
           Showing <span className="font-bold text-ink">{students.length}</span> {students.length === 1 ? 'student' : 'students'}
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center text-ink-mute text-sm">
+      {initialLoading ? (
+        <div className="bg-canvas border border-hairline rounded-2xl shadow-sm p-12 text-center text-ink-mute text-sm">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          Loading students...
+          Loading student registry...
         </div>
       ) : students.length === 0 ? (
-        <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center">
-          <p className="text-ink-mute text-sm">No students found. Add one or import via CSV.</p>
+        <div className="bg-canvas border border-hairline rounded-2xl shadow-sm p-12 text-center">
+          <p className="text-ink-mute text-sm">{search ? 'No students found matching your search.' : 'No students found. Add one or import via CSV.'}</p>
         </div>
       ) : (
-        <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-hairline">
-              <thead className="bg-canvas-soft">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline">
-                {students.map((s) => (
-                  <tr key={s.id} className="hover:bg-canvas-soft transition-colors">
-                    <td className="px-4 py-3 text-sm font-mono text-ink font-semibold">{s.student_id}</td>
-                    <td className="px-4 py-3 text-sm text-ink font-medium">{s.name}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleEdit(s)} className="text-ink-mute hover:text-primary mr-2 cursor-pointer p-1 rounded hover:bg-primary/10" title="Edit">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </button>
-                      <button onClick={() => handleDelete(s.id)} className="text-ink-mute hover:text-accent-tomato cursor-pointer p-1 rounded hover:bg-accent-tomato/10" title="Delete">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className={`space-y-4 transition-opacity duration-200 ${searching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+          {/* Mobile Card-Based View */}
+          <div className="md:hidden space-y-3">
+            {students.map((s) => (
+              <div key={s.id} className="glass-card rounded-2xl p-4 border border-hairline shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">{s.student_id}</span>
+                      {s.section && (
+                        <span className="text-[10px] font-mono font-medium text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline">Sec {s.section}</span>
+                      )}
+                      {s.batch && (
+                        <span className="text-[10px] font-mono font-medium text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline">{s.batch}</span>
+                      )}
+                    </div>
+                    <div className="text-sm font-bold text-ink truncate">{s.name}</div>
+                    {(s.email || s.phone) && (
+                      <div className="text-xs text-ink-mute truncate mt-1">
+                        {s.email || s.phone}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => handleEdit(s)} className="p-2 text-ink-mute hover:text-primary hover:bg-primary/10 rounded-xl transition-colors cursor-pointer" title="Edit Student">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(s.id)} className="p-2 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer" title="Delete Student">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="px-4 py-3 bg-canvas-soft border-t border-hairline flex items-center justify-between text-xs text-ink-mute font-medium">
-            <span>Total Enrolled: <strong className="text-ink">{students.length}</strong> {students.length === 1 ? 'Student' : 'Students'}</span>
-            <span>Sorted by Student ID</span>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-canvas border border-hairline rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-hairline">
+                <thead className="bg-canvas-soft">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Student ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-ink-mute uppercase">Section / Batch</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-ink-mute uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {students.map((s) => (
+                    <tr key={s.id} className="hover:bg-canvas-soft transition-colors">
+                      <td className="px-4 py-3 text-sm font-mono text-ink font-semibold">{s.student_id}</td>
+                      <td className="px-4 py-3 text-sm text-ink font-medium">{s.name}</td>
+                      <td className="px-4 py-3 text-xs text-ink-mute font-mono">
+                        {s.section ? `Sec ${s.section}` : ''} {s.batch ? `(${s.batch})` : ''}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => handleEdit(s)} className="text-ink-mute hover:text-primary mr-2 cursor-pointer p-1.5 rounded-lg hover:bg-primary/10 transition-colors" title="Edit">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(s.id)} className="text-ink-mute hover:text-rose-500 cursor-pointer p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-3 bg-canvas-soft border-t border-hairline flex items-center justify-between text-xs text-ink-mute font-medium">
+              <span>Total Enrolled: <strong className="text-ink">{students.length}</strong> {students.length === 1 ? 'Student' : 'Students'}</span>
+              <span>Sorted by Student ID</span>
+            </div>
           </div>
         </div>
       )}

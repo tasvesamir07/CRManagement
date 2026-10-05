@@ -104,9 +104,9 @@ const RoutineManager = () => {
     }
   };
 
-  if (loading) {
+  if (loading && routines.length === 0 && courses.length === 0) {
     return (
-      <div className="bg-canvas border border-hairline rounded-lg shadow-sm p-12 text-center text-ink-mute text-sm">
+      <div className="glass-panel rounded-3xl p-12 text-center text-ink-mute text-sm border border-hairline shadow-lg">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
         Loading Class Routine Designer...
       </div>
@@ -114,7 +114,7 @@ const RoutineManager = () => {
   }
 
   return (
-    <div className="-mx-2 sm:-mx-6 lg:-mx-8 -my-4 sm:-my-8 min-h-[calc(100vh-120px)] lg:h-[calc(100vh-0px)] overflow-y-auto lg:overflow-hidden">
+    <div className="w-full -my-2 sm:-my-4 min-h-[calc(100vh-120px)] lg:h-[calc(100vh-100px)] overflow-y-auto lg:overflow-hidden">
       <ClassCanvaEditor 
         routines={routines}
         courses={courses}

@@ -81,7 +81,9 @@ const FilesManager = () => {
   const navigate = useNavigate();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, totalPages: 1, total: 0, limit: 50 });
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
@@ -364,13 +366,25 @@ const FilesManager = () => {
     setFoldersLoading(false);
   }, []);
 
-  const fetchFiles = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchFiles = useCallback(async (isBackground: boolean = false) => {
+    if (isBackground) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const result = await filesAPI.list({ 
         page, 
         limit: 50, 
-        search, 
+        search: debouncedSearch, 
         folderId: currentFolderId || '' 
       });
       setFiles(result.files);
@@ -378,12 +392,14 @@ const FilesManager = () => {
       fetchStorageUsage();
     } catch {
       toast.error('Failed to load files');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
     }
-    setLoading(false);
-  }, [page, search, currentFolderId, fetchStorageUsage]);
+  }, [page, debouncedSearch, currentFolderId, fetchStorageUsage]);
 
   useEffect(() => { 
-    fetchFiles(); 
+    fetchFiles(files.length > 0); 
   }, [fetchFiles]);
 
   useEffect(() => {
@@ -393,7 +409,7 @@ const FilesManager = () => {
     
     if (prevCompletedCountRef.current !== completedUploadsCount) {
       prevCompletedCountRef.current = completedUploadsCount;
-      fetchFiles();
+      fetchFiles(true);
       fetchStorageUsage();
     }
   }, [uploads, currentFolderId, fetchFiles, fetchStorageUsage]);
@@ -406,11 +422,10 @@ const FilesManager = () => {
 
   useEffect(() => {
     setSelectedFileIds(new Set());
-  }, [currentFolderId, filter, search, page]);
+  }, [currentFolderId, filter, debouncedSearch, page]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    setPage(1);
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -572,7 +587,7 @@ const FilesManager = () => {
           </h1>
           <p className="text-xs sm:text-sm text-ink-mute mt-1">Manage uploaded documents, attachments, and media across broadcast channels.</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" />
             <input
@@ -583,55 +598,9 @@ const FilesManager = () => {
               className="glass-input block w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-ink font-medium"
             />
           </div>
-          {selectedFileIds.size > 0 && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200">
-              <button
-                disabled={isBulkDeleting}
-                onClick={() => handleShareFiles([...selectedFileIds])}
-                className="flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
-              >
-                {isSharingBatch ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5 mr-1.5" />
-                )}
-                Share Selected ({selectedFileIds.size})
-              </button>
-              <button
-                disabled={isBulkDeleting}
-                onClick={() => setShowMoveModal(true)}
-                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-lg shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
-              >
-                <Folder className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                Move Selected ({selectedFileIds.size})
-              </button>
-              <button
-                disabled={isBulkDeleting}
-                onClick={() => setShowCompressModal(true)}
-                className="flex items-center justify-center h-9 px-4 border border-hairline rounded-lg shadow-sm text-xs font-semibold text-ink bg-canvas-soft hover:bg-canvas-soft-strong active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
-              >
-                <FileArchive className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-                Compress Selected ({selectedFileIds.size})
-              </button>
-              <button
-                disabled={isBulkDeleting}
-                onClick={handleBulkDelete}
-                className={`flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer ${isBulkDeleting ? 'animate-pulse' : ''}`}
-              >
-                {isBulkDeleting ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                )}
-                {isBulkDeleting
-                  ? `Deleting (${bulkDeleteProgress ? `${bulkDeleteProgress.current}/${bulkDeleteProgress.total}` : '...'})`
-                  : `Delete Selected (${selectedFileIds.size})`}
-              </button>
-            </div>
-          )}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center h-9 px-4 border border-transparent rounded-lg shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep active:scale-95 hover:-translate-y-0.5 active:translate-y-0 hover:shadow-md focus:outline-none transition-all duration-150 cursor-pointer"
+            className="flex items-center justify-center h-10 sm:h-9 px-4 border border-transparent rounded-xl sm:rounded-lg shadow-sm text-xs font-semibold text-on-primary bg-primary hover:bg-primary-deep active:scale-95 transition-all duration-150 cursor-pointer shrink-0"
           >
             {uploads.some((u: any) => u.status === 'uploading') ? (
               <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -649,6 +618,56 @@ const FilesManager = () => {
           />
         </div>
       </div>
+
+      {/* Floating Bottom Action Bar for Bulk Selected Files */}
+      {selectedFileIds.size > 0 && (
+        <div className="fixed bottom-24 md:bottom-8 left-3 right-3 sm:left-auto sm:right-8 z-40 bg-canvas/95 dark:bg-canvas-night/95 backdrop-blur-xl border border-primary/40 shadow-2xl rounded-2xl p-3 sm:px-5 sm:py-3.5 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
+            <span className="text-xs font-bold text-ink font-mono">{selectedFileIds.size} file{selectedFileIds.size > 1 ? 's' : ''} selected</span>
+            <button
+              onClick={() => setSelectedFileIds(new Set())}
+              className="text-[11px] text-ink-mute hover:text-ink underline ml-1 cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              disabled={isBulkDeleting}
+              onClick={() => handleShareFiles([...selectedFileIds])}
+              className="flex items-center justify-center h-8.5 px-3 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              {isSharingBatch ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+              Share
+            </button>
+            <button
+              disabled={isBulkDeleting}
+              onClick={() => setShowMoveModal(true)}
+              className="flex items-center justify-center h-8.5 px-3 rounded-xl text-xs font-bold text-ink bg-canvas-soft hover:bg-canvas-soft/80 border border-hairline active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              <Folder className="w-3.5 h-3.5 mr-1.5 text-primary" />
+              Move
+            </button>
+            <button
+              disabled={isBulkDeleting}
+              onClick={() => setShowCompressModal(true)}
+              className="flex items-center justify-center h-8.5 px-3 rounded-xl text-xs font-bold text-ink bg-canvas-soft hover:bg-canvas-soft/80 border border-hairline active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              <FileArchive className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+              Compress
+            </button>
+            <button
+              disabled={isBulkDeleting}
+              onClick={handleBulkDelete}
+              className="flex items-center justify-center h-8.5 px-3 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              {isBulkDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
+              {isBulkDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-canvas-soft/60 border border-hairline rounded-lg p-4 max-w-lg">
         <div className="flex justify-between items-center text-[10px] uppercase font-bold text-ink-mute mb-2">
@@ -777,7 +796,7 @@ const FilesManager = () => {
                     <span className="text-[10px] text-ink-mute font-sans">
                       {folder.created_at ? new Date(folder.created_at).toLocaleDateString() : ''}
                     </span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
@@ -865,25 +884,152 @@ const FilesManager = () => {
         </div>
       </div>
 
-      <div className="bg-canvas border border-hairline rounded-lg shadow-sm overflow-hidden">
-        {loading ? (
+      <div className="bg-canvas border border-hairline rounded-2xl sm:rounded-lg shadow-sm overflow-hidden relative">
+        {/* Subtle background refresh progress line */}
+        {isRefreshing && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-primary/20 overflow-hidden z-20">
+            <div className="h-full bg-primary animate-pulse w-full" />
+          </div>
+        )}
+
+        {loading && files.length === 0 ? (
           <div className="p-12 text-center text-ink-mute text-sm">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-3"></div>
-            Loading files...
+            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary mx-auto mb-3"></div>
+            Loading files vault...
           </div>
         ) : files.length === 0 ? (
           <div className="p-12 text-center text-ink-mute text-sm">
-            <Upload className="w-8 h-8 mx-auto mb-3 opacity-40" />
+            <Upload className="w-8 h-8 mx-auto mb-3 opacity-40 text-primary" />
             {search ? 'No files match your search.' : 'No files uploaded yet.'}
           </div>
         ) : displayedFiles.length === 0 ? (
           <div className="p-12 text-center text-ink-mute text-sm">
-            <Upload className="w-8 h-8 mx-auto mb-3 opacity-40" />
-            No files match the selected type filter.
+            <Upload className="w-8 h-8 mx-auto mb-3 opacity-40 text-primary" />
+            No files match the selected filter.
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Mobile Card List View (< md) */}
+            <div className="md:hidden divide-y divide-hairline">
+              <div className="px-4 py-2.5 bg-canvas-soft flex items-center justify-between border-b border-hairline">
+                <label className="flex items-center gap-2 text-xs font-bold text-ink cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={displayedFiles.length > 0 && displayedFiles.every(f => selectedFileIds.has(f.id))}
+                    onChange={handleToggleSelectAll}
+                    className="accent-primary w-4 h-4 cursor-pointer rounded"
+                  />
+                  <span>Select All ({displayedFiles.length})</span>
+                </label>
+                <span className="text-[10px] font-mono text-ink-mute font-semibold">Touch to select</span>
+              </div>
+              {displayedFiles.map((file) => {
+                const Icon = getFileIcon(file.file_type);
+                const isDeleting = deleting.has(file.id);
+                const isSelected = selectedFileIds.has(file.id);
+                return (
+                  <div
+                    key={file.id}
+                    className={`p-3.5 space-y-3 transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-canvas-soft/60'}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(file.id)}
+                        className="accent-primary w-4.5 h-4.5 cursor-pointer rounded mt-1 shrink-0"
+                      />
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-ink break-words leading-tight" title={file.original_name}>
+                          {file.original_name}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <button
+                            onClick={() => {
+                              setExpiryFile(file);
+                              setShowExpiryModal(true);
+                            }}
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full cursor-pointer ${
+                              !file.expires_at 
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400' 
+                                : new Date(file.expires_at).getTime() - new Date().getTime() < 3 * 24 * 60 * 60 * 1000 
+                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-400'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400'
+                            }`}
+                            title="Click to customize expiry"
+                          >
+                            {getExpiryLabel(file.expires_at)}
+                          </button>
+                          <span className="text-[10px] font-mono font-bold text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline">
+                            {formatSize(file.file_size)}
+                          </span>
+                          {file.file_type && (
+                            <span className="text-[10px] font-mono text-ink-mute px-1.5 py-0.5 rounded bg-canvas-soft border border-hairline truncate max-w-[120px]">
+                              {file.file_type.includes('/') ? file.file_type.split('/')[1].toUpperCase() : file.file_type}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-hairline/60">
+                      <div className="text-[10px] text-ink-mute font-medium truncate max-w-[130px]">
+                        {formatDate(file.uploaded_at)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handlePreview(file)}
+                          className="p-2 text-ink-mute hover:text-indigo-600 rounded-lg hover:bg-canvas-soft active:scale-95 transition-all cursor-pointer"
+                          title="Preview"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleShareFiles([file.id])}
+                          className="p-2 text-ink-mute hover:text-emerald-600 rounded-lg hover:bg-canvas-soft active:scale-95 transition-all cursor-pointer"
+                          title="Share"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDownload(file)}
+                          className="p-2 text-ink-mute hover:text-primary rounded-lg hover:bg-canvas-soft active:scale-95 transition-all cursor-pointer"
+                          title="Download"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        {(file.file_type === 'application/zip' || file.original_name.toLowerCase().endsWith('.zip')) && (
+                          <button
+                            onClick={() => {
+                              setExtractFile(file);
+                              setShowExtractModal(true);
+                            }}
+                            className="p-2 text-ink-mute hover:text-amber-600 rounded-lg hover:bg-canvas-soft active:scale-95 transition-all cursor-pointer"
+                            title="Extract ZIP"
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(file.id)}
+                          disabled={isDeleting}
+                          className="p-2 text-ink-mute hover:text-rose-500 rounded-lg hover:bg-rose-500/10 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+                          title="Delete"
+                        >
+                          {isDeleting ? <Loader2 className="w-4 h-4 animate-spin text-rose-500" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-hairline bg-canvas-soft">

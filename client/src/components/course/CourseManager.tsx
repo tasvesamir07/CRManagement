@@ -3,6 +3,7 @@ import { coursesAPI } from '../../services/api';
 import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag, Sparkles } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import MoveCourseModal from './MoveCourseModal';
 
 interface Course {
   id: number;
@@ -35,6 +36,11 @@ const CourseManager = () => {
   const [editMembers, setEditMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [err, setErr] = useState('');
+
+  // Move/Copy Course Modal States
+  const [showMoveCourseModal, setShowMoveCourseModal] = useState(false);
+  const [moveOperation, setMoveOperation] = useState<'move' | 'copy'>('move');
+  const [moveCourseId, setMoveCourseId] = useState<number | null>(null);
 
   const fetchCourses = useCallback(async (silent: boolean = false) => {
     try {
@@ -94,6 +100,29 @@ const CourseManager = () => {
     } catch (e: any) {
       setCourses(prev);
       toast.error('Delete failed: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  const handleMoveCourse = async (id: number, operation: 'move' | 'copy') => {
+    setMoveCourseId(id);
+    setMoveOperation(operation);
+    setShowMoveCourseModal(true);
+  };
+
+  const handleMoveCourseConfirm = async () => {
+    if (!moveCourseId) return;
+    try {
+      if (moveOperation === 'move') {
+        await coursesAPI.moveCourse(moveCourseId, '');
+        toast.success('Course moved successfully');
+      } else {
+        await coursesAPI.copyCourse(moveCourseId, '');
+        toast.success('Course copied successfully');
+      }
+      setShowMoveCourseModal(false);
+      fetchCourses();
+    } catch (e: any) {
+      toast.error('Failed to ' + moveOperation + ' course: ' + (e.response?.data?.error || e.message));
     }
   };
 
@@ -336,22 +365,36 @@ const CourseManager = () => {
                     </td>
                     <td className="py-4 px-4 text-right">
                         <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => handleEdit(course)}
-                            className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer"
-                            title="Edit Course"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(course.id)}
-                            className="p-2 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
-                            title="Delete Course"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+<button
+                          onClick={() => handleEdit(course)}
+                          className="p-2 text-ink-mute hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer"
+                          title="Edit Course"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveCourse(course.id, 'move')}
+                          className="p-2 text-ink-mute hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all cursor-pointer"
+                          title="Move Course"
+                        >
+                          <Folder className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveCourse(course.id, 'copy')}
+                          className="p-2 text-ink-mute hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all cursor-pointer"
+                          title="Copy Course"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(course.id)}
+                          className="p-2 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                          title="Delete Course"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                     </tr>
                   ))}
                 </tbody>
@@ -407,6 +450,18 @@ const CourseManager = () => {
                       <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Edit
                     </button>
                     <button
+                      onClick={() => handleMoveCourse(course.id, 'move')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 glass-card rounded-xl text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                    >
+                      <Folder className="w-3.5 h-3.5" /> Move
+                    </button>
+                    <button
+                      onClick={() => handleMoveCourse(course.id, 'copy')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 glass-card rounded-xl text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copy
+                    </button>
+                    <button
                       onClick={() => handleDelete(course.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-colors cursor-pointer"
                     >
@@ -419,6 +474,14 @@ const CourseManager = () => {
           </>
         )}
       </div>
+
+      <MoveCourseModal
+        show={showMoveCourseModal}
+        onClose={() => setShowMoveCourseModal(false)}
+        operation={moveOperation}
+        courseId={moveCourseId!}
+        onCompleted={() => { fetchCourses(); }}
+      />
     </div>
   );
 };

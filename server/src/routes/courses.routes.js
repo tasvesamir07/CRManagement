@@ -343,4 +343,205 @@ router.put('/:id/default-platforms', authMiddleware, validateParams(schemas.para
     }
 });
 
+/**
+ * @openapi
+ * /courses/{id}/move:
+ *   post:
+ *     tags: [Courses]
+ *     summary: Move course to another folder/grid
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Course moved successfully
+ *       400:
+ *         description: Target folder ID required
+ *       500:
+ *         description: Failed to move course
+ */
+router.post('/:id/move', authMiddleware, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        if (targetFolderId === undefined || targetFolderId === null) {
+            return res.status(400).json({ error: 'targetFolderId is required' });
+        }
+        const course = await courseService.moveCourse(req.params.id, targetFolderId);
+        return res.json(course);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /courses/{id}/default-platforms:
+ *   put:
+ *     tags: [Courses]
+ *     summary: Set default platforms for a course
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               platform_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Default platforms updated
+ *       400:
+ *         description: Validation error
+ */
+router.put('/:id/default-platforms', authMiddleware, validateParams(schemas.params.id), async (req, res) => {
+    try {
+        const { platform_ids } = req.body;
+        if (!Array.isArray(platform_ids)) {
+            return res.status(400).json({ error: 'platform_ids must be an array' });
+        }
+        const course = await courseService.setDefaultPlatforms(req.params.id, platform_ids, req.user.id, req.user.role);
+        return res.json(course);
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /courses/folders:
+ *   get:
+ *     tags: [Courses]
+ *     summary: List all folders for course selection
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of folders
+ */
+router.get('/folders', authMiddleware, async (req, res) => {
+    try {
+        const folders = await courseService.listFolders(req.user.id);
+        return res.json(folders);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /courses/{id}/move:
+ *   post:
+ *     tags: [Courses]
+ *     summary: Move course to another folder/grid
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Course moved successfully
+ *       400:
+ *         description: Target folder ID required
+ *       500:
+ *         description: Failed to move course
+ */
+router.post('/:id/move', authMiddleware, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        if (targetFolderId === undefined || targetFolderId === null) {
+            return res.status(400).json({ error: 'targetFolderId is required' });
+        }
+        const course = await courseService.moveCourse(req.params.id, targetFolderId);
+        return res.json(course);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @openapi
+ * /courses/{id}/copy:
+ *   post:
+ *     tags: [Courses]
+ *     summary: Copy course to another folder/grid
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Course copied successfully
+ *       400:
+ *         description: Target folder ID required or course not found
+ *       500:
+ *         description: Failed to copy course
+ */
+router.post('/:id/copy', authMiddleware, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        if (targetFolderId === undefined || targetFolderId === null) {
+            return res.status(400).json({ error: 'targetFolderId is required' });
+        }
+        const course = await courseService.copyCourse(req.params.id, targetFolderId);
+        return res.status(201).json(course);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

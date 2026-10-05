@@ -32,7 +32,7 @@ const getStatusBadge = (status: string) => {
 
 const CRDashboard = ({ navigate }: CRDashboardProps) => {
   const {
-    courses, announcements, loading, search, statusFilter, courseFilter,
+    courses, announcements, loading, tableLoading, search, statusFilter, courseFilter,
     dateFrom, dateTo, page, totalPages, totalCount, filtersOpen, stats,
     offlineDrafts, setSearch, setStatusFilter, setCourseFilter,
     setDateFrom, setDateTo, setPage, setFiltersOpen,
@@ -160,15 +160,29 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
       <div className="glass-panel rounded-3xl p-6 border border-white/20 dark:border-white/10 shadow-2xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline/60 pb-5">
           <div>
-            <h2 className="text-lg font-extrabold text-ink tracking-tight flex items-center gap-2">
-              Recent Broadcast Notices
-              <span className="text-xs font-mono text-ink-mute px-2 py-0.5 rounded-full bg-canvas-soft border border-hairline">
-                {totalCount} Total
-              </span>
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-ink tracking-tight flex items-center gap-2">
+                Recent Broadcast Notices
+                <span className="text-xs font-mono text-ink-mute px-2 py-0.5 rounded-full bg-canvas-soft border border-hairline">
+                  {totalCount} Total
+                </span>
+              </h2>
+              {tableLoading && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                  Updating...
+                </span>
+              )}
+            </div>
             <p className="text-xs text-ink-mute">Filter and track delivery across all connected messaging networks.</p>
           </div>
         </div>
+
+        {tableLoading && (
+          <div className="h-0.5 w-full bg-primary/10 overflow-hidden rounded-full -mt-2">
+            <div className="h-full bg-primary animate-pulse w-2/3 mx-auto"></div>
+          </div>
+        )}
 
         {/* Desktop Filter Bar */}
         <div className="hidden md:flex flex-wrap items-center gap-3 pb-2">
@@ -243,17 +257,21 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
           courses={courses} clearFilters={clearFilters} />
 
         {announcements.length === 0 ? (
-          <div className="text-center py-16 text-ink-mute text-xs">
-            <Megaphone className="w-12 h-12 text-primary/40 mx-auto stroke-[1.5] mb-3 animate-pulse" />
-            <p className="font-bold text-sm text-ink mb-1">No Broadcasts Found</p>
-            {search || statusFilter || courseFilter ? (
-              <>No announcements match your search filters.</>
-            ) : (
-              <>No announcements sent yet. Click 'Create New Broadcast' to draft your first announcement.</>
-            )}
-          </div>
+          tableLoading ? (
+            <TableSkeleton rows={4} cols={5} />
+          ) : (
+            <div className="text-center py-16 text-ink-mute text-xs">
+              <Megaphone className="w-12 h-12 text-primary/40 mx-auto stroke-[1.5] mb-3 animate-pulse" />
+              <p className="font-bold text-sm text-ink mb-1">No Broadcasts Found</p>
+              {search || statusFilter || courseFilter ? (
+                <>No announcements match your search filters.</>
+              ) : (
+                <>No announcements sent yet. Click 'Create New Broadcast' to draft your first announcement.</>
+              )}
+            </div>
+          )
         ) : (
-          <>
+          <div className={`transition-opacity duration-200 ${tableLoading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {announcements.map((ann: any) => (
@@ -414,7 +432,7 @@ const CRDashboard = ({ navigate }: CRDashboardProps) => {
               </div>
             )}
           </div>
-          </>
+          </div>
         )}
       </div>
     </div>

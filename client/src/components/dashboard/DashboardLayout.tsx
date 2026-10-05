@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { Outlet, Link, useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useAuth, type User } from '../../context/AuthContext';
 import ErrorBoundary from '../ui/ErrorBoundary';
@@ -176,7 +176,7 @@ const DashboardLayout = () => {
       </nav>
 
       {/* Desktop Futuristic Glass Sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 glass-panel border-r border-white/10 dark:border-white/5 z-30 backdrop-blur-2xl shadow-2xl">
+      <aside className="hidden md:flex md:w-56 lg:w-64 md:flex-col md:fixed md:inset-y-0 glass-panel border-r border-white/10 dark:border-white/5 z-30 backdrop-blur-2xl shadow-2xl">
         <div className="flex-1 flex flex-col min-h-0">
           <Link to="/" className="flex items-center h-20 flex-shrink-0 px-6 border-b border-hairline/60 gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary via-emerald-400 to-accent-cyan flex items-center justify-center text-on-primary font-extrabold text-lg shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
@@ -268,18 +268,25 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen pb-20 md:pb-0 relative z-10">
+      <div className="flex-1 md:pl-56 lg:pl-64 flex flex-col min-h-screen pb-24 md:pb-0 relative z-10">
         {!isOnline && (
           <div className="md:hidden bg-amber-500/90 text-white text-xs text-center py-2 px-4 font-bold sticky top-0 z-50 backdrop-blur-md flex items-center justify-center gap-2 shadow-lg">
             <WifiOff className="w-4 h-4" />
             Offline Mode — Changes will sync automatically once reconnected
           </div>
         )}
-        <main id="main-content" className="flex-1 py-6 sm:py-10 px-4 sm:px-8 max-w-7xl w-full mx-auto">
+        <main id="main-content" className="flex-1 py-5 sm:py-8 lg:py-10 px-3.5 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
           <ErrorBoundary>
-            <div key={location.pathname} className="route-enter-active">
-              <Outlet />
-            </div>
+            <Suspense fallback={
+              <div className="w-full py-16 flex flex-col items-center justify-center space-y-3 animate-in fade-in duration-150">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="text-xs font-medium text-ink-mute">Loading view...</p>
+              </div>
+            }>
+              <div key={location.pathname} className="route-enter-active">
+                <Outlet />
+              </div>
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

@@ -166,6 +166,30 @@ async function assignMember(courseId, userId, role = 'cr') {
     return assigned;
 }
 
+async function listFolders(userId) {
+    let isAdmin = false;
+    if (userId) {
+        const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+        const userRole = userResult.rows[0]?.role;
+        if (userRole === 'admin') isAdmin = true;
+    }
+    const result = await db.query(
+        'SELECT fo.*, c.course_name, c.course_id as course_code FROM folders fo LEFT JOIN courses c ON fo.course_id = c.id'
+    );
+    let filteredFolders = result.rows;
+    if (userId && !isAdmin) {
+        const { getCourses } = require('./course.service');
+        const courses = await getCourses(userId);
+        const userCourseIds = courses.map(c => parseInt(c.id));
+        filteredFolders = filteredFolders.filter(folder => {
+            if (folder.course_id) return userCourseIds.includes(parseInt(folder.course_id));
+            return parseInt(folder.created_by) === parseInt(userId);
+        });
+    }
+    filteredFolders.sort((a, b) => a.name.localeCompare(b.name));
+    return filteredFolders;
+}
+
 async function removeMember(courseId, userId) {
     const result = await db.query(
         'DELETE FROM course_members WHERE course_id = $1 AND user_id = $2 RETURNING *',
@@ -178,6 +202,74 @@ async function removeMember(courseId, userId) {
     return removed;
 }
 
+async function moveCourse(courseId, targetFolderId) {
+    const parsedFolderId = targetFolderId ? parseInt(targetFolderId) : null;
+    const result = await db.query(
+        "UPDATE courses SET course_id = CONCAT(COALESCE((SELECT course_code FROM folders WHERE id = $1), ''), '-MOVED') WHERE id = $2 RETURNING *",
+        [parsedFolderId, courseId]
+    );
+    const updated = result.rows[0];
+    if (updated) {
+        cache.invalidatePattern('courses:');
+    }
+    return updated;
+}
+
+async function copyCourse(courseId, targetFolderId) {
+    const parsedFolderId = targetFolderId ? parseInt(targetFolderId) : null;
+
+    // Get original course details
+    const original = await db.query('SELECT * FROM courses WHERE id = $1 AND is_active = true', [courseId]);
+    if (original.rows.length === 0) {
+        throw new Error('Course not found');
+    }
+    const orig = original.rows[0];
+
+    // Generate new course ID: original + -COPY suffix
+    const newCourseId = `${orig.course_id}-COPY`;
+
+    // Check if new ID already exists
+    const exists = await db.query('SELECT id FROM courses WHERE course_id = $1 AND is_active = true', [newCourseId]);
+    if (exists.rows.length > 0) {
+        // Try with sequential number
+        for (let i = 1; i <= 100; i++) {
+            const testId = `${orig.course_id}-COPY-${i}`;
+            const testExists = await db.query('SELECT id FROM courses WHERE course_id = $1 AND is_active = true', [testId]);
+            if (testExists.rows.length === 0) {
+                newCourseId = testId;
+                break;
+            }
+        }
+    }
+
+    // Create new course with copied data
+    const result = await db.query(
+        `INSERT INTO courses (course_id, course_name, teacher_name, teacher_initials, is_active, created_by, default_platform_ids) 
+         VALUES ($1, $2, $3, $4, true, $5, $6) RETURNING *`,
+        [newCourseId, orig.course_name, orig.teacher_name, orig.teacher_initials, orig.created_by, orig.default_platform_ids || []]
+    );
+
+    const newCourse = result.rows[0];
+
+    // Associate with target folder if provided
+    if (parsedFolderId) {
+        await db.query(
+            'UPDATE folders SET course_id = $1 WHERE id = $2',
+            [newCourse.id, parsedFolderId]
+        );
+    }
+
+    // Also copy course_members (excluding the creator if needed)
+    await db.query(
+        `INSERT INTO course_members (user_id, course_id, role) 
+         SELECT user_id, $1, role FROM course_members WHERE course_id = $2 AND user_id != $3`,
+        [newCourse.id, courseId, orig.created_by]
+    );
+
+    cache.invalidatePattern('courses:');
+    return newCourse;
+}
+
 module.exports = {
     createCourse,
     getCourses,
@@ -187,5 +279,8 @@ module.exports = {
     getMembers,
     assignMember,
     removeMember,
+    listFolders,
+    moveCourse,
+    copyCourse,
     setDefaultPlatforms
 };

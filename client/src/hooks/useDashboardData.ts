@@ -34,7 +34,9 @@ export default function useDashboardData(navigate: (path: string) => void) {
   const [courses, setCourses] = useState<any[]>([]);
   const [platforms, setPlatforms] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+  const hasInitialLoadedRef = useRef(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -98,11 +100,18 @@ export default function useDashboardData(navigate: (path: string) => void) {
           announcementsCount: cachedAnnouncements.totalCount || rawAnnouncements.length,
           deliveredCount: delivered
         });
-        setLoading(false);
+        setInitialLoading(false);
+        hasInitialLoadedRef.current = true;
         silent = true; // Skip spinner, background fetch is silent
       }
 
-      if (!silent) setLoading(true);
+      if (!silent) {
+        if (!hasInitialLoadedRef.current) {
+          setInitialLoading(true);
+        } else {
+          setTableLoading(true);
+        }
+      }
       const [coursesData, platformsData, announcementsData] = await Promise.all([
         coursesAPI.list(),
         platformsAPI.list(),
@@ -123,7 +132,9 @@ export default function useDashboardData(navigate: (path: string) => void) {
     } catch (err) {
       console.error('Error fetching dashboard statistics:', err);
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setTableLoading(false);
+      hasInitialLoadedRef.current = true;
     }
   };
 
@@ -209,7 +220,8 @@ export default function useDashboardData(navigate: (path: string) => void) {
   };
 
   return {
-    courses, platforms, announcements, loading,
+    courses, platforms, announcements,
+    loading: initialLoading, initialLoading, tableLoading,
     search, debouncedSearch, statusFilter, courseFilter, dateFrom, dateTo,
     page, totalPages, totalCount, filtersOpen, stats, offlineDrafts,
     setSearch, setStatusFilter, setCourseFilter, setDateFrom, setDateTo,
