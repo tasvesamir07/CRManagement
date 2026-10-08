@@ -1,22 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
-import { DAYS_OF_WEEK } from './routineUtils';
-
-interface Slot {
-  start: string;
-  end: string;
-}
-
-interface Routine {
-  id: number;
-  course_id: number;
-  c_id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  room_number: string;
-  section?: string;
-}
+import { DAYS_OF_WEEK, formatTimeRange, areSlotsMatching, Routine, Slot } from './routineUtils';
 
 interface ConfigureLayoutModalProps {
   show: boolean;
@@ -89,7 +73,7 @@ export default function ConfigureLayoutModal({
 
   const isSlotInUse = (slot: Slot) => {
     return routines.some(
-      r => r.start_time.substring(0, 5) === slot.start && r.end_time.substring(0, 5) === slot.end
+      r => areSlotsMatching(r.start_time, slot.start)
     );
   };
 
@@ -177,7 +161,7 @@ export default function ConfigureLayoutModal({
                       className="flex items-center justify-between p-2 bg-canvas border border-hairline rounded-sm"
                     >
                       <span className="font-medium text-ink">
-                        {s.start} &ndash; {s.end}
+                        {formatTimeRange(s.start, s.end, true)}
                       </span>
                       <button
                         type="button"

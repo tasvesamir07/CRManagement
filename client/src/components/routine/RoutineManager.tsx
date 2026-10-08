@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { routinesAPI, coursesAPI } from '../../services/api';
-import { STANDARD_SLOTS_24 } from './routineUtils';
+import { STANDARD_SLOTS_24, Routine, Slot } from './routineUtils';
 import ClassCanvaEditor from './ClassCanvaEditor';
 import MoveRoutineModal from './MoveRoutineModal';
 import toast from 'react-hot-toast';
@@ -11,22 +11,6 @@ interface Course {
   course_name: string;
   teacher_name: string;
   teacher_initials: string;
-}
-
-interface Routine {
-  id: number;
-  course_id: number;
-  c_id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  room_number: string;
-  section?: string;
-}
-
-interface Slot {
-  start: string;
-  end: string;
 }
 
 const RoutineManager = () => {

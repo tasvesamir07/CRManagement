@@ -10,6 +10,15 @@ import {
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
 import CustomSelect from '../ui/custom-select';
+import { 
+  Routine, 
+  Slot, 
+  normalizeTo24Hour, 
+  splitTo12Hour, 
+  combineTo24Hour, 
+  areSlotsMatching, 
+  formatTimeRange as formatTimeRangeUtil 
+} from './routineUtils';
 
 interface Course {
   id: number;
@@ -17,22 +26,6 @@ interface Course {
   course_name: string;
   teacher_name: string;
   teacher_initials: string;
-}
-
-interface Routine {
-  id: number;
-  course_id: number;
-  c_id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  room_number: string;
-  section?: string;
-}
-
-interface Slot {
-  start: string;
-  end: string;
 }
 
 interface ClassCanvaEditorProps {
@@ -656,7 +649,9 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   // Grid layout add form states
   const [newDayName, setNewDayName] = useState('');
   const [newSlotStart, setNewSlotStart] = useState('08:30');
+  const [newSlotStartPeriod, setNewSlotStartPeriod] = useState<'AM' | 'PM'>('AM');
   const [newSlotEnd, setNewSlotEnd] = useState('10:00');
+  const [newSlotEndPeriod, setNewSlotEndPeriod] = useState<'AM' | 'PM'>('AM');
 
   // Load saved style preferences on mount from DB (with localStorage fallback)
   useEffect(() => {
@@ -769,7 +764,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const getCellRoutines = (day: string, slot: Slot) => {
     return routines.filter(r => 
       r.day_of_week.toLowerCase() === day.toLowerCase() &&
-      r.start_time.substring(0, 5) === slot.start
+      areSlotsMatching(r.start_time, slot.start)
     );
   };
 
@@ -821,10 +816,10 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   // Direct Sidebar Copy / Move execution
   const handleExecuteMoveDirect = async (routine: Routine, sourceDay: string, sourceSlot: Slot) => {
     const destDay = targetMoveDay || (customDays.find(d => d.toLowerCase() !== sourceDay.toLowerCase()) || customDays[0]);
-    const destSlotStart = targetMoveSlotStart || (customSlots.find(s => s.start !== sourceSlot.start)?.start || customSlots[0]?.start);
-    const destSlot = customSlots.find(s => s.start === destSlotStart) || customSlots[0];
+    const destSlotStart = targetMoveSlotStart || (customSlots.find(s => !areSlotsMatching(s.start, sourceSlot.start))?.start || customSlots[0]?.start);
+    const destSlot = customSlots.find(s => areSlotsMatching(s.start, destSlotStart)) || customSlots[0];
 
-    if (destDay.toLowerCase() === sourceDay.toLowerCase() && destSlot.start === sourceSlot.start) {
+    if (destDay.toLowerCase() === sourceDay.toLowerCase() && areSlotsMatching(destSlot.start, sourceSlot.start)) {
       toast.error('Destination slot is the same as the current slot. Please select a different slot.');
       return;
     }
@@ -835,13 +830,13 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       const payload = {
         course_id: routine.course_id,
         day_of_week: destDay.toLowerCase(),
-        start_time: destSlot.start,
-        end_time: destSlot.end,
+        start_time: normalizeTo24Hour(destSlot.start),
+        end_time: normalizeTo24Hour(destSlot.end, destSlot.start),
         room_number: formRoomNumber.trim() || routine.room_number || '',
         section: cleanSection || routine.section || ''
       };
       await routinesAPI.update(routine.id, payload);
-      toast.success(`Moved ${routine.c_id} to ${destDay} (${destSlot.start} – ${destSlot.end})`);
+      toast.success(`Moved ${routine.c_id} to ${destDay} (${formatTimeRange(destSlot.start, destSlot.end, true)})`);
       setRoutineClipboard(null);
       await onRefresh();
       setSelectedCell({ day: destDay, slot: destSlot });
@@ -856,7 +851,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const handleExecuteCopyDirect = async (routine: Routine) => {
     const destDay = targetMoveDay || customDays[0];
     const destSlotStart = targetMoveSlotStart || customSlots[0]?.start;
-    const destSlot = customSlots.find(s => s.start === destSlotStart) || customSlots[0];
+    const destSlot = customSlots.find(s => areSlotsMatching(s.start, destSlotStart)) || customSlots[0];
 
     setProcessingMoveCopy(true);
     try {
@@ -864,13 +859,13 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       const payload = {
         course_id: routine.course_id,
         day_of_week: destDay.toLowerCase(),
-        start_time: destSlot.start,
-        end_time: destSlot.end,
+        start_time: normalizeTo24Hour(destSlot.start),
+        end_time: normalizeTo24Hour(destSlot.end, destSlot.start),
         room_number: formRoomNumber.trim() || routine.room_number || '',
         section: cleanSection || routine.section || ''
       };
       await routinesAPI.create(payload);
-      toast.success(`Copied ${routine.c_id} to ${destDay} (${destSlot.start} – ${destSlot.end})`);
+      toast.success(`Copied ${routine.c_id} to ${destDay} (${formatTimeRange(destSlot.start, destSlot.end, true)})`);
       setRoutineClipboard(null);
       await onRefresh();
       setSelectedCell({ day: destDay, slot: destSlot });
@@ -886,7 +881,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
   const handleCellClick = async (day: string, slot: Slot) => {
     if (routineClipboard) {
       if (routineClipboard.sourceDay.toLowerCase() === day.toLowerCase() && 
-          routineClipboard.sourceSlot.start === slot.start) {
+          areSlotsMatching(routineClipboard.sourceSlot.start, slot.start)) {
         toast('Selected the same slot. Pick a different slot or click Cancel.', { icon: 'ℹ️' });
         return;
       }
@@ -896,18 +891,18 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
         const payload = {
           course_id: routineClipboard.routine.course_id,
           day_of_week: day.toLowerCase(),
-          start_time: slot.start,
-          end_time: slot.end,
+          start_time: normalizeTo24Hour(slot.start),
+          end_time: normalizeTo24Hour(slot.end, slot.start),
           room_number: routineClipboard.routine.room_number || '',
           section: routineClipboard.routine.section || ''
         };
 
         if (routineClipboard.operation === 'copy') {
           await routinesAPI.create(payload);
-          toast.success(`Copied ${routineClipboard.routine.c_id} to ${day} (${slot.start} – ${slot.end})`);
+          toast.success(`Copied ${routineClipboard.routine.c_id} to ${day} (${formatTimeRange(slot.start, slot.end, true)})`);
         } else {
           await routinesAPI.update(routineClipboard.routine.id, payload);
-          toast.success(`Moved ${routineClipboard.routine.c_id} to ${day} (${slot.start} – ${slot.end})`);
+          toast.success(`Moved ${routineClipboard.routine.c_id} to ${day} (${formatTimeRange(slot.start, slot.end, true)})`);
         }
 
         setRoutineClipboard(null);
@@ -943,8 +938,8 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       const payload = {
         course_id: parseInt(formCourseId),
         day_of_week: selectedCell.day.toLowerCase(),
-        start_time: selectedCell.slot.start,
-        end_time: selectedCell.slot.end,
+        start_time: normalizeTo24Hour(selectedCell.slot.start),
+        end_time: normalizeTo24Hour(selectedCell.slot.end, selectedCell.slot.start),
         room_number: formRoomNumber.trim(),
         section: cleanSection || ''
       };
@@ -1010,8 +1005,34 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
     toast.success(`Added ${newDayName.trim()} to routine grid`);
   };
 
-  const handleRenameSlot = (idx: number, field: keyof Slot, newTime: string) => {
-    const updated = customSlots.map((s, i) => i === idx ? { ...s, [field]: newTime } : s);
+  const handleToggleSlotPeriod = (idx: number, field: 'start' | 'end') => {
+    const slot = customSlots[idx];
+    if (!slot) return;
+    if (field === 'start') {
+      const s12 = splitTo12Hour(slot.start);
+      const newPeriod = s12.period === 'AM' ? 'PM' : 'AM';
+      const newStart24 = combineTo24Hour(s12.time, newPeriod);
+      const updated = customSlots.map((s, i) => i === idx ? { ...s, start: newStart24 } : s);
+      onSaveLayout(customDays, updated);
+    } else {
+      const e12 = splitTo12Hour(slot.end, slot.start);
+      const newPeriod = e12.period === 'AM' ? 'PM' : 'AM';
+      const newEnd24 = combineTo24Hour(e12.time, newPeriod);
+      const updated = customSlots.map((s, i) => i === idx ? { ...s, end: newEnd24 } : s);
+      onSaveLayout(customDays, updated);
+    }
+  };
+
+  const handleSlotTimeChange = (idx: number, field: 'start' | 'end', newTimeStr: string, currentPeriod: 'AM' | 'PM') => {
+    let period = currentPeriod;
+    if (newTimeStr.match(/PM/i) || newTimeStr.match(/^1[2-9]:|^2[0-3]:/)) {
+      period = 'PM';
+    } else if (newTimeStr.match(/AM/i)) {
+      period = 'AM';
+    }
+    const cleanTime = newTimeStr.replace(/(AM|PM)/i, '').trim();
+    const time24 = combineTo24Hour(cleanTime, period);
+    const updated = customSlots.map((s, i) => i === idx ? { ...s, [field]: time24 } : s);
     onSaveLayout(customDays, updated);
   };
 
@@ -1030,16 +1051,18 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
       toast.error('Please specify start and end times');
       return;
     }
-    const updated = [...customSlots, { start: newSlotStart, end: newSlotEnd }];
-    // Sort slots chronologically
-    updated.sort((a, b) => a.start.localeCompare(b.start));
+    const start24 = combineTo24Hour(newSlotStart, newSlotStartPeriod);
+    const end24 = combineTo24Hour(newSlotEnd, newSlotEndPeriod);
+    const updated = [...customSlots, { start: start24, end: end24 }];
+    // Sort slots chronologically using normalized 24-hour time
+    updated.sort((a, b) => normalizeTo24Hour(a.start).localeCompare(normalizeTo24Hour(b.start)));
     onSaveLayout(customDays, updated);
-    toast.success('Added new time slot to routine grid');
+    toast.success(`Added slot ${formatTimeRangeUtil(start24, end24, true)} to routine grid`);
   };
 
   // Format time display
-  const formatTimeRange = (start: string, end: string) => {
-    return `${start} – ${end}`;
+  const formatTimeRange = (start: string, end: string, includePeriod = false) => {
+    return formatTimeRangeUtil(start, end, includePeriod);
   };
 
   // Apply Theme Palette
@@ -1579,55 +1602,137 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
 
               {/* Time Slots Management */}
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-ink uppercase tracking-wide">Manage Time Slots</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-ink uppercase tracking-wide">Manage Time Slots</label>
+                  <span className="text-[10px] text-ink-mute font-medium">Click AM/PM to toggle</span>
+                </div>
                 <div className="space-y-2 bg-canvas border border-hairline rounded-md p-3.5">
-                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
-                    {customSlots.map((slot, idx) => (
-                      <div key={idx} className="flex items-center gap-1 text-xs">
-                        <input
-                          type="text"
-                          value={slot.start}
-                          onChange={e => handleRenameSlot(idx, 'start', e.target.value)}
-                          className="w-16 h-8 text-center border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-mono"
-                        />
-                        <span className="text-gray-400 font-bold">–</span>
-                        <input
-                          type="text"
-                          value={slot.end}
-                          onChange={e => handleRenameSlot(idx, 'end', e.target.value)}
-                          className="w-16 h-8 text-center border border-hairline bg-canvas text-ink rounded focus:border-primary focus:outline-none font-mono"
-                        />
-                        <button
-                          onClick={() => handleDeleteSlot(idx)}
-                          className="p-1.5 text-gray-400 hover:text-accent-tomato hover:bg-accent-tomato/5 rounded transition-colors cursor-pointer"
-                          title="Delete slot"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                    {customSlots.map((slot, idx) => {
+                      const start12 = splitTo12Hour(slot.start);
+                      const end12 = splitTo12Hour(slot.end, slot.start);
+                      return (
+                        <div key={idx} className="flex items-center gap-1.5 text-xs bg-canvas/70 p-1.5 rounded border border-hairline hover:border-hairline-strong transition-colors">
+                          {/* Start Time with AM/PM pill */}
+                          <div className="flex items-center rounded border border-hairline bg-canvas overflow-hidden focus-within:border-primary shadow-xs">
+                            <input
+                              type="text"
+                              value={start12.time}
+                              onChange={e => handleSlotTimeChange(idx, 'start', e.target.value, start12.period)}
+                              className="w-13 h-7 text-center text-xs bg-transparent text-ink font-mono focus:outline-none"
+                              placeholder="HH:MM"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSlotPeriod(idx, 'start')}
+                              className={`px-1.5 h-7 text-[10px] font-bold border-l border-hairline transition-colors cursor-pointer select-none ${
+                                start12.period === 'PM' 
+                                  ? 'bg-primary text-on-primary' 
+                                  : 'bg-canvas-soft text-ink-mute hover:text-ink'
+                              }`}
+                              title={`Start Time is ${start12.period}. Click to switch to ${start12.period === 'AM' ? 'PM' : 'AM'}`}
+                            >
+                              {start12.period}
+                            </button>
+                          </div>
+
+                          <span className="text-gray-400 font-bold">–</span>
+
+                          {/* End Time with AM/PM pill */}
+                          <div className="flex items-center rounded border border-hairline bg-canvas overflow-hidden focus-within:border-primary shadow-xs">
+                            <input
+                              type="text"
+                              value={end12.time}
+                              onChange={e => handleSlotTimeChange(idx, 'end', e.target.value, end12.period)}
+                              className="w-13 h-7 text-center text-xs bg-transparent text-ink font-mono focus:outline-none"
+                              placeholder="HH:MM"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSlotPeriod(idx, 'end')}
+                              className={`px-1.5 h-7 text-[10px] font-bold border-l border-hairline transition-colors cursor-pointer select-none ${
+                                end12.period === 'PM' 
+                                  ? 'bg-primary text-on-primary' 
+                                  : 'bg-canvas-soft text-ink-mute hover:text-ink'
+                              }`}
+                              title={`End Time is ${end12.period}. Click to switch to ${end12.period === 'AM' ? 'PM' : 'AM'}`}
+                            >
+                              {end12.period}
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSlot(idx)}
+                            className="p-1.5 text-gray-400 hover:text-accent-tomato hover:bg-accent-tomato/10 rounded transition-colors cursor-pointer ml-auto"
+                            title="Delete slot"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="pt-2 border-t border-hairline space-y-2">
+                  <div className="pt-2 border-t border-hairline space-y-1.5">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Add New Slot</span>
                     <div className="flex items-center gap-1.5 text-xs text-ink">
-                      <input
-                        type="text"
-                        placeholder="Start"
-                        value={newSlotStart}
-                        onChange={e => setNewSlotStart(e.target.value)}
-                        className="w-20 h-8 text-center border border-hairline bg-canvas rounded font-mono focus:border-primary focus:outline-none"
-                      />
+                      {/* New Start Time */}
+                      <div className="flex items-center rounded border border-hairline bg-canvas overflow-hidden focus-within:border-primary shadow-xs">
+                        <input
+                          type="text"
+                          placeholder="08:30"
+                          value={newSlotStart}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val.match(/^1[2-9]:|^2[0-3]:/)) setNewSlotStartPeriod('PM');
+                            setNewSlotStart(val);
+                          }}
+                          className="w-13 h-8 text-center text-xs bg-transparent text-ink font-mono focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewSlotStartPeriod(p => p === 'AM' ? 'PM' : 'AM')}
+                          className={`px-1.5 h-8 text-[10px] font-bold border-l border-hairline transition-colors cursor-pointer select-none ${
+                            newSlotStartPeriod === 'PM' ? 'bg-primary text-on-primary' : 'bg-canvas-soft text-ink-mute hover:text-ink'
+                          }`}
+                          title="Toggle AM / PM"
+                        >
+                          {newSlotStartPeriod}
+                        </button>
+                      </div>
+
                       <span className="text-gray-400 font-bold">–</span>
-                      <input
-                        type="text"
-                        placeholder="End"
-                        value={newSlotEnd}
-                        onChange={e => setNewSlotEnd(e.target.value)}
-                        className="w-20 h-8 text-center border border-hairline bg-canvas rounded font-mono focus:border-primary focus:outline-none"
-                      />
+
+                      {/* New End Time */}
+                      <div className="flex items-center rounded border border-hairline bg-canvas overflow-hidden focus-within:border-primary shadow-xs">
+                        <input
+                          type="text"
+                          placeholder="10:00"
+                          value={newSlotEnd}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val.match(/^1[2-9]:|^2[0-3]:/)) setNewSlotEndPeriod('PM');
+                            setNewSlotEnd(val);
+                          }}
+                          className="w-13 h-8 text-center text-xs bg-transparent text-ink font-mono focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewSlotEndPeriod(p => p === 'AM' ? 'PM' : 'AM')}
+                          className={`px-1.5 h-8 text-[10px] font-bold border-l border-hairline transition-colors cursor-pointer select-none ${
+                            newSlotEndPeriod === 'PM' ? 'bg-primary text-on-primary' : 'bg-canvas-soft text-ink-mute hover:text-ink'
+                          }`}
+                          title="Toggle AM / PM"
+                        >
+                          {newSlotEndPeriod}
+                        </button>
+                      </div>
+
                       <button
+                        type="button"
                         onClick={handleAddSlot}
-                        className="flex-1 h-8 flex items-center justify-center gap-1 bg-primary text-on-primary rounded hover:bg-primary-deep text-xs font-semibold cursor-pointer shadow-sm"
+                        className="flex-1 h-8 flex items-center justify-center gap-1 bg-primary text-on-primary rounded hover:bg-primary-deep text-xs font-semibold cursor-pointer shadow-sm ml-0.5"
                       >
                         <Plus className="w-3.5 h-3.5" /> Slot
                       </button>
@@ -1647,7 +1752,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-ink uppercase tracking-wide">Cell Editor</label>
                     <span className="text-[9px] bg-primary/15 text-primary font-bold px-2 py-0.5 rounded">
-                      {selectedCell.day} @ {selectedCell.slot.start}
+                      {selectedCell.day} @ {formatTimeRange(selectedCell.slot.start, selectedCell.slot.end, true)}
                     </span>
                   </div>
 
@@ -1775,7 +1880,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                                 className="w-full h-8 px-2 text-xs bg-canvas border border-hairline rounded text-ink focus:border-primary focus:outline-none font-mono"
                               >
                                 {customSlots.map(s => (
-                                  <option key={s.start} value={s.start}>{s.start} – {s.end}</option>
+                                  <option key={s.start} value={s.start}>{formatTimeRange(s.start, s.end, true)}</option>
                                 ))}
                               </select>
                             </div>
@@ -2017,7 +2122,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                 {routineClipboard.operation === 'copy' ? '📋 Copying' : '↔️ Moving'}{' '}
                 <strong className="text-primary font-bold">{routineClipboard.routine.c_id}</strong>
                 {routineClipboard.routine.section ? ` (${routineClipboard.routine.section})` : ''} from{' '}
-                <span className="text-slate-300 font-mono text-[11px]">{routineClipboard.sourceDay} @ {routineClipboard.sourceSlot.start}</span>.
+                <span className="text-slate-300 font-mono text-[11px]">{routineClipboard.sourceDay} @ {formatTimeRange(routineClipboard.sourceSlot.start, routineClipboard.sourceSlot.end, true)}</span>.
                 {' '}Click any slot below to place it!
               </span>
               <button

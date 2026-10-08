@@ -13,16 +13,28 @@ export function TimePicker({ value, onChange, placeholder = "Pick a time", class
   const [isOpen, setIsOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
 
-  // Split 24h format "HH:MM" into 12h parts
+  // Split 24h format "HH:MM" (or optional "HH:MM AM/PM") into 12h parts
   const parsedTime = React.useMemo(() => {
     if (!value) return { hour: "12", minute: "00", period: "AM" }
-    const [hStr, mStr] = value.split(":")
-    const h = parseInt(hStr, 10)
-    const period = h >= 12 ? "PM" : "AM"
-    const hour12 = h % 12 || 12
+    const trimmed = value.trim()
+    const ampmMatch = trimmed.match(/(AM|PM)/i)
+    const cleanTime = trimmed.replace(/(AM|PM)/i, '').trim()
+    const [hStr, mStr] = cleanTime.split(":")
+    const rawH = parseInt(hStr, 10) || 0
+    const m = (mStr || "00").replace(/\D/g, '').padStart(2, "0").substring(0, 2)
+    
+    let period = "AM"
+    if (ampmMatch) {
+      period = ampmMatch[1].toUpperCase()
+    } else if (rawH >= 12) {
+      period = "PM"
+    } else {
+      period = "AM"
+    }
+    const hour12 = rawH % 12 || 12
     return {
       hour: String(hour12).padStart(2, "0"),
-      minute: mStr || "00",
+      minute: m,
       period,
     }
   }, [value])

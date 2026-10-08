@@ -1,3 +1,5 @@
+import { formatTimeRange, splitTo12Hour } from '../components/routine/routineUtils';
+
 interface Course {
   id: number;
   course_id: string;
@@ -57,6 +59,16 @@ function formatDateStr(dateStr?: string): string {
   return `${day}/${month}/${year} ${dayName}`;
 }
 
+function formatNoticeTime(startTime?: string, endTime?: string): string {
+  if (startTime && endTime) {
+    return formatTimeRange(startTime, endTime, true);
+  } else if (startTime) {
+    const s12 = splitTo12Hour(startTime);
+    return `${s12.time} ${s12.period}`;
+  }
+  return 'Will announce later';
+}
+
 function formatCourseHeader(course: Course, sections: Section[]): string {
   const sectionNames = sections.map(s => s.name).filter((name): name is string => Boolean(name));
   let displayId = course.course_id;
@@ -113,11 +125,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
         else if (sec.timeOption === 'custom') { if (sec.startTime) msg += `   ⏰ *Time:* ${sec.startTime}\n`; }
         else if (sec.timeOption === 'tbd') { msg += '   ⏰ *Time:* Will announce later\n'; }
         else {
-          if (sec.startTime && sec.endTime) {
-            const [h1, m1] = sec.startTime.split(':'); const [h2, m2] = sec.endTime.split(':');
-            msg += `   ⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
-          } else if (sec.startTime) { const [h, m] = sec.startTime.split(':'); msg += `   ⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`; }
-          else { msg += '   ⏰ *Time:* Will announce later\n'; }
+          msg += `   ⏰ *Time:* ${formatNoticeTime(sec.startTime, sec.endTime)}\n`;
         }
         if (notice.makeupStatus === 'online' || sec.mode === 'Online') msg += '   🏫 *Room:* Online\n';
         else if (sec.room) msg += `   🏫 *Room:* ${sec.room}\n`;
@@ -156,11 +164,7 @@ export function compileSingleNotice(notice: Notice, courses: Course[]): string {
       else if (sec.timeOption === 'custom') { if (sec.startTime) msg += `⏰ *Time:* ${sec.startTime}\n`; }
       else if (sec.timeOption === 'tbd') { msg += '⏰ *Time:* Will announce later\n'; }
       else {
-        if (sec.startTime && sec.endTime) {
-          const [h1, m1] = sec.startTime.split(':'); const [h2, m2] = sec.endTime.split(':');
-          msg += `⏰ *Time:* ${parseInt(h1) % 12 || 12}:${m1} ${parseInt(h1) >= 12 ? 'PM' : 'AM'} – ${parseInt(h2) % 12 || 12}:${m2} ${parseInt(h2) >= 12 ? 'PM' : 'AM'}\n`;
-        } else if (sec.startTime) { const [h, m] = sec.startTime.split(':'); msg += `⏰ *Time:* ${parseInt(h) % 12 || 12}:${m} ${parseInt(h) >= 12 ? 'PM' : 'AM'}\n`; }
-        else { msg += '⏰ *Time:* Will announce later\n'; }
+        msg += `⏰ *Time:* ${formatNoticeTime(sec.startTime, sec.endTime)}\n`;
       }
       if (sec.mode === 'Online') msg += '🏫 *Room:* Online\n';
       else if (sec.room) msg += `🏫 *Room:* ${sec.room}\n`;

@@ -43,7 +43,7 @@ export default function CancelRescheduleModal({ announceTarget, onClose }: Cance
 
   const { routine, slot, matchedCourse } = announceTarget;
   const initials = matchedCourse ? matchedCourse.teacher_initials : '';
-  const timeRangeStr = formatTimeRange(slot.start, slot.end);
+  const timeRangeStr = formatTimeRange(slot.start, slot.end, true);
 
   const handleCancelClass = () => {
     onClose('cancel', {

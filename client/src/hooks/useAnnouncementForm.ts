@@ -9,6 +9,7 @@ import { confirm } from '../components/ui/ConfirmDialog';
 import { PRESET_DEFS, formatMessageToHtml } from '../lib/announcementPresets';
 import { FORM_MESSAGES, API_MESSAGES } from '../lib/validation';
 import { getCompiledMessage as getCompiledMsg } from '../lib/compileMessage';
+import { normalizeTo24Hour } from '../components/routine/routineUtils';
 
 function getInitialValue(key: string, defaultValue: any) {
   try {
@@ -227,11 +228,19 @@ getInitialValue('uploadedFiles', []));
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
       const matched = routines.filter((r: any) => r.day_of_week.toLowerCase() === dayName.toLowerCase());
       if (matched.length > 0) {
-        sectionsToSet = matched.map((m: any) => ({
-          name: m.section || '', startTime: m.start_time?.substring(0, 5) || '',
-          endTime: m.end_time?.substring(0, 5) || '', room: m.room_number || '',
-          mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd', date: ''
-        }));
+        sectionsToSet = matched.map((m: any) => {
+          const sTime = normalizeTo24Hour(m.start_time);
+          const eTime = normalizeTo24Hour(m.end_time, sTime);
+          return {
+            name: m.section || '',
+            startTime: sTime,
+            endTime: eTime,
+            room: m.room_number || '',
+            mode: 'Offline',
+            timeOption: m.start_time ? 'select' : 'tbd',
+            date: ''
+          };
+        });
       }
     }
     setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], selectedDate: nextOcc, sections: sectionsToSet }; return u; });
@@ -253,7 +262,19 @@ getInitialValue('uploadedFiles', []));
     const routines = await getCourseRoutines(notice.selectedCourseId);
     const matched = routines.filter((r: any) => r.day_of_week.toLowerCase() === dayName.toLowerCase());
     const sectionsToSet = matched.length > 0
-      ? matched.map((m: any) => ({ name: m.section || '', startTime: m.start_time?.substring(0, 5) || '', endTime: m.end_time?.substring(0, 5) || '', room: m.room_number || '', mode: 'Offline', timeOption: m.start_time ? 'select' : 'tbd', date: '' }))
+      ? matched.map((m: any) => {
+          const sTime = normalizeTo24Hour(m.start_time);
+          const eTime = normalizeTo24Hour(m.end_time, sTime);
+          return {
+            name: m.section || '',
+            startTime: sTime,
+            endTime: eTime,
+            room: m.room_number || '',
+            mode: 'Offline',
+            timeOption: m.start_time ? 'select' : 'tbd',
+            date: ''
+          };
+        })
       : [{ name: '', startTime: '', endTime: '', room: '', mode: 'Offline', timeOption: 'select', date: '' }];
     setNotices(prev => { const u = [...prev]; u[index] = { ...u[index], sections: sectionsToSet }; return u; });
   };
