@@ -130,7 +130,11 @@ getInitialValue('excludedAttachmentPlatforms', []));
   const [mentionAllPlatforms, setMentionAllPlatforms] = useState<number[]>(() =>
 getInitialValue('mentionAllPlatforms', []));
   const [pinPlatforms, setPinPlatforms] = useState<number[]>(() =>
-getInitialValue('pinPlatforms', []));
+    getInitialValue('pinPlatforms', []));
+  const [pinDuration, setPinDuration] = useState<number>(() => {
+    const saved = getInitialValue('pinDuration', 604800);
+    return Number(saved) || 604800;
+  });
   const [alreadySentPlatforms, setAlreadySentPlatforms] = useState<any[]>([]);
   const [waStatus, setWaStatus] = useState('DISCONNECTED');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>(() => 
@@ -394,7 +398,7 @@ getInitialValue('uploadedFiles', []));
           const p = platforms.find((pl: any) => pl.id === id);
           return p && p.platform_type === 'whatsapp';
         }),
-        pin_duration: 604800
+        pin_duration: pinDuration || 604800
       }
     };
   };
@@ -573,11 +577,11 @@ getInitialValue('uploadedFiles', []));
   useEffect(() => {
     clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
-      const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText, excludedAttachmentPlatforms, mentionAllPlatforms };
+      const draft = { broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText, excludedAttachmentPlatforms, mentionAllPlatforms, pinPlatforms, pinDuration };
       sessionStorage.setItem('announcement_draft', JSON.stringify(draft));
     }, 500);
     return () => clearTimeout(draftTimer.current);
-  }, [broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText]);
+  }, [broadcastMode, notices, closingText, selectedPlatforms, uploadedFiles, fileCaption, customText, excludedAttachmentPlatforms, mentionAllPlatforms, pinPlatforms, pinDuration]);
 
   useEffect(() => {
     const fileIdsParam = searchParams.get('file_ids');
@@ -626,6 +630,9 @@ getInitialValue('uploadedFiles', []));
           const p = platforms.find((pl: any) => pl.id === id);
           return p && p.platform_type === 'whatsapp';
         }));
+      }
+      if (meta.pin_duration) {
+        setPinDuration(Number(meta.pin_duration) || 604800);
       }
       if (meta.notices && Array.isArray(meta.notices)) {
         const noticesToSet = isClone
@@ -783,6 +790,7 @@ getInitialValue('uploadedFiles', []));
     selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
     mentionAllPlatforms, handlePlatformToggleMention,
     pinPlatforms, handlePlatformTogglePin, setPinPlatforms,
+    pinDuration, setPinDuration,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,

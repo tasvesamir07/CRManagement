@@ -202,14 +202,15 @@ app.post('/send-message', auth, async (req, res) => {
         const msgToPin = primaryMsg || sentMsg;
         if (shouldPin && msgToPin?.key) {
             try {
+                // Brief pause to allow WhatsApp servers to register the message before pinning
+                await new Promise(r => setTimeout(r, 500));
+                const targetPinDuration = Number(pinDuration) || 604800;
                 await sock.sendMessage(targetId, {
-                    pin: {
-                        type: 1,
-                        time: Number(pinDuration) || 604800,
-                        key: msgToPin.key
-                    }
+                    pin: msgToPin.key,
+                    type: 1,
+                    time: targetPinDuration
                 });
-                console.log(`[Relay] Pinned WhatsApp message ${msgToPin.key.id} in ${targetId} for ${Number(pinDuration) || 604800}s`);
+                console.log(`[Relay] Pinned WhatsApp message ${msgToPin.key.id} in ${targetId} for ${targetPinDuration}s`);
             } catch (pinErr) {
                 console.warn(`[Relay] Failed to pin WhatsApp message in ${targetId}:`, pinErr.message);
             }

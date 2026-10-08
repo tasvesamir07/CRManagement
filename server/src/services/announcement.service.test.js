@@ -261,4 +261,30 @@ describe('Announcement Service - Partial Broadcast and Edit Support', () => {
             { pin: true }
         );
     });
+
+    it('should forward custom pin duration (e.g. 30 days / 2592000s) to WhatsApp service', async () => {
+        const announcement = await announcementService.createAnnouncement({
+            title: 'Announcement with 30-day Pin',
+            content: 'Please pin this notice for 30 days',
+            category: 'notice',
+            course_id: courseId,
+            created_by: userId,
+            platform_ids: [platformWhatsappId],
+            metadata: {
+                pin_platform_ids: [platformWhatsappId],
+                pin_duration: 2592000
+            }
+        });
+
+        whatsappService.sendMessageToGroup = vi.fn().mockResolvedValue({ success: true, messageId: 'wa-pin-30d' });
+
+        await announcementService.sendAnnouncement(announcement.id);
+
+        expect(whatsappService.sendMessageToGroup).toHaveBeenCalledWith(
+            'wa-chat-123',
+            expect.any(String),
+            [],
+            { mentionAll: false, pin: true, pinDuration: 2592000 }
+        );
+    });
 });

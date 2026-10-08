@@ -352,7 +352,7 @@ if (isRelayMode) {
 
             sock = makeWASocket(socketConfig);
 
-            let connectingWatchdogTimer = setTimeout(() => {
+            const connectingWatchdogTimer = setTimeout(() => {
                 if (connectionStatus === 'CONNECTING' && !latestQr && sock) {
                     appLogger.warn('WhatsApp connection stuck in CONNECTING state. Auto-clearing session to refresh credentials.');
                     clearSession().catch(() => {});
@@ -607,14 +607,16 @@ if (isRelayMode) {
             const msgToPin = primaryMsg || sentMsg;
             if (options.pin && msgToPin?.key) {
                 try {
+                    // Brief pause to allow WhatsApp servers to register the message before pinning
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const pinKey = (typeof options.pin === 'object' && options.pin.key) ? options.pin.key : msgToPin.key;
+                    const pinDuration = Number(options.pinDuration || (typeof options.pin === 'object' && options.pin.time)) || 604800;
                     await sock.sendMessage(targetId, {
-                        pin: {
-                            type: 1,
-                            time: Number(options.pinDuration) || 604800,
-                            key: msgToPin.key
-                        }
+                        pin: pinKey,
+                        type: 1,
+                        time: pinDuration
                     });
-                    appLogger.info({ targetId, msgId: msgToPin.key.id }, 'Pinned WhatsApp message successfully');
+                    appLogger.info({ targetId, msgId: pinKey.id || msgToPin.key.id, pinDuration }, 'Pinned WhatsApp message successfully');
                 } catch (pinErr) {
                     appLogger.warn({ targetId, err: pinErr.message }, 'Failed to pin WhatsApp message (check group permissions)');
                 }

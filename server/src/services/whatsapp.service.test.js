@@ -42,4 +42,36 @@ describe('WhatsApp Service', () => {
         const status = whatsappService.getStatus();
         expect(status.qr).toBe('');
     });
+
+    it('should correctly format Baileys PinInChatMessage content structure', async () => {
+        const { generateWAMessage } = require('@whiskeysockets/baileys');
+        const key = {
+            remoteJid: '12036329481920@g.us',
+            fromMe: true,
+            id: '3EB0ABC123XYZ'
+        };
+
+        const validPinMsg = await generateWAMessage(
+            '12036329481920@g.us',
+            { pin: key, type: 1, time: 604800 },
+            { userJid: '12345@s.whatsapp.net' }
+        );
+
+        expect(validPinMsg.message).toBeDefined();
+        expect(validPinMsg.message.pinInChatMessage).toBeDefined();
+        expect(validPinMsg.message.pinInChatMessage.key).toEqual(key);
+        expect(validPinMsg.message.pinInChatMessage.type).toBe(1);
+        expect(validPinMsg.message.messageContextInfo.messageAddOnDurationInSecs).toBe(604800);
+    });
+
+    it('should safely reject or send when pin options are provided depending on connection state', async () => {
+        if (!whatsappService.isMock()) {
+            await expect(whatsappService.sendMessageToGroup('12036329481920@g.us', 'Notice to pin', null, { pin: true, pinDuration: 604800 }))
+                .rejects.toThrow('WhatsApp client is not connected');
+        } else {
+            const res = await whatsappService.sendMessageToGroup('12036329481920@g.us', 'Notice to pin', null, { pin: true, pinDuration: 604800 });
+            expect(res).toBeDefined();
+            expect(res.success).toBe(true);
+        }
+    });
 });

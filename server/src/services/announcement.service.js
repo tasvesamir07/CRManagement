@@ -226,10 +226,9 @@ async function sendAnnouncement(id, _hostUrl = '') {
             if (p.platform_type === 'whatsapp') {
                 let message = formatWhatsApp(announcement, course);
                 const shouldMentionAll = mentionAllPlatformIds.includes(Number(p.platform_id));
-                const shouldPin = Boolean(
-                    metadataObj.pin_whatsapp === true ||
-                    pinPlatformIds.includes(Number(p.platform_id))
-                );
+                const shouldPin = Array.isArray(metadataObj.pin_platform_ids)
+                    ? pinPlatformIds.includes(Number(p.platform_id))
+                    : Boolean(metadataObj.pin_whatsapp);
                 if (shouldMentionAll) {
                     message = `${MENTION_TOKENS.whatsapp}\n\n${message}`;
                 }

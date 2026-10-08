@@ -32,7 +32,7 @@ const AnnouncementForm: React.FC = () => {
     notices, setNotices, closingText, setClosingText,
     selectedPlatforms, excludedAttachmentPlatforms, handlePlatformToggleAttachment, alreadySentPlatforms, waStatus,
     mentionAllPlatforms, handlePlatformToggleMention,
-    pinPlatforms, handlePlatformTogglePin,
+    pinPlatforms, handlePlatformTogglePin, pinDuration, setPinDuration,
     uploadedFiles, uploadProgress, uploading, dragActive,
     submitting, announcementId, showConfirmModal, scheduleDateTime, showSchedulePicker,
     previewTab, setPreviewTab, showLibraryModal, showAIModal,
@@ -676,6 +676,8 @@ const AnnouncementForm: React.FC = () => {
             onToggleMention={handlePlatformToggleMention}
             pinPlatforms={pinPlatforms}
             onTogglePin={handlePlatformTogglePin}
+            pinDuration={pinDuration}
+            onChangePinDuration={setPinDuration}
           />
 
           <div className="pt-4 border-t border-hairline-cool space-y-4">
