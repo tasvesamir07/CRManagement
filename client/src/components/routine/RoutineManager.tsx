@@ -3,6 +3,7 @@ import { routinesAPI, coursesAPI } from '../../services/api';
 import { STANDARD_SLOTS_24 } from './routineUtils';
 import ClassCanvaEditor from './ClassCanvaEditor';
 import MoveRoutineModal from './MoveRoutineModal';
+import toast from 'react-hot-toast';
 
 interface Course {
   id: number;

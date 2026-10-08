@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { coursesAPI } from '../../services/api';
-import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, X, AlertCircle, Flag, Sparkles, Folder, Copy } from 'lucide-react';
 import { confirm } from '../ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 import MoveCourseModal from './MoveCourseModal';
