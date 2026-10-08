@@ -108,11 +108,11 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
   return (
     <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-8">
       {/* Top Header & Platform Selector */}
-      <div className="flex items-center justify-between border-b border-hairline-cool pb-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-hairline-cool pb-2.5">
         <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5 font-sans">
           <Smartphone className="w-4 h-4 text-primary" /> Live Device Preview
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Light/Dark Toggle for Phone Screen */}
           <button
             type="button"
@@ -129,7 +129,7 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
                 key={tab}
                 type="button"
                 onClick={() => onTabChange(tab)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-sm transition-all duration-150 cursor-pointer ${
+                className={`px-2 sm:px-2.5 py-1 text-xs font-medium rounded-sm transition-all duration-150 cursor-pointer ${
                   previewTab === tab ? 'bg-canvas text-ink font-semibold shadow-xs' : 'text-ink-mute hover:text-ink'
                 }`}
               >

@@ -171,14 +171,14 @@ const AnnouncementDetail: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link to="/dashboard" className="inline-flex items-center text-xs text-ink-mute hover:text-ink mb-2">
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to Dashboard
           </Link>
           <h1 className="text-display-md tracking-tight font-sans text-ink">{announcement.title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           {canEdit && (
             <Link
               to={`/announcement/edit/${announcement.id}`}
@@ -189,7 +189,7 @@ const AnnouncementDetail: React.FC = () => {
           )}
           <button
             onClick={handleDelete}
-            className="flex items-center px-3 py-1.5 border border-accent-tomato/20 rounded-sm text-xs font-medium text-accent-tomato hover:bg-accent-tomato/5 transition-colors"
+            className="flex items-center px-3 py-1.5 border border-accent-tomato/20 rounded-sm text-xs font-medium text-accent-tomato hover:bg-accent-tomato/5 transition-colors cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
           </button>
@@ -313,15 +313,17 @@ const AnnouncementDetail: React.FC = () => {
 
         {/* Preview Box */}
         <div className="bg-canvas-night text-on-dark rounded-lg p-4 font-sans text-sm leading-relaxed relative group">
-          <button
-            type="button"
-            onClick={() => handleCopyPlatform(activePlatformTab)}
-            className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-sm text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Clipboard className="w-3.5 h-3.5" />
-            Copy {activePlatformTab.charAt(0).toUpperCase() + activePlatformTab.slice(1)} Format
-          </button>
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed pt-6 sm:pt-0 pr-24">
+          <div className="flex justify-end mb-2 sm:mb-0">
+            <button
+              type="button"
+              onClick={() => handleCopyPlatform(activePlatformTab)}
+              className="sm:absolute sm:top-3 sm:right-3 flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-sm text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Clipboard className="w-3.5 h-3.5" />
+              Copy {activePlatformTab.charAt(0).toUpperCase() + activePlatformTab.slice(1)} Format
+            </button>
+          </div>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed sm:pr-28">
             {getFormattedMessageForPlatform(activePlatformTab)}
           </pre>
         </div>
@@ -333,9 +335,9 @@ const AnnouncementDetail: React.FC = () => {
         {announcement.delivery && announcement.delivery.length > 0 ? (
           <div className="space-y-3">
             {announcement.delivery.map((d, i) => (
-              <div key={i} className="flex items-center justify-between p-3 border border-hairline rounded-sm">
+              <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-hairline rounded-sm gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-sm bg-canvas-soft flex items-center justify-center border border-hairline">
+                  <div className="w-8 h-8 rounded-sm bg-canvas-soft flex items-center justify-center border border-hairline shrink-0">
                     {d.platform_type === 'whatsapp' ? (
                       <FaWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} /> 
                     ) : d.platform_type === 'telegram' ? (
@@ -344,12 +346,12 @@ const AnnouncementDetail: React.FC = () => {
                       <FaFacebookMessenger className="w-4 h-4" style={{ color: '#00B2FF' }} />
                     )}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-ink">{d.platform_name}</p>
-                    <p className="text-xs text-ink-mute font-mono">{d.chat_id || d.platform_id}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink truncate">{d.platform_name}</p>
+                    <p className="text-xs text-ink-mute font-mono truncate">{d.chat_id || d.platform_id}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                     d.platform_status === 'sent'
                       ? 'bg-primary/15 text-primary'
@@ -360,7 +362,7 @@ const AnnouncementDetail: React.FC = () => {
                     {d.platform_status}
                   </span>
                   {d.error_message && (
-                    <div className="mt-1 text-right">
+                    <div className="text-right">
                       <p className="text-[10px] text-accent-tomato max-w-[200px] truncate">{d.error_message}</p>
                       <button
                         type="button"

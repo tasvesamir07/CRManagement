@@ -94,9 +94,9 @@ export default function PlatformSelector({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <label className="text-xs font-medium text-ink-mute uppercase tracking-wider">Target Channels</label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {displayPlatforms.some(p => (p.platform_type === 'whatsapp' || p.platform_type === 'telegram') && selectedPlatforms.includes(p.id)) && (
             <button
               type="button"
@@ -199,9 +199,9 @@ export default function PlatformSelector({
 
         return (
           <div key={p.id}
-            className={`flex items-center justify-between p-2.5 sm:p-3 border rounded-sm transition-all cursor-pointer ${containerClass}`}
+            className={`flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 border rounded-sm transition-all cursor-pointer gap-2 ${containerClass}`}
             onClick={() => { if (!isUnavailable) onToggle(p.id); }}>
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="shrink-0">
                 {alreadySent ? (
                   <CheckCircle className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
@@ -220,13 +220,13 @@ export default function PlatformSelector({
                   <FaFacebookMessenger className="w-4 h-4" style={{ color: '#00B2FF' }} />
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h4 className="text-sm font-medium text-ink truncate">{p.platform_name}</h4>
                 <p className="text-[10px] text-ink-mute font-mono truncate">{p.chat_id}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end self-end sm:self-auto shrink-0">
               {isSelected && supportsMention && (
                 <button
                   type="button"

@@ -148,40 +148,67 @@ const AdminDashboard = () => {
               No broadcasts have been created yet.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-hairline-cool">
-                <thead>
-                  <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider">
-                    <th className="py-3 pr-4">Title</th>
-                    <th className="py-3 px-4">Created By</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
-                  {announcements.slice(0, 5).map((ann: AnnouncementData) => (
-                    <tr key={ann.id} className="hover:bg-canvas-soft transition-colors">
-                      <td className="py-3.5 pr-4 font-medium text-ink">
-                        <div className="truncate max-w-[200px]" title={ann.title}>{ann.title}</div>
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-mono">{ann.created_by_username || `User #${ann.created_by}`}</td>
-                      <td className="py-3.5 px-4 text-xs text-ink-mute">{new Date(ann.created_at).toLocaleDateString()}</td>
-                      <td className="py-3.5 px-4">
-                        {ann.status === 'sent' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary"><CheckCircle className="w-3.5 h-3.5 mr-1" /> Delivered</span>
-                        ) : ann.status === 'scheduled' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-violet/15 text-accent-violet"><Clock className="w-3.5 h-3.5 mr-1" /> Scheduled</span>
-                        ) : ann.status === 'failed' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-tomato/15 text-accent-tomato"><AlertTriangle className="w-3.5 h-3.5 mr-1" /> Failed</span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-hairline-strong/15 text-ink-mute"><Clock className="w-3.5 h-3.5 mr-1" /> {ann.status}</span>
-                        )}
-                      </td>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-hairline-cool">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-ink-mute uppercase tracking-wider">
+                      <th className="py-3 pr-4">Title</th>
+                      <th className="py-3 px-4">Created By</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-hairline-cool text-sm text-ink-secondary">
+                    {announcements.slice(0, 5).map((ann: AnnouncementData) => (
+                      <tr key={ann.id} className="hover:bg-canvas-soft transition-colors">
+                        <td className="py-3.5 pr-4 font-medium text-ink">
+                          <div className="truncate max-w-[200px]" title={ann.title}>{ann.title}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-mono">{ann.created_by_username || `User #${ann.created_by}`}</td>
+                        <td className="py-3.5 px-4 text-xs text-ink-mute">{new Date(ann.created_at).toLocaleDateString()}</td>
+                        <td className="py-3.5 px-4">
+                          {ann.status === 'sent' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary"><CheckCircle className="w-3.5 h-3.5 mr-1" /> Delivered</span>
+                          ) : ann.status === 'scheduled' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-violet/15 text-accent-violet"><Clock className="w-3.5 h-3.5 mr-1" /> Scheduled</span>
+                          ) : ann.status === 'failed' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-tomato/15 text-accent-tomato"><AlertTriangle className="w-3.5 h-3.5 mr-1" /> Failed</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-hairline-strong/15 text-ink-mute"><Clock className="w-3.5 h-3.5 mr-1" /> {ann.status}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card-Based View */}
+              <div className="sm:hidden divide-y divide-hairline-cool">
+                {announcements.slice(0, 5).map((ann: AnnouncementData) => (
+                  <div key={ann.id} className="py-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-ink truncate flex-1" title={ann.title}>{ann.title}</h4>
+                      {ann.status === 'sent' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/15 text-primary"><CheckCircle className="w-3 h-3 mr-1" /> Delivered</span>
+                      ) : ann.status === 'scheduled' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent-violet/15 text-accent-violet"><Clock className="w-3 h-3 mr-1" /> Scheduled</span>
+                      ) : ann.status === 'failed' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent-tomato/15 text-accent-tomato"><AlertTriangle className="w-3.5 h-3.5 mr-1" /> Failed</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-hairline-strong/15 text-ink-mute">{ann.status}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-ink-mute font-mono">
+                      <span>{ann.created_by_username || `User #${ann.created_by}`}</span>
+                      <span>{new Date(ann.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 

@@ -58,13 +58,13 @@ export default function AIDraftModal({ show, aiPrompt, onPromptChange, aiDraftin
           )}
         </div>
 
-        <div className="p-4 border-t border-hairline flex items-center justify-between bg-canvas-soft">
-          <span className="text-xs text-ink-mute">Powered by Gemini 1.5 Flash</span>
-          <div className="flex gap-2">
+        <div className="p-3 sm:p-4 border-t border-hairline flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-canvas-soft">
+          <span className="text-xs text-ink-mute text-center sm:text-left">Powered by Gemini 1.5 Flash</span>
+          <div className="flex items-center justify-end gap-2 flex-wrap">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft cursor-pointer bg-canvas"
+              className="flex-1 sm:flex-none px-4 py-2 border border-hairline rounded-sm text-sm font-medium text-ink hover:bg-canvas-soft cursor-pointer bg-canvas"
             >
               Cancel
             </button>
@@ -74,14 +74,14 @@ export default function AIDraftModal({ show, aiPrompt, onPromptChange, aiDraftin
                   type="button"
                   onClick={onGenerate}
                   disabled={aiDrafting}
-                  className="px-4 py-2 border border-primary text-primary hover:bg-primary/5 rounded-sm text-sm font-medium transition-colors cursor-pointer bg-canvas"
+                  className="flex-1 sm:flex-none px-4 py-2 border border-primary text-primary hover:bg-primary/5 rounded-sm text-sm font-medium transition-colors cursor-pointer bg-canvas"
                 >
                   {aiDrafting ? 'Regenerating...' : 'Regenerate'}
                 </button>
                 <button
                   type="button"
                   onClick={onUseDraft}
-                  className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer"
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer"
                 >
                   Use Draft
                 </button>
@@ -91,7 +91,7 @@ export default function AIDraftModal({ show, aiPrompt, onPromptChange, aiDraftin
                 type="button"
                 onClick={onGenerate}
                 disabled={aiDrafting || !aiPrompt.trim()}
-                className="px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer disabled:opacity-50 flex items-center gap-1.5 border-none"
+                className="flex-1 sm:flex-none px-4 py-2 rounded-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary-deep cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 border-none"
               >
                 {aiDrafting ? (
                   <>
