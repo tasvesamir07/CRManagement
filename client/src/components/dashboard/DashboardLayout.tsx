@@ -275,7 +275,11 @@ const DashboardLayout = () => {
             Offline Mode — Changes will sync automatically once reconnected
           </div>
         )}
-        <main id="main-content" className="flex-1 py-5 sm:py-8 lg:py-10 px-3.5 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
+        <main id="main-content" className={`flex-1 py-4 sm:py-6 lg:py-8 w-full mx-auto ${
+          location.pathname.startsWith('/routines') || location.pathname.startsWith('/exam-routines')
+            ? 'px-2 sm:px-4 lg:px-6 max-w-[1600px]' 
+            : 'px-3.5 sm:px-6 lg:px-8 max-w-7xl'
+        }`}>
           <ErrorBoundary>
             <Suspense fallback={
               <div className="w-full py-16 flex flex-col items-center justify-center space-y-3 animate-in fade-in duration-150">

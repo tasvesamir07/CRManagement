@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { filesAPI, examRoutinesAPI } from '../../services/api';
 import TipTapEditor from '../announcement/TipTapEditor';
@@ -7,7 +7,7 @@ import {
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
   ZoomIn, ZoomOut, Sliders, Type, Grid3X3, AlignLeft, AlignCenter, AlignRight, Save,
-  ChevronDown, Bold, Italic, FileText
+  ChevronDown, Bold, Italic, FileText, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -699,15 +699,74 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   
   const [showVerticalLines, setShowVerticalLines] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
-  const [zoom, setZoom] = useState(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      return 50;
-    }
-    return 100;
-  });
+  const [zoom, setZoom] = useState<number>(75);
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+
+  const userAdjustedZoomRef = useRef(false);
+
+  // Dynamic Fit to Screen Engine
+  const handleFitToScreen = useCallback(() => {
+    if (!workspaceRef.current) return;
+    const containerWidth = workspaceRef.current.clientWidth;
+    const containerHeight = workspaceRef.current.clientHeight;
+    if (!containerWidth || !containerHeight) return;
+
+    const curPosterHeight = canvasRef.current?.offsetHeight || 800;
+
+    const padX = containerWidth < 640 ? 14 : 36;
+    const padY = containerHeight < 640 ? 14 : 36;
+
+    const availW = Math.max(100, containerWidth - padX * 2);
+    const availH = Math.max(100, containerHeight - padY * 2);
+
+    const scaleW = availW / 550;
+    const scaleH = availH / curPosterHeight;
+
+    const targetScale = Math.min(scaleW, scaleH);
+    const targetZoom = Math.round(Math.min(Math.max(targetScale * 100, 20), 115));
+
+    setZoom(targetZoom);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  const resetView = () => {
+    userAdjustedZoomRef.current = false;
+    handleFitToScreen();
+  };
+
+  // Auto-fit on initial mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleFitToScreen();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [handleFitToScreen]);
+
+  // Auto-fit when container dimensions change
+  useEffect(() => {
+    if (!workspaceRef.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (!userAdjustedZoomRef.current) {
+        handleFitToScreen();
+      }
+    });
+    observer.observe(workspaceRef.current);
+    return () => observer.disconnect();
+  }, [handleFitToScreen]);
+
+  // Window resize fallback listener
+  useEffect(() => {
+    const handleWinResize = () => {
+      if (!userAdjustedZoomRef.current) {
+        handleFitToScreen();
+      }
+    };
+    window.addEventListener('resize', handleWinResize);
+    return () => window.removeEventListener('resize', handleWinResize);
+  }, [handleFitToScreen]);
 
   // 2D Canvas Pan & Drag State
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -735,12 +794,14 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
     if (!isPanning && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
       setIsPanning(true);
+      userAdjustedZoomRef.current = true;
       try {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch (_) {}
     }
 
     if (isPanning) {
+      userAdjustedZoomRef.current = true;
       setPan({
         x: panStartRef.current.panX + dx,
         y: panStartRef.current.panY + dy
@@ -758,9 +819,19 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
     }
   };
 
-  const resetView = () => {
-    setZoom(typeof window !== 'undefined' && window.innerWidth < 640 ? 50 : 100);
-    setPan({ x: 0, y: 0 });
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      userAdjustedZoomRef.current = true;
+      const delta = e.deltaY < 0 ? 5 : -5;
+      setZoom(prev => Math.min(150, Math.max(20, prev + delta)));
+    } else {
+      userAdjustedZoomRef.current = true;
+      setPan(prev => ({
+        x: prev.x - e.deltaX * 0.8,
+        y: prev.y - e.deltaY * 0.8
+      }));
+    }
   };
   
   // Custom font & text alignment state
@@ -1369,14 +1440,24 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
   };
 
   return (
-    <div className="bg-canvas border border-hairline rounded-lg shadow-md overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-full select-none relative">
+    <div className="bg-canvas border border-hairline rounded-xl shadow-md overflow-hidden flex flex-col lg:flex-row h-full w-full select-none relative">
       
-      {/* 1. SIDEBAR: Controls & Settings (Left 4 cols) */}
-      <div className={`border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col lg:col-span-4 lg:flex h-full lg:overflow-hidden ${
-        showMobileSidebar 
-          ? 'fixed inset-0 z-50 bg-canvas p-3 sm:p-4 lg:static lg:p-0 lg:z-auto' 
-          : 'hidden lg:flex'
-      }`}>
+      {/* Mobile Drawer Backdrop */}
+      {showMobileSidebar && (
+        <div 
+          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
+
+      {/* 1. SIDEBAR: Controls & Settings */}
+      <div className={`
+        ${sidebarCollapsed ? 'lg:hidden' : 'lg:flex lg:w-80 xl:w-92'}
+        ${showMobileSidebar 
+          ? 'fixed inset-y-0 left-0 z-50 w-full sm:w-96 flex flex-col bg-canvas shadow-2xl animate-in slide-in-from-left duration-200' 
+          : 'hidden lg:flex'}
+        shrink-0 border-b lg:border-b-0 lg:border-r border-hairline bg-canvas-soft flex flex-col h-full overflow-hidden transition-all duration-200
+      `}>
         
         <div className="p-3 sm:p-4 border-b border-hairline flex items-center justify-between bg-canvas flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -1425,7 +1506,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
         </div>
 
         {/* Settings Sections (Scrollable) */}
-        <div className="p-4 space-y-6 flex-grow lg:flex-1 lg:overflow-y-auto bg-canvas-soft">
+        <div className="p-3 sm:p-4 space-y-6 flex-1 overflow-y-auto bg-canvas-soft">
 
           {/* TAB 1: Theme & Style Settings */}
           {activeTab === 'theme' && (
@@ -2285,29 +2366,50 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
       </div>
 
-      {/* 2. MAIN CANVAS VIEW AREA (Right 8 cols) */}
-      <div className="lg:col-span-8 flex flex-col h-full bg-[#f8fafc] overflow-hidden relative">
+      {/* 2. MAIN CANVAS VIEW AREA */}
+      <div className="flex-1 min-w-0 flex flex-col h-full bg-[#f8fafc] overflow-hidden relative">
         
         {/* Canvas Toolbar Controls */}
         <div className="p-2 sm:p-3 border-b border-hairline flex flex-wrap items-center justify-between gap-2 bg-canvas no-export flex-shrink-0 z-30 shadow-xs">
           
-          {/* Left Group: Mobile Edit Controls Toggle + Lock + Zoom */}
+          {/* Left Group: Controls Toggle + Lock + Zoom */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            {/* Mobile Controls Toggle */}
             <button
+              type="button"
               onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-              className={`lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded cursor-pointer border transition-colors ${
+              className={`lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg cursor-pointer border transition-colors shadow-xs ${
                 showMobileSidebar 
-                  ? 'bg-primary text-on-primary border-primary shadow-xs' 
+                  ? 'bg-primary text-on-primary border-primary' 
                   : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>{showMobileSidebar ? 'Hide Controls' : 'Edit Controls'}</span>
+              <span>Controls</span>
+            </button>
+
+            {/* Desktop Sidebar Collapse Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                userAdjustedZoomRef.current = false;
+                setSidebarCollapsed(prev => !prev);
+                setTimeout(handleFitToScreen, 150);
+              }}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold border border-hairline rounded-lg hover:bg-canvas-soft bg-canvas text-ink cursor-pointer transition-colors shadow-xs"
+              title={sidebarCollapsed ? "Show Controls Panel" : "Collapse Controls Panel for Wide Canvas"}
+            >
+              {sidebarCollapsed ? (
+                <><PanelLeftOpen className="w-3.5 h-3.5 text-primary" /> <span>Controls</span></>
+              ) : (
+                <><PanelLeftClose className="w-3.5 h-3.5 text-ink-mute" /> <span>Collapse</span></>
+              )}
             </button>
 
             <button
+              type="button"
               onClick={() => setIsLocked(!isLocked)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded cursor-pointer border ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg cursor-pointer border transition-colors ${
                 isLocked 
                   ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
                   : 'bg-canvas border-hairline text-gray-600 hover:bg-canvas-soft'
@@ -2325,24 +2427,33 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
 
             <div className="flex items-center gap-1">
               <button 
-                onClick={() => setZoom(Math.max(25, zoom - 10))} 
-                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
+                type="button"
+                onClick={() => {
+                  userAdjustedZoomRef.current = true;
+                  setZoom(Math.max(20, zoom - 10));
+                }} 
+                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded-lg cursor-pointer text-gray-500 hover:text-ink transition-colors"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
               <span className="text-[11px] sm:text-xs font-mono font-medium px-0.5 sm:px-1 w-8 sm:w-10 text-center text-ink">{zoom}%</span>
               <button 
-                onClick={() => setZoom(Math.min(150, zoom + 10))} 
-                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded cursor-pointer text-gray-500 hover:text-ink"
+                type="button"
+                onClick={() => {
+                  userAdjustedZoomRef.current = true;
+                  setZoom(Math.min(150, zoom + 10));
+                }} 
+                className="p-1 sm:p-1.5 hover:bg-canvas-soft border border-hairline rounded-lg cursor-pointer text-gray-500 hover:text-ink transition-colors"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
               <button
+                type="button"
                 onClick={resetView}
-                className="px-1.5 sm:px-2 py-1 text-[10px] font-bold border border-hairline rounded hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-0.5"
-                title="Reset view and fit routine to screen"
+                className="px-2 py-1 text-[11px] font-bold border border-hairline rounded-lg hover:bg-canvas-soft bg-canvas text-primary cursor-pointer transition-colors shadow-xs ml-0.5"
+                title="Auto-fit routine card to screen"
               >
                 Fit
               </button>
@@ -2397,12 +2508,13 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onWheel={handleWheel}
           style={{
             backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
             backgroundSize: '16px 16px',
             touchAction: 'none'
           }}
-          className={`flex-1 overflow-hidden flex items-center justify-center bg-[#f8fafc] select-none relative h-full min-h-[480px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`flex-1 overflow-hidden flex items-center justify-center bg-[#f8fafc] select-none relative h-full min-h-[350px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
           {/* 2D Panned & Scaled Poster Wrapper */}
           <div 
