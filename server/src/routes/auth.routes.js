@@ -84,11 +84,12 @@ const twoFALimiter = rateLimit({
  */
 function setAuthCookie(res, token) {
     if (!token) return;
-    const isProduction = process.env.NODE_ENV === 'production';
+    const req = res.req;
+    const isHttps = req?.secure || req?.headers?.['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
     res.cookie('cr_token', token, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure: isHttps,
+        sameSite: isHttps ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000,
         path: '/'
     });

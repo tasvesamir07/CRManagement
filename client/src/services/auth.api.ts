@@ -1,4 +1,4 @@
-import api from './http-client';
+import api, { setAuthToken } from './http-client';
 import { OfflineCache } from './offline';
 
 const cacheCoursesAndPlatforms = () => {
@@ -11,6 +11,9 @@ const cacheCoursesAndPlatforms = () => {
 export const authAPI = {
   login: async (username: string, password: string) => {
     const res = await api.post('/auth/login', { username, password });
+    if (res.data?.token) {
+      setAuthToken(res.data.token);
+    }
     if (res.data && !res.data.requiresTwoFactor) {
       cacheCoursesAndPlatforms();
     }
@@ -18,6 +21,9 @@ export const authAPI = {
   },
   login2FA: async (userId: string, token: string) => {
     const res = await api.post('/auth/login-2fa', { userId, token });
+    if (res.data?.token) {
+      setAuthToken(res.data.token);
+    }
     if (res.data) {
       cacheCoursesAndPlatforms();
     }
@@ -25,6 +31,9 @@ export const authAPI = {
   },
   register: async (username: string, email: string, password: string, displayName: string) => {
     const res = await api.post('/auth/register', { username, email, password, displayName });
+    if (res.data?.token) {
+      setAuthToken(res.data.token);
+    }
     if (res.data) {
       cacheCoursesAndPlatforms();
     }
@@ -32,6 +41,9 @@ export const authAPI = {
   },
   me: async () => {
     const res = await api.get('/auth/me');
+    if (res.data?.token) {
+      setAuthToken(res.data.token);
+    }
     return res.data;
   },
   changePassword: async (currentPassword: string, newPassword: string) => {
@@ -75,6 +87,7 @@ export const authAPI = {
     return res.data;
   },
   logout: async () => {
+    setAuthToken(null);
     const res = await api.post('/auth/logout');
     return res.data;
   }

@@ -15,6 +15,13 @@ const api: AxiosInstance = axios.create({
 });
 
 let cachedCsrfToken: string | null = null;
+let inMemoryToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+    inMemoryToken = token;
+};
+
+export const getAuthToken = () => inMemoryToken;
 
 function getCookieValue(name: string): string | null {
     if (typeof document === 'undefined') return null;
@@ -24,8 +31,12 @@ function getCookieValue(name: string): string | null {
 
 api.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-        // Authentication is managed strictly via HttpOnly cookies sent via withCredentials: true
+        // Authentication is managed strictly via HttpOnly cookies and in-memory token
         // Tokens are never stored in localStorage to prevent XSS-based credential theft
+        if (inMemoryToken && !config.headers['Authorization']) {
+            config.headers['Authorization'] = `Bearer ${inMemoryToken}`;
+        }
+
         const method = config.method?.toLowerCase();
         const isMutating = ['post', 'put', 'delete', 'patch'].includes(method || '');
 
