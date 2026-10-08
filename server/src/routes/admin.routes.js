@@ -1,10 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const adminMiddleware = require('../middleware/admin.middleware');
 const adminService = require('../services/admin.service');
 const { audit } = require('../middleware/audit.middleware');
 const auditService = require('../services/audit.service');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
+
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many admin requests. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+router.use(adminLimiter);
 
 /**
  * @openapi
@@ -23,7 +35,7 @@ router.get('/users', adminMiddleware, async (req, res) => {
         const users = await adminService.getAllUsers();
         return res.json({ users });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -64,7 +76,7 @@ router.post('/users', adminMiddleware, audit('admin.create_user', 'user'), valid
         const user = await adminService.adminCreateUser({ username, email, password, displayName, role });
         return res.status(201).json({ user });
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -106,7 +118,7 @@ router.put('/users/:id', adminMiddleware, audit('admin.update_user', 'user'), va
         const user = await adminService.adminUpdateUser(parseInt(req.params.id), { displayName, role });
         return res.json({ user });
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -136,7 +148,7 @@ router.delete('/users/:id', adminMiddleware, audit('admin.delete_user', 'user'),
         const result = await adminService.adminDeleteUser(parseInt(req.params.id));
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -185,7 +197,7 @@ router.get('/audit-logs', adminMiddleware, validate(schemas.logs.listQuery), asy
         });
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

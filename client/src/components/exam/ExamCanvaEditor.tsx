@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { filesAPI, examRoutinesAPI } from '../../services/api';
 import TipTapEditor from '../announcement/TipTapEditor';
 import { htmlToWhatsappMarkdown } from '../../lib/htmlParser';
+import DOMPurify from 'dompurify';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, 
   MoveUp, MoveDown, Lock, Unlock, X, RefreshCw, 
@@ -2915,7 +2916,7 @@ const ExamCanvaEditor: React.FC<ExamCanvaEditorProps> = ({ routines, courses, on
                   </div>
                   <div 
                     className="prose prose-xs max-w-none text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: routineNotes }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(routineNotes) }}
                   />
                 </div>
               )}

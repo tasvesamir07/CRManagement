@@ -20,8 +20,11 @@ const url = require('url');
 const crypto = require('crypto');
 const nodeCron = require('node-cron');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/config/swagger');
+const { csrfProtection, getCsrfTokenHandler } = require('./src/middleware/csrf.middleware');
+const { errorHandler, handleServerError } = require('./src/middleware/error.middleware');
 
 // Import services & configs
 const logger = require('./src/config/logger');
@@ -79,9 +82,8 @@ app.use(helmet({
             scriptSrc: [
                 "'self'",
                 "'unsafe-inline'",
-                // Swagger UI requires unsafe-eval; safe eval disabled in strict mode
-                "'unsafe-eval'",
-                // Allow inline <script> tags (needed for Swagger UI init)
+                // Only allow unsafe-eval in development mode
+                ...(isDev ? ["'unsafe-eval'"] : []),
             ],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
@@ -100,8 +102,9 @@ app.use(helmet({
         }
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    // Prevent MIME-type sniffing
-    nosniff: true,
+    noSniff: true,
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 const rawCorsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
 if (rawCorsOrigin === '*') {
@@ -144,6 +147,9 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+app.use(csrfProtection);
+app.get(['/api/csrf-token', '/api/v1/csrf-token'], getCsrfTokenHandler);
 
 // Static route for locally uploaded files
 app.use('/uploads', express.static(fileService.uploadsDir));
@@ -152,7 +158,8 @@ app.use('/uploads', express.static(fileService.uploadsDir));
 app.use((req, res, next) => {
     if (!process.env.VERCEL) return next();
     if (envError) {
-        return res.status(500).json({ error: envError.message });
+        logger.error({ err: envError }, 'Vercel environment startup error');
+        return res.status(500).json({ error: 'Server initialization error' });
     }
     next();
 });
@@ -164,7 +171,7 @@ app.use(async (req, res, next) => {
         await db.waitForInit();
         next();
     } catch (err) {
-        res.status(500).json({ error: 'Database initialization failed', details: err.message });
+        return handleServerError(res, err, 'Database initialization failed');
     }
 });
 
@@ -276,10 +283,7 @@ mountRoutes('/api/v1');
 
 // Error Handling Middleware
 logger.debug('Mounting error middleware...');
-app.use((err, req, res, _next) => {
-    logger.error({ err }, 'Unhandled server error');
-    res.status(500).json({ error: err.message || 'Internal Server Error' });
-});
+app.use(errorHandler);
 
 // Create HTTP server
 logger.debug('Creating HTTP server...');
@@ -296,7 +300,16 @@ if (!isVercel) {
         server,
         verifyClient: (info, cb) => {
             const query = url.parse(info.req.url, true).query;
-            const token = query.token;
+            let token = query.token;
+
+            if (!token && info.req.headers.cookie) {
+                const cookies = info.req.headers.cookie.split(';').reduce((acc, c) => {
+                    const [k, ...v] = c.trim().split('=');
+                    acc[k] = v.join('=');
+                    return acc;
+                }, {});
+                token = cookies['cr_token'];
+            }
 
             if (!token) {
                 cb(false, 401, 'Unauthorized: no token provided');

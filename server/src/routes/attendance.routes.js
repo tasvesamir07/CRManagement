@@ -5,6 +5,7 @@ const attendanceService = require('../services/attendance.service');
 const pdfService = require('../services/pdf.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError } = require('../middleware/error.middleware');
 
 router.get('/', authMiddleware, async (req, res) => {
     try {
@@ -16,7 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const result = await attendanceService.getAttendance(course_id, date, exam_routine_id, page, limit);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -25,7 +26,7 @@ router.post('/bulk', authMiddleware, validate(schemas.attendance.bulkMark), asyn
         const result = await attendanceService.bulkMarkAttendance(req.body, req.user.id);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -34,7 +35,7 @@ router.get('/saved', authMiddleware, async (req, res) => {
         const result = await attendanceService.getSavedAttendanceSheets();
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -46,7 +47,7 @@ router.delete('/course/:courseId/date/:date', authMiddleware, async (req, res) =
         await attendanceService.deleteAttendanceSheet(courseId, date, exam_routine_id);
         return res.json({ message: 'Attendance sheet deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -58,7 +59,7 @@ router.get('/course/:courseId/date/:date', authMiddleware, async (req, res) => {
         const result = await attendanceService.getEnrolledStudentsWithAttendance(courseId, date, exam_routine_id);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -98,7 +99,7 @@ router.get('/course/:courseId/date/:date/pdf', authMiddleware, async (req, res) 
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         return res.send(pdfBuffer);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -107,7 +108,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         const result = await attendanceService.updateAttendance(req.params.id, req.body);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -116,7 +117,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         const result = await attendanceService.deleteAttendance(req.params.id);
         return res.json(result || { message: 'Attendance record deleted' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -127,7 +128,7 @@ router.get('/student/:studentId/summary', authMiddleware, async (req, res) => {
         const result = await attendanceService.getAttendanceSummary(studentId, course_id);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

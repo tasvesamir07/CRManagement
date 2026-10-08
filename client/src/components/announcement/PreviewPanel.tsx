@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { formatMessageToHtml } from '../../lib/announcementPresets';
 import { loadFontsFromHtml } from '../../lib/fontLoader';
 import { htmlToWhatsappMarkdown, cleanHtmlForTelegram, stripHtml } from '../../lib/htmlParser';
+import DOMPurify from 'dompurify';
 import type { UploadedFile } from './types';
 
 interface PreviewPanelProps {
@@ -224,7 +225,7 @@ export default function PreviewPanel({ compiledMessage, previewTab, onTabChange,
               }`}>CR Class Notices</div>
             )}
 
-            <div className="pb-4 leading-relaxed break-words text-[11px] font-sans" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            <div className="pb-4 leading-relaxed break-words text-[11px] font-sans" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedHtml) }} />
 
             <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[9px] opacity-75 select-none font-mono">
               <span>9:41 AM</span>

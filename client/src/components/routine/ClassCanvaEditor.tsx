@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { routinesAPI, filesAPI } from '../../services/api';
 import TipTapEditor from '../announcement/TipTapEditor';
 import { htmlToWhatsappMarkdown } from '../../lib/htmlParser';
+import DOMPurify from 'dompurify';
 import { 
   Palette, Download, Share2, Plus, Trash2, Copy, Move, ArrowRightLeft,
   Lock, Unlock, X, RefreshCw, ZoomIn, ZoomOut, Sliders, Type, Grid3X3, Calendar, Save, Trash, Edit, Check, AlignLeft, AlignCenter, AlignRight, ChevronDown, Bold, Italic, FileText,
@@ -2685,7 +2686,7 @@ const ClassCanvaEditor: React.FC<ClassCanvaEditorProps> = ({
                   </div>
                   <div 
                     className="prose prose-xs max-w-none text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: routineNotes }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(routineNotes) }}
                   />
                 </div>
               )}

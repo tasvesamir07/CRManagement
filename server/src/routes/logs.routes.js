@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth.middleware');
 const auditService = require('../services/audit.service');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError } = require('../middleware/error.middleware');
 
 /**
  * @openapi
@@ -55,7 +56,7 @@ router.get('/', authMiddleware, validate(schemas.logs.listQuery), async (req, re
 
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -93,7 +94,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
 
         return res.json({ message: 'Log deleted successfully.' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -118,7 +119,7 @@ router.delete('/', authMiddleware, async (req, res) => {
 
         return res.json({ message: 'Logs cleared successfully.' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

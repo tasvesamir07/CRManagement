@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const analyticsService = require('../services/analytics.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, schemas } = require('../middleware/validate.middleware');
+const { handleServerError } = require('../middleware/error.middleware');
 
 const trackLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -30,7 +31,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
     const stats = await analyticsService.getDashboardStats();
     return res.json(stats);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -63,7 +64,7 @@ router.post('/track', authMiddleware, trackLimiter, validate(schemas.analytics.t
     await analyticsService.track(event_type, req.user?.id, metadata);
     return res.json({ success: true });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 

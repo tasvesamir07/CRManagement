@@ -1,10 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const cache = require('../config/cache');
 const { validate, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
+
+const bulkLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: { error: 'Too many bulk operations. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+router.use(bulkLimiter);
 
 /**
  * @openapi
@@ -39,7 +51,7 @@ router.post('/courses/delete', adminMiddleware, validate(schemas.bulk.deleteIds)
         cache.invalidatePattern('courses:');
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -80,7 +92,7 @@ router.post('/platforms/delete', authMiddleware, validate(schemas.bulk.deleteIds
         cache.invalidatePattern('platforms:');
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -116,7 +128,7 @@ router.post('/announcements/delete', authMiddleware, validate(schemas.bulk.delet
         );
         return res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -154,7 +166,7 @@ router.post('/files/delete', authMiddleware, validate(schemas.bulk.deleteIds), a
         }
         return res.json({ deleted: count, ids });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -179,7 +191,7 @@ router.post('/platforms/test-connections', authMiddleware, async (req, res) => {
             telegram: !telegramStatus
         });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -235,7 +247,7 @@ router.post('/routines/batch', authMiddleware, validate(schemas.bulk.createRouti
         }
         return res.status(201).json({ created: results.length, routines: results });
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 

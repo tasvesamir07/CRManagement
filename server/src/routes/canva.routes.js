@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const db = require('../config/database');
 const { validate, schemas } = require('../middleware/validate.middleware');
+const { handleServerError } = require('../middleware/error.middleware');
 const crypto = require('crypto');
 
 router.get('/auth', authMiddleware, async (req, res) => {
@@ -20,7 +21,7 @@ router.get('/auth', authMiddleware, async (req, res) => {
 
     res.json({ url, state });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -53,7 +54,7 @@ router.get('/callback', async (req, res) => {
 
     res.redirect('/settings?canva=connected');
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -66,7 +67,7 @@ router.get('/templates', authMiddleware, async (req, res) => {
 
     res.json({ templates: rows });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -81,7 +82,7 @@ router.post('/templates', authMiddleware, validate(schemas.canva.saveTemplate), 
 
     res.status(201).json({ id: result.rows[0].id, canva_template_id, name });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -114,7 +115,7 @@ router.get('/templates/:id/dataset', authMiddleware, async (req, res) => {
 
     res.json({ dataset });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 
@@ -155,7 +156,7 @@ router.post('/generate-pdf', authMiddleware, validate(schemas.canva.generatePdf)
 
     res.send(pdfBuffer);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return handleServerError(res, err);
   }
 });
 

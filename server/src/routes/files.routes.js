@@ -5,12 +5,21 @@ const fileService = require('../services/file.service');
 const uploadMiddleware = require('../middleware/upload.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError } = require('../middleware/error.middleware');
 const logger = require('../config/logger');
 
 const uploadLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10,
     message: { error: 'Too many uploads. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const listLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: { error: 'Too many file requests. Please slow down.' },
     standardHeaders: true,
     legacyHeaders: false
 });
@@ -43,7 +52,7 @@ const uploadLimiter = rateLimit({
  *       400:
  *         description: No file uploaded
  */
-router.post('/upload', authMiddleware, uploadLimiter, uploadMiddleware.single('file'), async (req, res) => {
+router.post('/upload', authMiddleware, uploadLimiter, uploadMiddleware.single('file'), uploadMiddleware.validateFileInspection, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -54,8 +63,7 @@ router.post('/upload', authMiddleware, uploadLimiter, uploadMiddleware.single('f
         const fileRecord = await fileService.uploadFile(req.file, req.user.id, { overwrite, folderId });
         return res.status(201).json(fileRecord);
     } catch (err) {
-        logger.error({ err }, 'File upload route error');
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err, 'File upload failed');
     }
 });
 
@@ -88,7 +96,7 @@ router.post('/check-duplicate', authMiddleware, validate(schemas.files.checkDupl
         const duplicate = await fileService.checkDuplicate(filename, folderId);
         return res.json({ duplicate: !!duplicate, file: duplicate });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -137,7 +145,7 @@ router.get('/', authMiddleware, validateQuery(schemas.files.listQuery), async (r
         });
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -181,7 +189,7 @@ router.get('/folders', authMiddleware, async (req, res) => {
         const folders = await fileService.listFolders(req.user.id);
         return res.json(folders);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -191,7 +199,7 @@ router.post('/folders', authMiddleware, validate(schemas.files.createFolder), as
         const folder = await fileService.createFolder(name, courseId, req.user.id);
         return res.status(201).json(folder);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -230,7 +238,7 @@ router.delete('/folders/:id', authMiddleware, validateParams(schemas.params.id),
         }
         return res.json({ message: 'Folder deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -251,7 +259,7 @@ router.get('/storage-usage', authMiddleware, async (req, res) => {
         const usage = await fileService.getStorageUsage();
         return res.json(usage);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -282,7 +290,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
         const data = await fileService.getFileUrl(req.params.id, hostUrl);
         return res.json(data);
     } catch (err) {
-        return res.status(404).json({ error: err.message });
+        return res.status(404).json({ error: 'File not found or has expired' });
     }
 });
 
@@ -315,7 +323,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         }
         return res.json({ message: 'File deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -357,7 +365,7 @@ router.post('/compress', authMiddleware, async (req, res) => {
         const record = await fileService.compressFiles(ids, archiveName, folderId, req.user.id);
         return res.json(record);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -399,7 +407,7 @@ router.post('/extract/:id', authMiddleware, async (req, res) => {
         });
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -439,7 +447,7 @@ router.post('/move', authMiddleware, async (req, res) => {
         await fileService.moveFiles(ids, folderId);
         return res.json({ message: 'Files moved successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -480,7 +488,10 @@ router.patch('/:id/expiry', authMiddleware, async (req, res) => {
         const file = await fileService.updateFileExpiry(req.params.id, expiresAt, req.user.id);
         return res.json(file);
     } catch (err) {
-        return res.status(err.message === 'Unauthorized to modify this file' ? 403 : 500).json({ error: err.message });
+        if (err.message === 'Unauthorized to modify this file') {
+            return res.status(403).json({ error: 'Unauthorized to modify this file' });
+        }
+        return handleServerError(res, err, 'Failed to update file expiry');
     }
 });
 

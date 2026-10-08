@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const authService = require('../services/auth.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 const logger = require('../config/logger');
 
 // Rate limiting on login: 5 attempts per 15 minutes
@@ -81,14 +82,27 @@ const twoFALimiter = rateLimit({
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+function setAuthCookie(res, token) {
+    if (!token) return;
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('cr_token', token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+}
+
 router.post('/register', registerLimiter, validate(schemas.auth.register), async (req, res) => {
     try {
         const { username, email, password, displayName, role } = req.body;
         const result = await authService.register(username, email, password, displayName, role);
+        if (result && result.token) setAuthCookie(res, result.token);
         return res.status(201).json(result);
     } catch (err) {
         logger.warn({ username: req.body?.username, email: req.body?.email, ip: req.ip }, `Registration failed: ${err.message}`);
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -127,10 +141,11 @@ router.post('/login', loginLimiter, validate(schemas.auth.login), async (req, re
     try {
         const { username, password } = req.body;
         const result = await authService.login(username, password);
+        if (result && result.token) setAuthCookie(res, result.token);
         return res.json(result);
     } catch (err) {
         logger.warn({ username: req.body?.username, ip: req.ip }, `Login failed: ${err.message}`);
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -165,10 +180,37 @@ router.post('/login-2fa', twoFALimiter, validate(schemas.auth.verify2FA), async 
     try {
         const { userId, token } = req.body;
         const result = await authService.verify2FALogin(userId, token);
+        if (result && result.token) setAuthCookie(res, result.token);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
+});
+
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout and clear authentication cookies
+ *     responses:
+ *       200:
+ *         description: Successfully logged out
+ */
+router.post('/logout', (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('cr_token', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/'
+    });
+    res.clearCookie('XSRF-TOKEN', {
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/'
+    });
+    return res.json({ message: 'Logged out successfully' });
 });
 
 /**
@@ -201,7 +243,7 @@ router.get('/me', authMiddleware, async (req, res) => {
         }
         return res.json({ user });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -234,7 +276,7 @@ router.put('/profile', authMiddleware, validate(schemas.auth.updateProfile), asy
         const result = await authService.updateProfile(req.user.id, { displayName });
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -266,9 +308,10 @@ router.put('/username', authMiddleware, validate(schemas.auth.changeUsername), a
     try {
         const { newUsername, password } = req.body;
         const result = await authService.changeUsername(req.user.id, newUsername, password);
+        if (result && result.token) setAuthCookie(res, result.token);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -302,7 +345,7 @@ router.put('/email', authMiddleware, validate(schemas.auth.changeEmail), async (
         const result = await authService.changeEmail(req.user.id, newEmail, password);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -336,7 +379,7 @@ router.put('/password', authMiddleware, validate(schemas.auth.changePassword), a
         const result = await authService.changePassword(req.user.id, currentPassword, newPassword);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -368,7 +411,7 @@ router.post('/forgot-password', forgotPasswordLimiter, validate(schemas.auth.for
         const result = await authService.forgotPassword(email);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -401,7 +444,7 @@ router.post('/verify-otp', otpLimiter, validate(schemas.auth.verifyOtp), async (
         const result = await authService.verifyOtp(email, otp);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -434,7 +477,7 @@ router.post('/reset-password', validate(schemas.auth.resetPassword), async (req,
         const result = await authService.resetPassword(email, otp, newPassword);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -465,7 +508,7 @@ router.post('/2fa/setup', authMiddleware, async (req, res) => {
         const result = await authService.setup2FA(req.user.id);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -499,7 +542,7 @@ router.post('/2fa/enable', authMiddleware, validate(schemas.auth.enable2FA), asy
         const result = await authService.enable2FA(req.user.id, token);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -533,7 +576,7 @@ router.post('/2fa/disable', authMiddleware, validate(schemas.auth.disable2FA), a
         const result = await authService.disable2FA(req.user.id, password);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 

@@ -86,7 +86,7 @@ const Profile = () => {
     setChangingUsername(true);
     try {
       const data2 = await authAPI.changeUsername(newUsername, usernamePassword);
-      localStorage.setItem('cr_token', data2.token);
+      localStorage.removeItem('cr_token');
       const updatedUser = { ...user, username: newUsername };
       setUser(updatedUser);
       localStorage.setItem('cr_user', JSON.stringify(updatedUser));

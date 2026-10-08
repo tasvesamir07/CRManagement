@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const announcementService = require('../services/announcement.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateQuery, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 const logger = require('../config/logger');
 
 const sendLimiter = rateLimit({
@@ -64,7 +65,7 @@ router.get('/', authMiddleware, validateQuery(schemas.announcements.listQuery), 
         });
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -121,7 +122,7 @@ router.post('/', authMiddleware, validate(schemas.announcements.create), async (
         
         return res.status(201).json(announcement);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -157,7 +158,7 @@ router.get('/:id', authMiddleware, validateParams(schemas.params.id), async (req
         }
         return res.json(announcement);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -206,7 +207,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         });
         return res.json(announcement);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -245,7 +246,7 @@ router.post('/:id/schedule', authMiddleware, validateParams(schemas.params.id), 
         const announcement = await announcementService.scheduleAnnouncement(req.params.id, scheduled_at);
         return res.json(announcement);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -306,8 +307,7 @@ router.post('/:id/send', authMiddleware, validateParams(schemas.params.id), send
         const result = await announcementService.sendAnnouncement(req.params.id, hostUrl);
         return res.json(result);
     } catch (err) {
-        logger.error({ err }, 'Send announcement route error');
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err, 'Send announcement route error');
     }
 });
 
@@ -392,8 +392,7 @@ router.post('/draft-ai', authMiddleware, validate(schemas.announcements.draftAI)
         const draftText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate draft content.';
         return res.json({ draft: draftText.trim() });
     } catch (err) {
-        logger.error({ err }, 'Draft announcement AI error');
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err, 'Draft announcement AI error');
     }
 });
 
@@ -424,7 +423,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         }
         return res.json({ message: 'Announcement deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

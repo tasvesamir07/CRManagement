@@ -62,12 +62,10 @@ export function useWebSocket({ onMessage, enabled = true }: WebSocketOptions = {
     const connectWs = () => {
       clearTimers();
 
-      const token = localStorage.getItem('cr_token');
-      // Dynamically derive the WebSocket URL from the VITE_API_URL to keep them in sync
+      // Dynamically derive the WebSocket URL; HttpOnly cookies are attached automatically during handshake
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const baseUrl = apiBase.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
-      const wsUrl = token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(baseUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

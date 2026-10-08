@@ -3,6 +3,7 @@ const router = express.Router();
 const studentService = require('../services/student.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 
 router.get('/', authMiddleware, async (req, res) => {
     try {
@@ -13,7 +14,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const result = await studentService.getStudents(course_id, search, page, limit);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -22,7 +23,7 @@ router.post('/', authMiddleware, validate(schemas.students.create), async (req, 
         const student = await studentService.createStudent(req.body);
         return res.status(201).json(student);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -32,7 +33,7 @@ router.get('/:id', authMiddleware, validateParams(schemas.params.id), async (req
         if (!student) return res.status(404).json({ error: 'Student not found' });
         return res.json(student);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -41,7 +42,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         const student = await studentService.updateStudent(req.params.id, req.body);
         return res.json(student);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -51,7 +52,7 @@ router.put('/:id/with-courses', authMiddleware, validateParams(schemas.params.id
         if (!student) return res.status(404).json({ error: 'Student not found' });
         return res.json(student);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -60,7 +61,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         await studentService.deleteStudent(req.params.id);
         return res.json({ message: 'Student deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -69,7 +70,7 @@ router.post('/bulk', authMiddleware, validate(schemas.students.bulkImport), asyn
         const result = await studentService.bulkImportStudents(req.body);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -78,7 +79,7 @@ router.post('/:id/courses', authMiddleware, validateParams(schemas.params.id), v
         const result = await studentService.enrollStudent(req.params.id, req.body.course_ids);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -87,7 +88,7 @@ router.post('/:id/courses/all', authMiddleware, validateParams(schemas.params.id
         const result = await studentService.enrollStudentInAll(req.params.id);
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -96,7 +97,7 @@ router.delete('/:id/courses/:courseId', authMiddleware, async (req, res) => {
         const result = await studentService.removeStudentFromCourse(req.params.id, parseInt(req.params.courseId));
         return res.json(result || { message: 'Removed from course' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -105,7 +106,7 @@ router.get('/:id/courses', authMiddleware, validateParams(schemas.params.id), as
         const courses = await studentService.getStudentCourses(req.params.id);
         return res.json(courses);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

@@ -8,15 +8,45 @@ if (!API_URL.endsWith('/api')) {
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
-    timeout: 120000
+    timeout: 120000,
+    withCredentials: true,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'x-csrf-token'
 });
 
+let cachedCsrfToken: string | null = null;
+
+function getCookieValue(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
 api.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('cr_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+    async (config: InternalAxiosRequestConfig) => {
+        // Authentication is managed strictly via HttpOnly cookies sent via withCredentials: true
+        // Tokens are never stored in localStorage to prevent XSS-based credential theft
+        const method = config.method?.toLowerCase();
+        const isMutating = ['post', 'put', 'delete', 'patch'].includes(method || '');
+
+        if (isMutating && !config.headers['x-csrf-token']) {
+            let csrf = getCookieValue('XSRF-TOKEN') || cachedCsrfToken;
+            if (!csrf && !config.url?.includes('/csrf-token')) {
+                try {
+                    const res = await axios.get(`${API_URL}/csrf-token`, { withCredentials: true });
+                    if (res.data?.csrfToken) {
+                        csrf = res.data.csrfToken;
+                        cachedCsrfToken = csrf;
+                    }
+                } catch {
+                    // Fail silently and allow request to proceed
+                }
+            }
+            if (csrf) {
+                config.headers['x-csrf-token'] = csrf;
+            }
         }
+
         return config;
     },
     (error) => {
@@ -29,6 +59,9 @@ const MAX_RETRIES = 2;
 
 api.interceptors.response.use(
     (response: AxiosResponse) => {
+        if (response.data?.csrfToken) {
+            cachedCsrfToken = response.data.csrfToken;
+        }
         const url = response.config.url;
         const method = response.config.method?.toLowerCase();
         const cacheableUrls = ['/courses', '/platforms', '/templates', '/announcements', '/files', '/routines'];

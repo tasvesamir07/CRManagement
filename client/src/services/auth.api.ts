@@ -73,5 +73,9 @@ export const authAPI = {
   disable2FA: async (password: string) => {
     const res = await api.post('/auth/2fa/disable', { password });
     return res.data;
+  },
+  logout: async () => {
+    const res = await api.post('/auth/logout');
+    return res.data;
   }
 };

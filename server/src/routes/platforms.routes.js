@@ -7,6 +7,7 @@ const messengerService = require('../services/messenger.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const cache = require('../config/cache');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 const logger = require('../config/logger');
 
 /**
@@ -60,7 +61,7 @@ router.get('/', authMiddleware, async (req, res) => {
         cache.set(cacheKey, platforms, 60); // 60s TTL
         return res.json(platforms);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -107,7 +108,7 @@ router.post('/', authMiddleware, validate(schemas.platforms.create), async (req,
         cache.invalidatePattern('platforms:');
         return res.status(201).json(result.rows[0]);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -149,7 +150,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         cache.invalidatePattern('platforms:');
         return res.json({ message: 'Platform deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -185,7 +186,7 @@ router.post('/whatsapp/pair', authMiddleware, async (req, res) => {
         const result = await whatsappService.requestPairingCode(phoneNumber);
         return res.json(result);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -260,7 +261,7 @@ router.get('/whatsapp/groups', authMiddleware, async (req, res) => {
         const groups = await whatsappService.getChats();
         return res.json(groups);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -281,7 +282,7 @@ router.post('/whatsapp/restart', authMiddleware, async (req, res) => {
         await whatsappService.restartWhatsApp();
         return res.json({ message: 'WhatsApp engine restart initiated' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -302,7 +303,7 @@ router.post('/whatsapp/clear-session', authMiddleware, async (req, res) => {
         await whatsappService.clearSession();
         return res.json({ message: 'WhatsApp session cleared and engine restarted' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -362,7 +363,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         cache.invalidatePattern('platforms:');
         return res.json(result.rows[0]);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -420,7 +421,7 @@ router.post('/messenger/appstate', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Connection failed with the uploaded AppState. Please make sure your Facebook account is not locked and the AppState is valid.' });
         }
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

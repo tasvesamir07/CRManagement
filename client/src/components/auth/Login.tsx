@@ -36,7 +36,7 @@ const Login = () => {
                 setTwoFactorUserId(data.userId);
             } else {
                 console.log('[LOGIN] response data:', { hasToken: !!data.token, hasUser: !!data.user, keys: Object.keys(data) });
-                localStorage.setItem('cr_token', data.token);
+                localStorage.removeItem('cr_token');
                 localStorage.setItem('cr_user', JSON.stringify(data.user));
                 setUser(data.user);
                 toast.success(`Welcome back, ${data.user.display_name || data.user.username}!`);
@@ -60,7 +60,7 @@ const Login = () => {
         setErr('');
         try {
             const data = await authAPI.login2FA(twoFactorUserId!, twoFactorCode);
-            localStorage.setItem('cr_token', data.token);
+            localStorage.removeItem('cr_token');
             localStorage.setItem('cr_user', JSON.stringify(data.user));
             setUser(data.user);
             toast.success('2FA verified successfully!');

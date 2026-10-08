@@ -4,6 +4,7 @@ const courseService = require('../services/course.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 
 /**
  * @openapi
@@ -23,7 +24,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const courses = await courseService.getCourses(userId);
         return res.json(courses);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -73,7 +74,7 @@ router.post('/', authMiddleware, validate(schemas.courses.create), async (req, r
         });
         return res.status(201).json(course);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -106,7 +107,7 @@ router.get('/:id', authMiddleware, validateParams(schemas.params.id), async (req
         }
         return res.json(course);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -162,7 +163,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         });
         return res.json(course);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -190,7 +191,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         await courseService.deleteCourse(req.params.id);
         return res.json({ message: 'Course deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -218,7 +219,7 @@ router.get('/:id/members', authMiddleware, validateParams(schemas.params.id), as
         const members = await courseService.getMembers(req.params.id);
         return res.json(members);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -260,7 +261,7 @@ router.post('/:id/members', adminMiddleware, validateParams(schemas.params.id), 
         const member = await courseService.assignMember(req.params.id, user_id, role);
         return res.json(member);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -294,7 +295,7 @@ router.delete('/:id/members/:userId', adminMiddleware, validateParams(schemas.pa
         await courseService.removeMember(req.params.id, req.params.userId);
         return res.json({ message: 'Member removed successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -339,7 +340,7 @@ router.put('/:id/default-platforms', authMiddleware, validateParams(schemas.para
         const course = await courseService.setDefaultPlatforms(req.params.id, platform_ids, req.user.id, req.user.role);
         return res.json(course);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -384,7 +385,7 @@ router.post('/:id/move', authMiddleware, async (req, res) => {
         const course = await courseService.moveCourse(req.params.id, targetFolderId);
         return res.json(course);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -429,7 +430,7 @@ router.put('/:id/default-platforms', authMiddleware, validateParams(schemas.para
         const course = await courseService.setDefaultPlatforms(req.params.id, platform_ids, req.user.id, req.user.role);
         return res.json(course);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -450,7 +451,7 @@ router.get('/folders', authMiddleware, async (req, res) => {
         const folders = await courseService.listFolders(req.user.id);
         return res.json(folders);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -495,7 +496,7 @@ router.post('/:id/move', authMiddleware, async (req, res) => {
         const course = await courseService.moveCourse(req.params.id, targetFolderId);
         return res.json(course);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -540,7 +541,7 @@ router.post('/:id/copy', authMiddleware, async (req, res) => {
         const course = await courseService.copyCourse(req.params.id, targetFolderId);
         return res.status(201).json(course);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

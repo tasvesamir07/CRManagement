@@ -37,53 +37,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const token = localStorage.getItem('cr_token');
+            // Remove legacy plain token from localStorage if present
+            localStorage.removeItem('cr_token');
             const cachedUserStr = localStorage.getItem('cr_user');
 
-            if (token) {
-                let expired = false;
+            if (cachedUserStr) {
                 try {
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    if (payload.exp && Date.now() >= payload.exp * 1000) {
-                        expired = true;
-                    }
-                } catch {
-                    expired = true;
-                }
+                    setUser(JSON.parse(cachedUserStr));
+                } catch { /* ignore */ }
+            }
 
-                if (expired) {
-                    localStorage.removeItem('cr_token');
+            try {
+                const data = await authAPI.me();
+                setUser(data.user);
+                localStorage.setItem('cr_user', JSON.stringify(data.user));
+            } catch (err: any) {
+                if (err.response && (err.response.status === 401 || err.response.status === 403)) {
                     localStorage.removeItem('cr_user');
                     setUser(null);
-                    setLoading(false);
-                    return;
                 }
-
-                if (cachedUserStr) {
-                    try {
-                        setUser(JSON.parse(cachedUserStr));
-                    } catch { /* ignore */ }
-                }
-
-                setLoading(false);
-
-                if (navigator.onLine === false && cachedUserStr) {
-                    return;
-                }
-
-                try {
-                    const data = await authAPI.me();
-                    setUser(data.user);
-                    localStorage.setItem('cr_user', JSON.stringify(data.user));
-                } catch (err: any) {
-                    console.error('Session restore failed:', err.message);
-                    if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-                        localStorage.removeItem('cr_token');
-                        localStorage.removeItem('cr_user');
-                        setUser(null);
-                    }
-                }
-            } else {
+            } finally {
                 setLoading(false);
             }
         };
@@ -99,7 +72,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setLoading(false);
                 return data;
             }
-            localStorage.setItem('cr_token', data.token);
+            // Tokens are stored securely in HttpOnly cookies to prevent XSS theft
+            localStorage.removeItem('cr_token');
             localStorage.setItem('cr_user', JSON.stringify(data.user));
             setUser(data.user);
             setLoading(false);
@@ -116,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setError(null);
         try {
             const data = await authAPI.register(username, email, password, displayName);
-            localStorage.setItem('cr_token', data.token);
+            localStorage.removeItem('cr_token');
             localStorage.setItem('cr_user', JSON.stringify(data.user));
             setUser(data.user);
             setLoading(false);
@@ -128,7 +102,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await authAPI.logout();
+        } catch {
+            // Ignore error and proceed to clear local state
+        }
         localStorage.removeItem('cr_token');
         localStorage.removeItem('cr_user');
         setUser(null);

@@ -3,13 +3,19 @@ const authService = require('../services/auth.service');
 module.exports = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        let token = null;
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else if (req.cookies && req.cookies.cr_token) {
+            token = req.cookies.cr_token;
+        }
+
+        if (!token) {
             return res.status(401).json({ error: 'Access denied. No token provided.' });
         }
 
-        const token = authHeader.split(' ')[1];
         const decoded = authService.verifyToken(token);
-        
         req.user = decoded;
         next();
     } catch (err) {

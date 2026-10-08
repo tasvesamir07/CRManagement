@@ -115,7 +115,10 @@ async function bulkImportStudents({ students, course_ids, enroll_all }) {
             );
             created.push(result.rows[0]);
         } catch (err) {
-            errors.push({ student: student.student_id, error: err.message });
+            const safeError = (process.env.NODE_ENV === 'production' || /sql|syntax|table|column|relation|database/i.test(err.message))
+                ? 'Failed to import student'
+                : err.message;
+            errors.push({ student: student.student_id, error: safeError });
         }
     }
 

@@ -4,6 +4,7 @@ const routineService = require('../services/routine.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const db = require('../config/database');
 const { validate, validateParams, schemas } = require('../middleware/validate.middleware');
+const { handleServerError, handleClientError } = require('../middleware/error.middleware');
 
 /**
  * @openapi
@@ -30,7 +31,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const routines = await routineService.getRoutines(course_id || null, userId);
         return res.json(routines);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -80,7 +81,7 @@ router.post('/', authMiddleware, validate(schemas.routines.create), async (req, 
         });
         return res.status(201).json(routine);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -137,7 +138,7 @@ router.put('/:id', authMiddleware, validateParams(schemas.params.id), validate(s
         });
         return res.json(routine);
     } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return handleClientError(res, err);
     }
 });
 
@@ -165,7 +166,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         await routineService.deleteRoutine(req.params.id);
         return res.json({ message: 'Routine entry deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -187,7 +188,7 @@ router.get('/settings', authMiddleware, async (req, res) => {
         }
         return res.json(null);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -219,7 +220,7 @@ router.post('/settings', authMiddleware, async (req, res) => {
         );
         return res.json({ success: true, settings: mergedSettings });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -249,7 +250,7 @@ router.delete('/:id', authMiddleware, validateParams(schemas.params.id), async (
         await routineService.deleteRoutine(req.params.id);
         return res.json({ message: 'Routine entry deleted successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -294,7 +295,7 @@ router.post('/:id/move', authMiddleware, async (req, res) => {
         const routine = await routineService.moveRoutine(req.params.id, targetFolderId);
         return res.json(routine);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -339,7 +340,7 @@ router.post('/:id/copy', authMiddleware, async (req, res) => {
         const routine = await routineService.copyRoutine(req.params.id, targetFolderId);
         return res.status(201).json(routine);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 
@@ -360,7 +361,7 @@ router.get('/folders', authMiddleware, async (req, res) => {
         const folders = await routineService.listFolders(req.user.id);
         return res.json(folders);
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return handleServerError(res, err);
     }
 });
 

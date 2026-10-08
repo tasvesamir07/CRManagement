@@ -242,11 +242,11 @@ async function forgotPassword(email) {
                 text: `Your OTP for password reset is: ${otp}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`
             });
         } else {
-            logger.info({ email, otp }, 'Password reset OTP (email not configured)');
+            logger.info({ email }, 'Password reset OTP requested (email not configured)');
         }
     } catch (err) {
-        logger.error({ err, email }, 'Failed to send OTP email, logging OTP instead');
-        logger.info({ email, otp }, 'Password reset OTP (email send failed)');
+        logger.error({ err, email }, 'Failed to send OTP email');
+        logger.info({ email }, 'Password reset OTP requested (email send failed)');
     }
 
     return { message: 'If an account with that email exists, an OTP has been sent.' };
